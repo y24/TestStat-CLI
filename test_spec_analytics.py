@@ -144,19 +144,7 @@ def format_output(result, filepath, show_title=True, settings=None):
         print_table(total_headers, [total_row])
         print()
     
-    # 統計テーブル
-    print("STATISTICS:")
-    stats_headers = ["Metric", "Count"]
-    stats_rows = [
-        ["All", result['stats']['all']],
-        ["Available", result['stats']['available']],
-        ["Executed", result['stats']['executed']],
-        ["Completed", result['stats']['completed']],
-        ["Incompleted", result['stats']['incompleted']],
-        ["Planned", result['stats']['planned']]
-    ]
-    print_table(stats_headers, stats_rows)
-    print()
+
     
     # 実施状況
     print(f"STATUS: {result['run']['status']}")
@@ -326,35 +314,7 @@ def print_summary_total_results(results, settings=None):
     print_table(headers, [row])
     print()
 
-def print_summary_statistics(results):
-    # 各ファイルのstatsを集める
-    metrics = ["all", "available", "executed", "completed", "incompleted", "planned"]
-    stats_list = [r[1]["stats"] for r in results if "stats" in r[1]]
-    summary = {}
-    for m in metrics:
-        values = [s[m] for s in stats_list]
-        summary[m] = {
-            "total": sum(values)
-        }
-    # テーブル出力
-    headers = ["Metric", "Total"]
-    rows = []
-    label_map = {
-        "all": "All Cases",
-        "available": "Available",
-        "executed": "Executed",
-        "completed": "Completed",
-        "incompleted": "Incompleted",
-        "planned": "Planned"
-    }
-    for m in metrics:
-        rows.append([
-            label_map[m],
-            summary[m]["total"]
-        ])
-    print("SUMMARY STATISTICS:")
-    print_table(headers, rows)
-    print()
+
 
 def print_summary_overall(results):
     # ステータス集計
@@ -525,8 +485,6 @@ if __name__ == "__main__":
             print(f"Processed Files: {len(file_list)}")
             # サマリー総合結果
             print_summary_total_results(results, settings)
-            # サマリー統計
-            print_summary_statistics(results)
             print_summary_overall(results)
             print()
             for filepath, result in results:

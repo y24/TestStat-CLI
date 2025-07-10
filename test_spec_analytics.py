@@ -1,6 +1,7 @@
 import json
 from utils import ReadData
 from utils import Logger
+from utils.OutputWriter import OutputWriter
 import sys
 import unicodedata
 import argparse
@@ -480,7 +481,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
     parser.add_argument("path", nargs='?', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
     parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
-    parser.add_argument("-f", "--output-format", choices=["table", "json"], default="table", help="出力形式（table/json）")
+    parser.add_argument("-f", "--output-format", choices=["table", "json", "csv", "excel"], default="table", help="出力形式（table/json/csv/excel）")
+    parser.add_argument("-o", "--output-file", help="出力ファイルパス")
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（ファイル内の各行にパスを記述）")
@@ -616,63 +618,159 @@ if __name__ == "__main__":
         print("ERROR: 処理可能なファイルが見つかりませんでした")
         sys.exit(1)
 
-    # サマリー出力（複数ファイル時）
+    # フィルタリング条件を作成
+    filters = create_filter_conditions(args, settings)
+    
+    # 出力データの準備
     if len(file_list) > 1:
-        if args.output_format == "json" or args.json_output:
-            import json
-            # 複数ファイルのJSON出力
-            summary_data = {
-                "summary": {
-                    "processed_files": len(file_list),
-                    "processing_time": 0,  # TODO: 処理時間を計測
-                    "total_stats": {},
-                    "overall_status": "",
-                    "earliest_start_date": "",
-                    "latest_update": ""
-                },
-                "files": []
-            }
+        # 複数ファイル処理
+        summary_data = {
+            "summary": {
+                "processed_files": len(file_list),
+                "processing_time": 0,  # TODO: 処理時間を計測
+                "total_stats": {},
+                "overall_status": "",
+                "earliest_start_date": "",
+                "latest_update": ""
+            },
+            "files": []
+        }
+        
+        # サマリー統計を計算
+        metrics = ["all", "available", "executed", "completed", "incompleted", "planned"]
+        stats_list = [r[1]["stats"] for r in results if "stats" in r[1]]
+        for m in metrics:
+            values = [s[m] for s in stats_list]
+            summary_data["summary"]["total_stats"][m] = sum(values)
+        
+        # TOTAL RESULTSの統合計算
+        total_results = {
+            "Pass": 0, "Fixed": 0, "Fail": 0, "Blocked": 0, "Suspend": 0, "N/A": 0,
+            "Total": 0, "完了数": 0, "消化数": 0, "完了率(%)": 0, "消化率(%)": 0
+        }
+        
+        for filepath, result in results:
+            if "total" in result:
+                for key, value in result["total"].items():
+                    if key in total_results and isinstance(value, (int, float)):
+                        total_results[key] += value
+        
+        # 完了率・消化率の再計算
+        if total_results["消化数"] > 0:
+            total_results["完了率(%)"] = round(total_results["完了数"] / total_results["消化数"] * 100, 2)
+        if summary_data["summary"]["total_stats"]["available"] > 0:
+            total_results["消化率(%)"] = round(total_results["消化数"] / summary_data["summary"]["total_stats"]["available"] * 100, 2)
+        
+        summary_data["summary"]["total_results"] = total_results
+        
+        # 全体ステータスを計算
+        statuses = [r[1]["run"]["status"] for r in results if "run" in r[1] and r[1]["run"]["status"]]
+        if statuses:
+            if all(s == "完了" for s in statuses):
+                summary_data["summary"]["overall_status"] = "completed"
+            elif any(s == "進行中" for s in statuses):
+                summary_data["summary"]["overall_status"] = "in_progress"
+            else:
+                summary_data["summary"]["overall_status"] = statuses[0]
+        
+        # 日付を計算
+        start_dates = [r[1]["run"]["start_date"] for r in results if "run" in r[1] and r[1]["run"]["start_date"]]
+        last_updates = [r[1]["run"]["last_update"] for r in results if "run" in r[1] and r[1]["run"]["last_update"]]
+        summary_data["summary"]["earliest_start_date"] = min(start_dates) if start_dates else ""
+        summary_data["summary"]["latest_update"] = max(last_updates) if last_updates else ""
+        
+        # 各ファイルのデータを追加
+        for filepath, result in results:
+            file_data = result.copy()
+            file_data["file"] = filepath
             
-            # サマリー統計を計算
-            metrics = ["all", "available", "executed", "completed", "incompleted", "planned"]
-            stats_list = [r[1]["stats"] for r in results if "stats" in r[1]]
-            for m in metrics:
-                values = [s[m] for s in stats_list]
-                summary_data["summary"]["total_stats"][m] = sum(values)
+            # フィルタ情報を追加
+            if filters:
+                file_data["filters"] = filters
+                if "filtered_stats" in file_data:
+                    file_data["filtered_cases"] = file_data["filtered_stats"]["filtered_count"]
+                    file_data["total_cases"] = file_data["filtered_stats"]["original_count"]
             
-            # 全体ステータスを計算
-            statuses = [r[1]["run"]["status"] for r in results if "run" in r[1] and r[1]["run"]["status"]]
-            if statuses:
-                if all(s == "完了" for s in statuses):
-                    summary_data["summary"]["overall_status"] = "completed"
-                elif any(s == "進行中" for s in statuses):
-                    summary_data["summary"]["overall_status"] = "in_progress"
-                else:
-                    summary_data["summary"]["overall_status"] = statuses[0]
-            
-            # 日付を計算
-            start_dates = [r[1]["run"]["start_date"] for r in results if "run" in r[1] and r[1]["run"]["start_date"]]
-            last_updates = [r[1]["run"]["last_update"] for r in results if "run" in r[1] and r[1]["run"]["last_update"]]
-            summary_data["summary"]["earliest_start_date"] = min(start_dates) if start_dates else ""
-            summary_data["summary"]["latest_update"] = max(last_updates) if last_updates else ""
-            
-            # 各ファイルのデータを追加
-            for filepath, result in results:
-                file_data = result.copy()
-                file_data["file"] = filepath
-                
-                # フィルタ情報を追加
-                filters = create_filter_conditions(args, settings)
-                if filters:
-                    file_data["filters"] = filters
-                    if "filtered_stats" in file_data:
-                        file_data["filtered_cases"] = file_data["filtered_stats"]["filtered_count"]
-                        file_data["total_cases"] = file_data["filtered_stats"]["original_count"]
-                
-                summary_data["files"].append(file_data)
-            
-            print(json.dumps(summary_data, ensure_ascii=False, indent=2))
+            summary_data["files"].append(file_data)
+        
+        output_data = summary_data
+        is_multiple_files = True
+    else:
+        # 単一ファイル処理
+        filepath, result = results[0]
+        result["file"] = filepath
+        
+        # フィルタ情報を追加
+        if filters:
+            result["filters"] = filters
+            if "filtered_stats" in result:
+                result["filtered_cases"] = result["filtered_stats"]["filtered_count"]
+                result["total_cases"] = result["filtered_stats"]["original_count"]
+        
+        output_data = result
+        is_multiple_files = False
+    
+    # ファイル出力処理
+    if args.output_file:
+        output_writer = OutputWriter(verbose_logger)
+        
+        # ファイル名の自動生成（フィルタ条件を含む）
+        if filters:
+            base_name, ext = os.path.splitext(args.output_file)
+            generated_filename = output_writer.generate_output_filename(args.output_file, filters)
+            if generated_filename != args.output_file:
+                if verbose_logger:
+                    verbose_logger.log(f"フィルタ条件に基づいてファイル名を生成しました: {generated_filename}")
+                output_file = generated_filename
+            else:
+                output_file = args.output_file
         else:
+            output_file = args.output_file
+        
+        # 出力形式の決定
+        if args.output_format in ["csv", "excel"]:
+            output_format = args.output_format
+        elif args.output_file.endswith('.csv'):
+            output_format = "csv"
+        elif args.output_file.endswith('.xlsx'):
+            output_format = "excel"
+        else:
+            # デフォルトはCSV
+            output_format = "csv"
+            if not output_file.endswith('.csv'):
+                output_file = output_file + '.csv'
+        
+        # ファイル拡張子の検証
+        if output_format == "csv" and not output_file.endswith('.csv'):
+            print(f"ERROR: CSV出力には.csv拡張子が必要です: {output_file}")
+            sys.exit(1)
+        elif output_format == "excel" and not output_file.endswith('.xlsx'):
+            print(f"ERROR: Excel出力には.xlsx拡張子が必要です: {output_file}")
+            sys.exit(1)
+        
+        # ファイル出力実行
+        if output_format == "csv":
+            success, error = output_writer.write_csv(output_data, output_file, is_multiple_files)
+        elif output_format == "excel":
+            success, error = output_writer.write_excel(output_data, output_file, is_multiple_files, filters)
+        else:
+            success, error = False, f"サポートされていない出力形式です: {output_format}"
+        
+        if not success:
+            print(f"ERROR: {error}")
+            sys.exit(1)
+        
+        # ファイル出力時はコンソール出力を抑制
+        if args.output_format in ["csv", "excel"]:
+            sys.exit(0)
+    
+    # コンソール出力処理
+    if args.output_format == "json" or args.json_output:
+        import json
+        print(json.dumps(output_data, ensure_ascii=False, indent=2))
+    else:
+        # テーブル形式出力
+        if len(file_list) > 1:
             # ロゴを表示
             try:
                 with open("assets/logo.txt", "r", encoding="utf-8") as f:
@@ -693,28 +791,9 @@ if __name__ == "__main__":
             print()
             for filepath, result in results:
                 print("=" * 50)
-                # フィルタリング条件を表示
-                filters = create_filter_conditions(args, settings)
                 format_output(result, filepath, show_title=False, settings=settings, filters=filters)
-    else:
-        filepath, result = results[0]
-        if args.output_format == "json" or args.json_output:
-            import json
-            # ファイル名を追加
-            result["file"] = filepath
-            
-            # フィルタ情報を追加
-            filters = create_filter_conditions(args, settings)
-            if filters:
-                result["filters"] = filters
-                if "filtered_stats" in result:
-                    result["filtered_cases"] = result["filtered_stats"]["filtered_count"]
-                    result["total_cases"] = result["filtered_stats"]["original_count"]
-            
-            print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            # フィルタリング条件を表示
-            filters = create_filter_conditions(args, settings)
+            filepath, result = results[0]
             format_output(result, filepath, settings=settings, filters=filters)
     
     # 全体処理終了

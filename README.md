@@ -47,6 +47,15 @@ python test_spec_analytics.py input_sample/sample1.xlsx -c custom_config.json
 # JSON形式で出力
 python test_spec_analytics.py input_sample/sample1.xlsx -j
 
+# CSV形式でファイル出力
+python test_spec_analytics.py input_sample/sample1.xlsx -o results.csv
+
+# Excel形式でファイル出力
+python test_spec_analytics.py input_sample/sample1.xlsx -o results.xlsx
+
+# 複数ファイル処理でCSV出力
+python test_spec_analytics.py input_sample/ -o summary.csv
+
 # 詳細ログ出力
 python test_spec_analytics.py input_sample/sample1.xlsx -v
 ```
@@ -57,14 +66,15 @@ python test_spec_analytics.py input_sample/sample1.xlsx -v
 |-----------|------|-----------|
 | `path` | 集計対象のファイルまたはフォルダのパス | 必須 |
 | `-c, --config` | 設定ファイルのパス | `config.json` |
-| `-f, --output-format` | 出力形式（table/json） | `table` |
+| `-f, --output-format` | 出力形式（table/json/csv/excel） | `table` |
+| `-o, --output-file` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `-j, --json-output` | JSON形式で出力 | False |
 | `-v, --verbose` | 詳細ログ出力 | False |
 | `-h, --help` | ヘルプ表示 | - |
 
-## 出力例
+## 出力形式
 
-### テーブル形式出力
+### テーブル形式出力（デフォルト）
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -137,6 +147,61 @@ Last Update: 2024-01-20
     "last_update": "2024-01-20"
   }
 }
+```
+
+### CSV形式出力
+
+CSV形式でファイルに出力する場合、以下のような構造でデータが出力されます：
+
+**単一ファイル処理の場合**:
+- TOTAL RESULTS: 集計結果のサマリー
+- STATISTICS: 統計情報
+- DAILY BREAKDOWN: 日別集計
+- BY NAME: 担当者別集計
+- BY ENVIRONMENT: 環境別集計
+
+**複数ファイル処理の場合**:
+- SUMMARY TOTAL RESULTS: 統合集計結果
+- SUMMARY STATISTICS: 統合統計情報
+- INDIVIDUAL FILES: 各ファイルのサマリー
+
+### Excel形式出力
+
+Excel形式でファイルに出力する場合、複数のシートに分けてデータが整理されます：
+
+**単一ファイル処理の場合**:
+1. TOTAL RESULTS - 集計結果のサマリー
+2. STATISTICS - 統計情報
+3. DAILY BREAKDOWN - 日別集計
+4. BY NAME - 担当者別集計
+5. BY ENVIRONMENT - 環境別集計
+6. METADATA - ファイル情報・処理条件
+
+**複数ファイル処理の場合**:
+1. SUMMARY TOTAL RESULTS - 統合集計結果
+2. SUMMARY STATISTICS - 統合統計情報
+3. INDIVIDUAL FILES - 各ファイルのサマリー
+4. DAILY BREAKDOWN - 統合日別集計
+5. BY NAME - 統合担当者別集計
+6. BY ENVIRONMENT - 統合環境別集計
+7. METADATA - 処理情報・フィルタ条件
+
+### ファイル名の自動生成
+
+フィルタリング条件を指定した場合、ファイル名に条件が自動的に含まれます：
+
+```bash
+# 基本出力
+python test_spec_analytics.py -o results.xlsx sample1.xlsx
+# → results.xlsx
+
+# 日付フィルタ
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
+# → results_2024-01-15_to_2024-01-20.xlsx
+
+# 複合フィルタ
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --assignee 田中 sample1.xlsx
+# → results_2024-01-15_to_2024-01-20_田中.xlsx
 ```
 
 ## 設定ファイル仕様

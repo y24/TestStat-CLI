@@ -894,9 +894,9 @@ ERROR: Excel file format error - corrupted.xlsx
   ```
 
 #### 8.2.3 結果タイプフィルタ（--result-type）
-- **オプション**: `--result-type RESULT_TYPE`
+- **オプション**: `--result-type RESULT_TYPE [RESULT_TYPE2 ...]`
 - **形式**: Pass, Fixed, Fail, Blocked, Suspend, N/A（設定ファイルのtest_statusに定義された値）
-- **説明**: 指定された結果タイプのテスト結果のみを集計
+- **説明**: 指定された結果タイプのテスト結果のみを集計（複数指定可能）
 - **使用例**:
   ```bash
   # Passのみのテスト結果
@@ -904,6 +904,15 @@ ERROR: Excel file format error - corrupted.xlsx
   
   # Failのみのテスト結果（複数ファイル）
   python test_spec_analytics.py --result-type Fail input_sample/
+  
+  # PassとFailのテスト結果
+  python test_spec_analytics.py --result-type Pass Fail sample1.xlsx
+  
+  # 完了したテスト結果（Pass, Fixed）
+  python test_spec_analytics.py --result-type Pass Fixed input_sample/
+  
+  # 問題のあるテスト結果（Fail, Blocked）
+  python test_spec_analytics.py --result-type Fail Blocked sample1.xlsx
   ```
 
 #### 8.2.4 環境フィルタ（--environment）
@@ -940,6 +949,12 @@ python test_spec_analytics.py --environment セット1 --assignee 佐藤 --resul
 # 2024年1月1日から31日までにBlockedされたテスト（詳細ログ付き）
 python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 --result-type Blocked -v input_sample/
 
+# 完了したテスト結果（Pass, Fixed）を日付範囲で絞り込み
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --result-type Pass Fixed sample1.xlsx
+
+# 問題のあるテスト結果（Fail, Blocked）を担当者で絞り込み
+python test_spec_analytics.py --assignee 田中 --result-type Fail Blocked input_sample/
+
 # 2024年1月15日以降のすべてのテスト結果
 python test_spec_analytics.py --date-range 2024-01-15 input_sample/
 
@@ -966,7 +981,7 @@ TestSpecAnalytics Results
 Filter Conditions:
 - Date Range: 2024-01-15 to 2024-01-20
 - Assignee: 田中 (partial match)
-- Result Type: Pass
+- Result Type: Pass, Fixed
 - Environment: セット1 (partial match)
 
 File: sample1.xlsx
@@ -1012,6 +1027,10 @@ TOTAL RESULTS (Filtered):
 - 部分一致: `"match_type": "partial"`
 - 完全一致: `"match_type": "exact"`
 
+**結果タイプのJSON表現**:
+- 単一指定: `"result_type": "Pass"`
+- 複数指定: `"result_type": ["Pass", "Fixed"]`
+
 ```json
 {
   "filters": {
@@ -1023,7 +1042,7 @@ TOTAL RESULTS (Filtered):
       "value": "田中",
       "match_type": "partial"
     },
-    "result_type": "Pass",
+    "result_type": ["Pass", "Fixed"],
     "environment": {
       "value": "セット1",
       "match_type": "partial"
@@ -1056,7 +1075,7 @@ TOTAL RESULTS (Filtered):
 [VERBOSE] 02:03:58.557 - フィルタ条件適用開始
 [VERBOSE] 02:03:58.557 - - 日付範囲: 2024-01-15 から 2024-01-20
 [VERBOSE] 02:03:58.557 - - 担当者: 田中 (部分一致)
-[VERBOSE] 02:03:58.557 - - 結果タイプ: Pass
+[VERBOSE] 02:03:58.557 - - 結果タイプ: Pass, Fixed
 [VERBOSE] 02:03:58.557 - - 環境: セット1 (部分一致)
 [VERBOSE] 02:03:58.568 - フィルタ適用前データ: 150件
 [VERBOSE] 02:03:58.568 - 日付フィルタ適用後: 45件
@@ -1081,12 +1100,19 @@ TOTAL RESULTS (Filtered):
 [VERBOSE] 02:03:58.557 - - 環境: セット1 (部分一致)
 ```
 
+**結果タイプの詳細ログ例**:
+```
+[VERBOSE] 02:03:58.557 - - 結果タイプ: Pass (単一)
+[VERBOSE] 02:03:58.557 - - 結果タイプ: Pass, Fixed (複数)
+[VERBOSE] 02:03:58.557 - - 結果タイプ: Fail, Blocked, Suspend (複数)
+```
+
 ### 8.6 エラーハンドリング
 
 #### 8.6.1 フィルタ条件エラー
 - 無効な日付形式
 - 存在しない担当者名（部分一致でも該当なしの場合）
-- 無効な結果タイプ
+- 無効な結果タイプ（複数指定時は1つでも無効な値があるとエラー）
 - 存在しない環境名（部分一致でも該当なしの場合）
 - 日付範囲の開始日が終了日より後の場合
 
@@ -1099,6 +1125,7 @@ ERROR: Environment not found - セット3 (available: セット1, セット2)
 ERROR: Invalid date range - start date (2024-01-20) is after end date (2024-01-15)
 ERROR: No matching assignees found - 山田 (partial match, available: 田中, 佐藤, 鈴木)
 ERROR: No matching environments found - セット3 (partial match, available: セット1, セット2)
+ERROR: Invalid result types - Pass, Invalid, Fail (available: Pass, Fixed, Fail, Blocked, Suspend, N/A)
 ```
 
 ### 8.7 実装上の注意事項
@@ -1125,12 +1152,19 @@ ERROR: No matching environments found - セット3 (partial match, available: �
 - **空白文字**: 前後の空白を除去して比較
 - **バリデーション**: 部分一致でも該当する値が見つからない場合はエラー
 
-#### 8.7.4 パフォーマンス考慮
+#### 8.7.4 結果タイプフィルタの仕様
+- **複数指定**: スペース区切りで複数の結果タイプを指定可能
+- **OR条件**: 指定された結果タイプのいずれかに該当するデータを抽出
+- **バリデーション**: 1つでも無効な結果タイプがあるとエラー
+- **重複除去**: 同じ結果タイプを複数回指定しても重複は除去
+- **順序**: 指定順序は保持されるが、出力時の順序は結果タイプの定義順
+
+#### 8.7.5 パフォーマンス考慮
 - 大量データでのフィルタリング処理時間
 - メモリ使用量の最適化
 - 複数ファイル処理時の効率化
 
-#### 8.7.5 データ整合性
+#### 8.7.6 データ整合性
 - フィルタ適用後の統計値の再計算
 - 完了率・消化率の正確な算出
 - 日別・担当者別・環境別集計の更新

@@ -28,7 +28,8 @@ python test_spec_analytics.py [オプション] [ファイルパス/フォルダ
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |------------|--------|------|--------------|
 | `--config` | `-c` | 設定ファイルのパス | `config.json` |
-| `--output-format` | `-f` | 出力形式（table/json） | `table` |
+| `--output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
+| `--output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `--json-output` | `-j` | JSON形式で出力 | `false` |
 | `--verbose` | `-v` | 詳細ログ出力（ファイル処理・データ集計の進捗や内部情報を詳細に表示） | `false` |
 | `--help` | `-h` | ヘルプ表示 | - |
@@ -49,6 +50,15 @@ python test_spec_analytics.py -c custom_config.json sample1.xlsx
 
 # 詳細ログ付き
 python test_spec_analytics.py -v sample1.xlsx
+
+# CSV形式でファイル出力
+python test_spec_analytics.py -o results.csv sample1.xlsx
+
+# Excel形式でファイル出力
+python test_spec_analytics.py -o results.xlsx sample1.xlsx
+
+# 複数ファイル処理でCSV出力
+python test_spec_analytics.py -o summary.csv input_sample/
 ```
 
 ## 4. 設定ファイル仕様
@@ -1172,9 +1182,220 @@ ERROR: Invalid result types - Pass, Invalid, Fail (available: Pass, Fixed, Fail,
 ## 9. 将来拡張予定
 
 ### 9.1 出力オプション
-- CSV形式出力
-- Excel形式出力
 - 特定の統計情報のみ出力
+
+## 11. CSV/Excel形式出力機能
+
+### 11.1 概要
+集計結果をCSV形式またはExcel形式でファイルに出力する機能です。コンソール出力と併用して、データの保存・共有・分析に活用できます。
+
+### 11.2 コマンドラインオプション
+
+#### 11.2.1 基本オプション
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|------------|--------|------|--------------|
+| `--output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
+| `--output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
+
+#### 11.2.2 使用例
+```bash
+# CSV形式でファイル出力
+python test_spec_analytics.py -o results.csv sample1.xlsx
+
+# Excel形式でファイル出力
+python test_spec_analytics.py -o results.xlsx sample1.xlsx
+
+# JSON形式でファイル出力
+python test_spec_analytics.py -o results.json -f json sample1.xlsx
+
+# 複数ファイル処理でCSV出力
+python test_spec_analytics.py -o summary.csv input_sample/
+
+# フィルタリング結果をExcel出力
+python test_spec_analytics.py -o filtered_results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
+```
+
+### 11.3 CSV形式出力仕様
+
+#### 11.3.1 単一ファイル処理の場合
+出力ファイル：`results.csv`
+
+**TOTAL RESULTS シート**:
+```csv
+Category,Pass,Fixed,Fail,Blocked,Suspend,N/A,Total,完了数,消化数,完了率(%),消化率(%)
+TOTAL RESULTS,33,1,0,0,0,9,43,100,120,68.97,82.76
+```
+
+**STATISTICS シート**:
+```csv
+Metric,Count
+All,150
+Available,145
+Executed,120
+Completed,100
+Incompleted,25
+Planned,80
+```
+
+**DAILY BREAKDOWN シート**:
+```csv
+Date,Pass,Fixed,Fail,Blocked,Suspend,N/A,完了数,消化数,計画数
+2024-01-15,10,0,2,1,0,0,13,13,20
+2024-01-16,15,0,1,0,0,0,16,16,25
+```
+
+**BY NAME シート**:
+```csv
+Date,田中,佐藤,鈴木,完了数,消化数,計画数
+2024-01-15,8,3,2,13,13,20
+2024-01-16,10,4,2,16,16,25
+```
+
+**BY ENVIRONMENT シート**:
+```csv
+Date,Environment,Pass,Fixed,Fail,Blocked,Suspend,N/A,完了数,消化数,計画数
+2024-01-15,セット1,15,0,2,1,0,0,18,18,25
+2024-01-15,セット2,10,0,1,0,0,0,11,11,15
+2024-01-16,セット1,20,0,1,0,0,0,21,21,30
+2024-01-16,セット2,15,0,0,0,0,0,15,15,20
+```
+
+#### 11.3.2 複数ファイル処理の場合
+出力ファイル：`summary.csv`
+
+**SUMMARY TOTAL RESULTS シート**:
+```csv
+Category,Pass,Fixed,Fail,Blocked,Suspend,N/A,Total,完了数,消化数,完了率(%),消化率(%)
+SUMMARY TOTAL RESULTS,103,3,1,1,0,21,129,100,120,22.99,27.59
+```
+
+**SUMMARY STATISTICS シート**:
+```csv
+Metric,Total
+All Cases,450
+Available,435
+Executed,360
+Completed,300
+Incompleted,75
+Planned,240
+```
+
+**INDIVIDUAL FILES シート**:
+```csv
+File,Total Cases,Available Cases,Excluded Cases,Pass,Fixed,Fail,Blocked,Suspend,N/A,Total,完了数,消化数,完了率(%),消化率(%)
+sample1.xlsx,150,145,5,33,1,0,0,0,9,43,100,120,68.97,82.76
+sample2.xlsx,200,190,10,45,2,1,0,0,12,60,120,150,63.16,78.95
+sample3.xlsx,100,100,0,25,0,0,0,0,5,30,80,90,80.00,90.00
+```
+
+### 11.4 Excel形式出力仕様
+
+#### 11.4.1 ファイル構造
+- **ワークブック**: 1つのExcelファイル（.xlsx）
+- **シート構成**: 複数のシートでデータを分類
+- **書式設定**: ヘッダー行の背景色、罫線、数値フォーマット
+
+#### 11.4.2 シート構成
+
+**単一ファイル処理の場合**:
+1. **TOTAL RESULTS** - 集計結果のサマリー
+2. **STATISTICS** - 統計情報
+3. **DAILY BREAKDOWN** - 日別集計
+4. **BY NAME** - 担当者別集計
+5. **BY ENVIRONMENT** - 環境別集計
+6. **METADATA** - ファイル情報・処理条件
+
+**複数ファイル処理の場合**:
+1. **SUMMARY TOTAL RESULTS** - 統合集計結果
+2. **SUMMARY STATISTICS** - 統合統計情報
+3. **INDIVIDUAL FILES** - 各ファイルのサマリー
+4. **DAILY BREAKDOWN** - 統合日別集計
+5. **BY NAME** - 統合担当者別集計
+6. **BY ENVIRONMENT** - 統合環境別集計
+7. **METADATA** - 処理情報・フィルタ条件
+
+#### 11.4.3 書式設定
+- **ヘッダー行**: 背景色（グレー）、太字、中央揃え
+- **データ行**: 左揃え（文字列）、右揃え（数値）
+- **罫線**: 全セルに細い罫線
+- **数値フォーマット**: パーセンテージは小数点以下2桁
+- **列幅**: 内容に応じた自動調整
+
+#### 11.4.4 METADATA シート内容
+```csv
+項目,値
+処理日時,2024-01-25 14:30:00
+処理ファイル数,3
+総処理時間,2.3秒
+フィルタ条件,日付範囲: 2024-01-15 から 2024-01-20
+出力形式,Excel
+設定ファイル,config.json
+```
+
+### 11.5 フィルタリング対応
+
+#### 11.5.1 フィルタ情報の出力
+- **METADATA シート**: 適用されたフィルタ条件を記録
+- **ファイル名**: フィルタ条件を含むファイル名を自動生成
+- **シート名**: フィルタ条件に応じたシート名
+
+#### 11.5.2 ファイル名自動生成例
+```bash
+# 基本出力
+python test_spec_analytics.py -o results.xlsx sample1.xlsx
+# → results.xlsx
+
+# 日付フィルタ
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
+# → results_2024-01-15_to_2024-01-20.xlsx
+
+# 複合フィルタ
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --assignee 田中 sample1.xlsx
+# → results_2024-01-15_to_2024-01-20_田中.xlsx
+```
+
+### 11.6 エラーハンドリング
+
+#### 11.6.1 ファイル出力エラー
+- 出力先ディレクトリが存在しない
+- ファイルが既に存在し、上書き権限がない
+- ディスク容量不足
+- 無効なファイル形式
+
+#### 11.6.2 エラー出力例
+```
+ERROR: Output directory not found - /invalid/path/
+ERROR: File already exists and cannot be overwritten - results.xlsx
+ERROR: Insufficient disk space - 50MB required, 10MB available
+ERROR: Invalid file extension - results.txt (use .csv or .xlsx)
+```
+
+### 11.7 実装上の注意事項
+
+#### 11.7.1 依存関係
+- **CSV出力**: Python標準ライブラリ（csv）
+- **Excel出力**: openpyxl（既存依存関係）
+- **ファイル操作**: os, pathlib（標準ライブラリ）
+
+#### 11.7.2 パフォーマンス考慮
+- 大量データでのExcel出力時間
+- メモリ使用量の最適化
+- 複数ファイル処理時の効率化
+
+#### 11.7.3 データ整合性
+- コンソール出力とファイル出力の内容一致
+- 文字エンコーディング（UTF-8）
+- 数値フォーマットの統一
+
+#### 11.7.4 ファイル命名規則
+- **基本形式**: `{指定名}.{拡張子}`
+- **フィルタ適用時**: `{指定名}_{フィルタ条件}.{拡張子}`
+- **重複回避**: 同名ファイルが存在する場合は自動的に番号を付与
+
+#### 11.7.5 出力オプションの組み合わせ
+- **コンソール + ファイル**: 両方に出力
+- **ファイルのみ**: `--output-file`指定時はコンソール出力を抑制
+- **形式指定**: `--output-format`で出力形式を明示的に指定
 
 ### 9.2 バッチ処理
 - 複数フォルダの一括処理

@@ -2,6 +2,7 @@ import json
 from utils import ReadData
 from utils import Logger
 from utils.OutputWriter import OutputWriter
+from utils.ClipboardWriter import ClipboardWriter
 import sys
 import unicodedata
 import argparse
@@ -198,6 +199,41 @@ def create_filter_conditions(args, settings):
     return filters
 
 def format_filter_display(filters):
+    """フィルタリング条件を表示用の文字列に変換する"""
+    if not filters:
+        return ""
+    
+    filter_lines = []
+    
+    # 日付範囲フィルタ
+    if "date_range" in filters:
+        start = filters["date_range"]["start"]
+        end = filters["date_range"]["end"]
+        if start and end:
+            filter_lines.append(f"Date Range: {start} to {end}")
+        elif start:
+            filter_lines.append(f"Date Range: {start} onwards")
+        elif end:
+            filter_lines.append(f"Date Range: up to {end}")
+    
+    # 担当者フィルタ
+    if "assignee" in filters:
+        match_type = "exact match" if filters["assignee"]["exact_match"] else "partial match"
+        filter_lines.append(f"Assignee: {filters['assignee']['value']} ({match_type})")
+    
+    # 結果タイプフィルタ
+    if "result_type" in filters:
+        if len(filters["result_type"]) == 1:
+            filter_lines.append(f"Result Type: {filters['result_type'][0]}")
+        else:
+            filter_lines.append(f"Result Type: {', '.join(filters['result_type'])}")
+    
+    # 環境フィルタ
+    if "environment" in filters:
+        match_type = "exact match" if filters["environment"]["exact_match"] else "partial match"
+        filter_lines.append(f"Environment: {filters['environment']['value']} ({match_type})")
+    
+    return "\n".join(filter_lines)
     """フィルタ条件を表示用にフォーマット"""
     if not filters:
         return None
@@ -487,6 +523,10 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（ファイル内の各行にパスを記述）")
     
+    # TSVクリップボード出力オプション
+    parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
+    parser.add_argument("-P", "--clipboard-only", action="store_true", help="クリップボードのみに出力（コンソール出力を抑制）")
+    
     # フィルタリングオプション
     parser.add_argument("--date-range", nargs="*", metavar=("START_DATE", "END_DATE"), 
                        help="日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能）")
@@ -762,6 +802,37 @@ if __name__ == "__main__":
         
         # ファイル出力時はコンソール出力を抑制
         if args.output_format in ["csv", "excel"]:
+            sys.exit(0)
+    
+    # TSVクリップボード出力処理
+    clipboard_writer = ClipboardWriter(verbose_logger)
+    
+    if args.clipboard or args.clipboard_only:
+        # クリップボード用のデータを準備
+        clipboard_data = []
+        if is_multiple_files:
+            # 複数ファイル処理の場合、各ファイルのデータをリストに追加
+            for filepath, result in results:
+                result["file"] = filepath
+                clipboard_data.append(result)
+        else:
+            # 単一ファイル処理の場合
+            filepath, result = results[0]
+            result["file"] = filepath
+            clipboard_data.append(result)
+        
+        # クリップボードにコピー
+        success = clipboard_writer.write_to_clipboard(clipboard_data, settings)
+        
+        if not success:
+            print("ERROR: クリップボードへのコピーに失敗しました")
+            if args.clipboard_only:
+                # クリップボードのみの場合はフォールバック出力
+                clipboard_writer.write_to_console_as_fallback(clipboard_data, settings)
+            sys.exit(1)
+        elif args.clipboard_only:
+            # クリップボードのみの場合は処理終了
+            print("TSVデータをクリップボードにコピーしました。Excelに貼り付けてご利用ください。")
             sys.exit(0)
     
     # コンソール出力処理

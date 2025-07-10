@@ -68,7 +68,7 @@ def format_output(result, filepath, show_title=True):
     # 総合結果テーブル
     if 'total' in result:
         print("TOTAL RESULTS:")
-        total_headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数"]
+        total_headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         total_row = [
             result['total'].get('Pass', 0),
             result['total'].get('Fixed', 0),
@@ -78,7 +78,9 @@ def format_output(result, filepath, show_title=True):
             result['total'].get('N/A', 0),
             result['total'].get('Total', 0),
             result['total'].get('完了数', 0),
-            result['total'].get('消化数', 0)
+            result['total'].get('消化数', 0),
+            result['total'].get('完了率(%)', 0),
+            result['total'].get('消化率(%)', 0)
         ]
         print_table(total_headers, [total_row])
         print()
@@ -232,12 +234,24 @@ def print_summary_total_results(results):
                 # 消化数（executed_resultsに含まれる結果の合計）
                 executed_count += date_data.get("消化数", 0)
     
+    # 完了率と消化率を計算
+    # 各ファイルのstatsからavailable_countを集計
+    available_count = 0
+    for filepath, result in results:
+        if "stats" in result and "available" in result["stats"]:
+            available_count += result["stats"]["available"]
+    
+    completion_rate = (completed_count / available_count * 100) if available_count > 0 else 0
+    execution_rate = (executed_count / available_count * 100) if available_count > 0 else 0
+    
     # 完了数と消化数を追加
     combined_total["完了数"] = completed_count
     combined_total["消化数"] = executed_count
+    combined_total["完了率(%)"] = round(completion_rate, 2)
+    combined_total["消化率(%)"] = round(execution_rate, 2)
     
     # テーブル出力
-    headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数"]
+    headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
     row = [
         combined_total.get("Pass", 0),
         combined_total.get("Fixed", 0),
@@ -247,7 +261,9 @@ def print_summary_total_results(results):
         combined_total.get("N/A", 0),
         combined_total.get("Total", 0),
         combined_total.get("完了数", 0),
-        combined_total.get("消化数", 0)
+        combined_total.get("消化数", 0),
+        combined_total.get("完了率(%)", 0),
+        combined_total.get("消化率(%)", 0)
     ]
     print("SUMMARY TOTAL RESULTS:")
     print_table(headers, [row])

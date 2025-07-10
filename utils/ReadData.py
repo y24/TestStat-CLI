@@ -394,9 +394,15 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         total_results[result_type] = data_total.get(result_type, 0)
     total_results["Total"] = sum(total_results.values())
     
+    # 完了率と消化率を計算
+    completion_rate = (completed_count / available_count * 100) if available_count > 0 else 0
+    execution_rate = (executed_count / available_count * 100) if available_count > 0 else 0
+    
     # 完了数と消化数を追加
     total_results["完了数"] = completed_count
     total_results["消化数"] = executed_count
+    total_results["完了率(%)"] = round(completion_rate, 2)
+    total_results["消化率(%)"] = round(execution_rate, 2)
 
     # 最終出力データ
     out_data = {
@@ -504,9 +510,16 @@ def aggregate_multiple_files_results(file_results_list: list, settings: dict):
     # Totalを計算
     combined_total_results["Total"] = sum(combined_total_results.values())
     
+    # 完了率と消化率を計算
+    available_count = combined_stats["available"]
+    completion_rate = (completed_count / available_count * 100) if available_count > 0 else 0
+    execution_rate = (executed_count / available_count * 100) if available_count > 0 else 0
+    
     # 完了数と消化数をtotal_resultsに追加
     combined_total_results["完了数"] = completed_count
     combined_total_results["消化数"] = executed_count
+    combined_total_results["完了率(%)"] = round(completion_rate, 2)
+    combined_total_results["消化率(%)"] = round(execution_rate, 2)
     
     return {
         "total": combined_total_results,

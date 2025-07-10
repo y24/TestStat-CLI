@@ -5,6 +5,7 @@ import unicodedata
 import argparse
 import os
 import glob
+import traceback
 
 def get_display_width(text):
     """全角・半角を考慮した表示幅を返す"""
@@ -46,6 +47,54 @@ def print_table(headers, rows):
         print(data_line)
     print(bottom_border)
 
+def validate_config(config_data):
+    """設定ファイルの妥当性をチェック"""
+    required_sections = ["read_definition", "test_status", "output_definition"]
+    for section in required_sections:
+        if section not in config_data:
+            return False, f"設定ファイルに必要なセクション '{section}' がありません"
+    
+    # read_definition の必須項目チェック
+    read_def = config_data["read_definition"]
+    required_read_keys = ["sheet_search_keys", "header", "result_row", "person_row", "date_row"]
+    for key in required_read_keys:
+        if key not in read_def:
+            return False, f"read_definition に必要な項目 '{key}' がありません"
+    
+    # test_status の必須項目チェック
+    test_status = config_data["test_status"]
+    required_test_keys = ["results", "completed_results", "executed_results"]
+    for key in required_test_keys:
+        if key not in test_status:
+            return False, f"test_status に必要な項目 '{key}' がありません"
+    
+    return True, "設定ファイルは正常です"
+
+def check_file_access(filepath):
+    """ファイルアクセス権限をチェック"""
+    if not os.path.exists(filepath):
+        return False, f"ファイルが見つかりません: {filepath}"
+    
+    if not os.access(filepath, os.R_OK):
+        return False, f"ファイルの読み取り権限がありません: {filepath}"
+    
+    return True, "ファイルアクセス可能"
+
+def find_excel_files(target_path):
+    """Excelファイルを検索"""
+    if os.path.isdir(target_path):
+        # ディレクトリ配下の全xlsxファイル
+        file_list = glob.glob(os.path.join(target_path, "**/*.xlsx"), recursive=True)
+        if not file_list:
+            return False, f"指定されたディレクトリにExcelファイルが見つかりません: {target_path}"
+    else:
+        # 単一ファイル
+        if not target_path.lower().endswith('.xlsx'):
+            return False, f"指定されたファイルはExcelファイルではありません: {target_path}"
+        file_list = [target_path]
+    
+    return True, file_list
+
 def format_output(result, filepath, show_title=True, settings=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title:
@@ -64,6 +113,8 @@ def format_output(result, filepath, show_title=True, settings=None):
     
     if "error" in result:
         print(f"ERROR: {result['error']['message']}")
+        if "details" in result["error"]:
+            print(f"詳細: {result['error']['details']}")
         return
     
     # 基本情報
@@ -336,21 +387,71 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    with open(args.config, encoding="utf-8") as f:
-        settings = json.load(f)
-
+    
+    # 設定ファイルの読み込みと検証
+    try:
+        with open(args.config, encoding="utf-8") as f:
+            settings = json.load(f)
+    except FileNotFoundError:
+        print(f"ERROR: 設定ファイルが見つかりません: {args.config}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"ERROR: 設定ファイルのJSON形式が不正です: {args.config}")
+        print(f"詳細: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR: 設定ファイルの読み込みに失敗しました: {args.config}")
+        print(f"詳細: {e}")
+        sys.exit(1)
+    
+    # 設定ファイルの妥当性チェック
+    is_valid, message = validate_config(settings)
+    if not is_valid:
+        print(f"ERROR: {message}")
+        sys.exit(1)
+    
+    # ターゲットパスの検証
     target_path = args.path
+    if not os.path.exists(target_path):
+        print(f"ERROR: 指定されたパスが存在しません: {target_path}")
+        sys.exit(1)
+    
+    # Excelファイルの検索
+    is_valid, file_list_or_error = find_excel_files(target_path)
+    if not is_valid:
+        print(f"ERROR: {file_list_or_error}")
+        sys.exit(1)
+    
+    file_list = file_list_or_error
     results = []
-    file_list = []
-    if os.path.isdir(target_path):
-        # ディレクトリ配下の全xlsxファイル
-        file_list = glob.glob(os.path.join(target_path, "*.xlsx"))
-    else:
-        file_list = [target_path]
-
+    
+    # 各ファイルの処理
     for filepath in file_list:
-        result = ReadData.aggregate_results(filepath, settings)
-        results.append((filepath, result))
+        # ファイルアクセス権限チェック
+        is_accessible, message = check_file_access(filepath)
+        if not is_accessible:
+            print(f"WARNING: {message}")
+            continue
+        
+        try:
+            result = ReadData.aggregate_results(filepath, settings)
+            results.append((filepath, result))
+        except Exception as e:
+            error_result = {
+                "error": {
+                    "type": "processing_error",
+                    "message": f"ファイル処理中にエラーが発生しました: {filepath}",
+                    "details": str(e)
+                }
+            }
+            if args.verbose:
+                print(f"詳細エラー情報: {traceback.format_exc()}")
+            results.append((filepath, error_result))
+    
+    # 処理対象ファイルが存在しない場合
+    if not results:
+        print("ERROR: 処理可能なファイルが見つかりませんでした")
+        sys.exit(1)
 
     # サマリー出力（複数ファイル時）
     if len(file_list) > 1:

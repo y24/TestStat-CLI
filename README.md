@@ -1,0 +1,292 @@
+# TestSpecAnalyticsCLI
+
+Excelテスト仕様書からテスト結果を集計・分析するCLIツールです。
+
+## 概要
+
+このツールは、Excelファイル（.xlsx）に記録されたテスト結果を読み取り、以下の集計・分析を行います：
+
+- テストケース数の統計
+- 結果別（Pass/Fail/Blocked等）の集計
+- 日別・担当者別・環境別の集計
+- 完了率・消化率の算出
+- 美しいテーブル形式での出力
+
+## インストール
+
+### 前提条件
+
+- Python 3.7以上
+- openpyxlライブラリ
+
+### セットアップ
+
+```bash
+# 依存パッケージのインストール
+pip install openpyxl
+
+# リポジトリのクローン
+git clone <repository-url>
+cd TestSpecAnalyticsCLI
+```
+
+## 使い方
+
+### 基本的な使い方
+
+```bash
+# 単一ファイルの集計
+python test_spec_analytics.py input_sample/sample1.xlsx
+
+# フォルダ内の全Excelファイルを集計
+python test_spec_analytics.py input_sample/
+
+# カスタム設定ファイルを使用
+python test_spec_analytics.py input_sample/sample1.xlsx -c custom_config.json
+
+# JSON形式で出力
+python test_spec_analytics.py input_sample/sample1.xlsx -j
+
+# 詳細ログ出力
+python test_spec_analytics.py input_sample/sample1.xlsx -v
+```
+
+### コマンドラインオプション
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `path` | 集計対象のファイルまたはフォルダのパス | 必須 |
+| `-c, --config` | 設定ファイルのパス | `config.json` |
+| `-f, --output-format` | 出力形式（table/json） | `table` |
+| `-j, --json-output` | JSON形式で出力 | False |
+| `-v, --verbose` | 詳細ログ出力 | False |
+| `-h, --help` | ヘルプ表示 | - |
+
+## 出力例
+
+### テーブル形式出力
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ TestSpecAnalyticsCLI                                          │
+└─────────────────────────────────────────────────────────────────┘
+
+==================================================
+Summary Results
+==================================================
+
+File: input_sample/sample1.xlsx
+Total Cases: 150
+Available Cases: 145
+Excluded Cases: 5
+
+TOTAL RESULTS:
+┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────────┬─────────────┐
+│ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ Total   │ 完了数   │ 消化数   │ 完了率(%)   │ 消化率(%)   │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────────┼─────────────┤
+│ 120     │ 5       │ 10      │ 3       │ 2       │ 0       │ 140     │ 127     │ 140     │ 87.59       │ 96.55       │
+└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────────┴─────────────┘
+
+STATISTICS:
+┌─────────────┬─────────┐
+│ Metric      │ Count   │
+├─────────────┼─────────┤
+│ All         │ 150     │
+│ Available   │ 145     │
+│ Executed    │ 140     │
+│ Completed   │ 127     │
+│ Incompleted │ 13      │
+│ Planned     │ 150     │
+└─────────────┴─────────┘
+
+STATUS: 進行中
+Start Date: 2024-01-15
+Last Update: 2024-01-20
+```
+
+### JSON形式出力
+
+```json
+{
+  "file": "input_sample/sample1.xlsx",
+  "stats": {
+    "all": 150,
+    "available": 145,
+    "excluded": 5,
+    "executed": 140,
+    "completed": 127,
+    "incompleted": 13,
+    "planned": 150
+  },
+  "total": {
+    "Pass": 120,
+    "Fixed": 5,
+    "Fail": 10,
+    "Blocked": 3,
+    "Suspend": 2,
+    "N/A": 0,
+    "Total": 140,
+    "完了数": 127,
+    "消化数": 140,
+    "完了率(%)": 87.59,
+    "消化率(%)": 96.55
+  },
+  "run": {
+    "status": "進行中",
+    "start_date": "2024-01-15",
+    "last_update": "2024-01-20"
+  }
+}
+```
+
+## 設定ファイル仕様
+
+### config.json
+
+```json
+{
+  "read_definition": {
+    "sheet_search_keys": ["テスト項目"],
+    "sheet_search_ignores": [],
+    "header": {"search_col": "A", "search_key": "#"},
+    "tobe_row": {"keys": ["期待", "実施対象"]},
+    "result_row": {"keys": ["結果"], "ignores": ["期待結果"]},
+    "person_row": {"keys": ["担当者"]},
+    "date_row": {"keys": ["日付", "実施日"]},
+    "plan_row": {"keys": ["計画"]},
+    "excluded": ["対象外"]
+  },
+  "test_status": {
+    "results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
+    "completed_results": ["Pass", "Fixed", "Suspend", "N/A"],
+    "executed_results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
+    "labels": {
+      "completed": "完了数",
+      "executed": "消化数",
+      "planned": "計画数",
+      "not_run": "未着手"
+    }
+  },
+  "output_definition": {
+    "state": {
+      "completed": {"name": "完了", "foreground": "darkgreen", "background": "darkseagreen1"},
+      "in_progress": {"name": "進行中", "foreground": "dodgerblue4", "background": "skyblue"},
+      "not_started": {"name": "未着手", "foreground": "dimgray", "background": "silver"}
+    }
+  }
+}
+```
+
+### 設定項目の説明
+
+#### read_definition
+- `sheet_search_keys`: 対象シートを検索するキーワード
+- `header`: ヘッダー行の検索設定
+- `result_row`: 結果列の検索設定
+- `person_row`: 担当者列の検索設定
+- `date_row`: 日付列の検索設定
+- `plan_row`: 計画列の検索設定
+- `excluded`: 除外対象のキーワード
+
+#### test_status
+- `results`: 結果タイプの一覧（表示順序）
+- `completed_results`: 完了として扱う結果タイプ
+- `executed_results`: 消化として扱う結果タイプ
+- `labels`: 各指標の表示ラベル
+
+#### output_definition
+- `state`: ステータス表示の設定
+
+## Excelファイル形式
+
+### 対応形式
+- ファイル形式: .xlsx
+- エンコーディング: UTF-8
+
+### シート構造
+1. **ヘッダー行**: `#` で始まる行をヘッダーとして認識
+2. **データ行**: ヘッダー行以降の行をデータとして処理
+3. **列構成**:
+   - 結果列: テスト結果（Pass/Fail/Blocked等）
+   - 担当者列: テスト担当者名
+   - 日付列: テスト実施日
+   - 計画列: テスト計画日（オプション）
+
+### サンプルデータ
+```
+# テスト項目    結果    担当者    日付      計画
+テストケース1   Pass    田中     2024-01-15 2024-01-10
+テストケース2   Fail    佐藤     2024-01-16 2024-01-10
+テストケース3   Blocked 鈴木     2024-01-17 2024-01-10
+```
+
+## エラーハンドリング
+
+### 主なエラーケース
+
+1. **ファイル未検出**
+   ```
+   ERROR: 指定されたパスが存在しません: /path/to/file.xlsx
+   ```
+
+2. **設定ファイル不正**
+   ```
+   ERROR: 設定ファイルのJSON形式が不正です: config.json
+   詳細: Expecting ',' delimiter: line 10 column 5
+   ```
+
+3. **Excelファイル形式エラー**
+   ```
+   ERROR: ファイル処理中にエラーが発生しました: sample.xlsx
+   詳細: [Errno 13] Permission denied
+   ```
+
+4. **データ読み取りエラー**
+   ```
+   ERROR: シートが見つかりませんでした。
+   ```
+
+### エラー対処法
+
+- **ファイルが見つからない**: パスを確認し、ファイルが存在することを確認
+- **権限エラー**: ファイルの読み取り権限を確認
+- **設定ファイルエラー**: JSON形式の構文を確認
+- **シートが見つからない**: Excelファイル内に「テスト項目」を含むシートが存在することを確認
+
+## 開発・カスタマイズ
+
+### プロジェクト構造
+```
+TestSpecAnalyticsCLI/
+├── test_spec_analytics.py  # メインCLI
+├── config.json             # 設定ファイル
+├── utils/                  # ユーティリティ
+│   ├── ReadData.py        # データ読み取り
+│   ├── OpenpyxlWrapper.py # Excel操作
+│   └── Logger.py          # ログ機能
+├── input_sample/          # サンプルデータ
+└── assets/               # アセット
+    └── logo.txt          # ロゴ
+```
+
+### 拡張ポイント
+- `utils/ReadData.py`: データ読み取りロジックのカスタマイズ
+- `config.json`: 設定による動作のカスタマイズ
+- `test_spec_analytics.py`: 出力形式のカスタマイズ
+
+## ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。
+
+## 貢献
+
+バグ報告や機能要望は、GitHubのIssueでお知らせください。
+Pull Requestも歓迎します。
+
+## 更新履歴
+
+- v1.0.0: 初期リリース
+  - 基本的な集計機能
+  - テーブル・JSON出力
+  - エラーハンドリング
+  - 設定ファイル対応 

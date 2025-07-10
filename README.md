@@ -41,6 +41,15 @@ python test_spec_analytics.py input_sample/sample1.xlsx
 # フォルダ内の全Excelファイルを集計
 python test_spec_analytics.py input_sample/
 
+# プロジェクトリストファイル使用（JSON形式）
+python test_spec_analytics.py -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+python test_spec_analytics.py -l project_list.yaml
+
+# プロジェクトリストファイル使用（テキスト形式）
+python test_spec_analytics.py -l list_sample.txt
+
 # カスタム設定ファイルを使用
 python test_spec_analytics.py input_sample/sample1.xlsx -c custom_config.json
 
@@ -58,19 +67,48 @@ python test_spec_analytics.py input_sample/ -o summary.csv
 
 # 詳細ログ出力
 python test_spec_analytics.py input_sample/sample1.xlsx -v
+
+# TSV形式でクリップボードにコピー
+python test_spec_analytics.py input_sample/sample1.xlsx -p
+
+# クリップボードのみに出力
+python test_spec_analytics.py input_sample/sample1.xlsx -P
+
+# 日付範囲フィルタ
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 input_sample/sample1.xlsx
+
+# 担当者フィルタ
+python test_spec_analytics.py --assignee 田中 input_sample/sample1.xlsx
+
+# 結果タイプフィルタ
+python test_spec_analytics.py --result-type Pass Fail input_sample/sample1.xlsx
+
+# 環境フィルタ
+python test_spec_analytics.py --environment セット1 input_sample/sample1.xlsx
+
+# 複合フィルタリング
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass input_sample/sample1.xlsx
 ```
 
 ### コマンドラインオプション
 
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `path` | 集計対象のファイルまたはフォルダのパス | 必須 |
-| `-c, --config` | 設定ファイルのパス | `config.json` |
-| `-f, --output-format` | 出力形式（table/json/csv/excel） | `table` |
-| `-o, --output-file` | 出力ファイルパス | なし（コンソール出力のみ） |
-| `-j, --json-output` | JSON形式で出力 | False |
-| `-v, --verbose` | 詳細ログ出力 | False |
-| `-h, --help` | ヘルプ表示 | - |
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|------------|--------|------|--------------|
+| `path` | - | 集計対象のファイルまたはフォルダのパス | 必須 |
+| `-c, --config` | `-c` | 設定ファイルのパス | `config.json` |
+| `-l, --list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML/TXT形式） | なし |
+| `-f, --output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
+| `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
+| `-j, --json-output` | `-j` | JSON形式で出力 | `false` |
+| `-v, --verbose` | `-v` | 詳細ログ出力 | `false` |
+| `-p, --clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
+| `-P, --clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
+| `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
+| `--assignee` | - | 担当者フィルタ（部分一致） | なし |
+| `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
+| `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
+| `--environment` | - | 環境フィルタ（部分一致） | なし |
+| `-h, --help` | `-h` | ヘルプ表示 | - |
 
 ## 出力形式
 

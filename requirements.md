@@ -27,12 +27,20 @@ python test_spec_analytics.py [オプション] [ファイルパス/フォルダ
 ### 3.2 オプション一覧
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |------------|--------|------|--------------|
+| `path` | - | 集計対象のファイルまたはフォルダのパス | 必須 |
 | `--config` | `-c` | 設定ファイルのパス | `config.json` |
-| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML形式） | なし |
+| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML/TXT形式） | なし |
 | `--output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
 | `--output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `--json-output` | `-j` | JSON形式で出力 | `false` |
 | `--verbose` | `-v` | 詳細ログ出力（ファイル処理・データ集計の進捗や内部情報を詳細に表示） | `false` |
+| `--clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
+| `--clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
+| `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
+| `--assignee` | - | 担当者フィルタ（部分一致） | なし |
+| `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
+| `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
+| `--environment` | - | 環境フィルタ（部分一致） | なし |
 | `--help` | `-h` | ヘルプ表示 | - |
 
 ### 3.3 使用例
@@ -52,6 +60,9 @@ python test_spec_analytics.py -l project_list.json
 # プロジェクトリストファイル使用（YAML形式）
 python test_spec_analytics.py -l project_list.yaml
 
+# プロジェクトリストファイル使用（テキスト形式）
+python test_spec_analytics.py -l list_sample.txt
+
 # カスタム設定ファイル使用
 python test_spec_analytics.py -c custom_config.json sample1.xlsx
 
@@ -66,6 +77,27 @@ python test_spec_analytics.py -o results.xlsx sample1.xlsx
 
 # 複数ファイル処理でCSV出力
 python test_spec_analytics.py -o summary.csv input_sample/
+
+# TSV形式でクリップボードにコピー
+python test_spec_analytics.py -p sample1.xlsx
+
+# クリップボードのみに出力
+python test_spec_analytics.py -P sample1.xlsx
+
+# 日付範囲フィルタ
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 sample1.xlsx
+
+# 担当者フィルタ
+python test_spec_analytics.py --assignee 田中 sample1.xlsx
+
+# 結果タイプフィルタ
+python test_spec_analytics.py --result-type Pass Fail sample1.xlsx
+
+# 環境フィルタ
+python test_spec_analytics.py --environment セット1 sample1.xlsx
+
+# 複合フィルタリング
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
 
 # プロジェクトリストとフィルタリング組み合わせ
 python test_spec_analytics.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
@@ -150,7 +182,7 @@ input_sample/taihi/sample3_.xlsx
 ### 3.2 オプション一覧（抜粋）
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |------------|--------|------|--------------|
-| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML形式） | なし |
+| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML/TXT形式） | なし |
 
 ### 3.3 使用例（抜粋）
 ```bash
@@ -160,7 +192,7 @@ python test_spec_analytics.py -l project_list.json
 # プロジェクトリストファイル使用（YAML形式）
 python test_spec_analytics.py -l project_list.yaml
 
-# パスリスト（テキスト形式）
+# プロジェクトリストファイル使用（テキスト形式）
 python test_spec_analytics.py -l list_sample.txt
 ```
 
@@ -1750,6 +1782,7 @@ python test_spec_analytics.py --clipboard -v sample1.xlsx
 - argparse（コマンドライン引数処理）
 - json（設定ファイル処理）
 - pyperclip（クリップボード操作）
+- PyYAML（YAMLファイル処理、オプション）
 
 ### 10.2 ファイル構成
 ```
@@ -1767,4 +1800,5 @@ TestSpecAnalyticsCLI/
 ### 10.3 主要機能実装
 - **詳細ログ出力（-v/--verbose）**: `utils/Logger.py`の`VerboseLogger`クラスで実装。ファイル処理・Excel読み取り・データ検証・集計・エラー/警告など各段階で詳細なログを出力。`utils/ReadData.py`の集計関数や`test_spec_analytics.py`のメイン処理に統合し、-v指定時のみ詳細ログが有効になる。
 - **フィルタリング機能**: `utils/ReadData.py`にフィルタリングロジックを追加。日付範囲・担当者・結果タイプ・環境によるフィルタリングを実装。`test_spec_analytics.py`のargparseにフィルタリングオプションを追加し、フィルタ条件に基づいてデータを絞り込み集計する。
-- **TSVクリップボード出力機能**: `utils/DataConversion.py`の`convert_to_2d_array`関数を使用してTSV形式に変換し、pyperclipライブラリでクリップボードにコピーする機能を実装。`test_spec_analytics.py`のargparseに`--clipboard`と`--clipboard-only`オプションを追加し、フィルタリング機能と組み合わせて使用可能。 
+- **TSVクリップボード出力機能**: `utils/DataConversion.py`の`convert_to_2d_array`関数を使用してTSV形式に変換し、pyperclipライブラリでクリップボードにコピーする機能を実装。`test_spec_analytics.py`のargparseに`--clipboard`と`--clipboard-only`オプションを追加し、フィルタリング機能と組み合わせて使用可能。
+- **プロジェクトリストファイル対応**: JSON/YAML/TXT形式のプロジェクトリストファイルに対応。`test_spec_analytics.py`のargparseに`--list`オプションを追加し、複数のファイルを一括処理できる機能を実装。 

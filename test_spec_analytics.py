@@ -7,6 +7,7 @@ import argparse
 import os
 import glob
 import traceback
+from datetime import datetime
 
 def read_paths_from_list_file(list_file_path):
     """リストファイルからパスを読み取る"""
@@ -108,6 +109,130 @@ def check_file_access(filepath):
     
     return True, "ファイルアクセス可能"
 
+def validate_date_format(date_str):
+    """日付形式の妥当性をチェック"""
+    if not date_str:
+        return True, None
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True, None
+    except ValueError:
+        return False, f"無効な日付形式です: {date_str} (YYYY-MM-DD形式で指定してください)"
+
+def validate_date_range(start_date, end_date):
+    """日付範囲の妥当性をチェック"""
+    if start_date and end_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            if start > end:
+                return False, f"開始日（{start_date}）が終了日（{end_date}）より後になっています"
+        except ValueError:
+            return False, "日付形式が無効です"
+    return True, None
+
+def validate_result_types(result_types, settings):
+    """結果タイプの妥当性をチェック"""
+    if not result_types:
+        return True, None
+    
+    valid_types = settings["test_status"]["results"]
+    invalid_types = [rt for rt in result_types if rt not in valid_types]
+    
+    if invalid_types:
+        return False, f"無効な結果タイプです: {', '.join(invalid_types)} (有効: {', '.join(valid_types)})"
+    
+    return True, None
+
+def create_filter_conditions(args, settings):
+    """フィルタリング条件を作成"""
+    filters = {}
+    
+    # 日付範囲フィルタ
+    if args.date_range:
+        start_date = args.date_range[0] if args.date_range else None
+        end_date = args.date_range[1] if len(args.date_range) > 1 else None
+        
+        # 日付形式の妥当性チェック
+        if start_date:
+            is_valid, error = validate_date_format(start_date)
+            if not is_valid:
+                raise ValueError(error)
+        if end_date:
+            is_valid, error = validate_date_format(end_date)
+            if not is_valid:
+                raise ValueError(error)
+        
+        # 日付範囲の妥当性チェック
+        is_valid, error = validate_date_range(start_date, end_date)
+        if not is_valid:
+            raise ValueError(error)
+        
+        filters["date_range"] = {
+            "start": start_date,
+            "end": end_date
+        }
+    
+    # 担当者フィルタ
+    if args.assignee:
+        filters["assignee"] = {
+            "value": args.assignee.strip(),
+            "exact_match": args.exact_match
+        }
+    
+    # 結果タイプフィルタ
+    if args.result_type:
+        is_valid, error = validate_result_types(args.result_type, settings)
+        if not is_valid:
+            raise ValueError(error)
+        filters["result_type"] = args.result_type
+    
+    # 環境フィルタ
+    if args.environment:
+        filters["environment"] = {
+            "value": args.environment.strip(),
+            "exact_match": args.exact_match
+        }
+    
+    return filters
+
+def format_filter_display(filters):
+    """フィルタ条件を表示用にフォーマット"""
+    if not filters:
+        return None
+    
+    conditions = []
+    
+    # 日付範囲
+    if "date_range" in filters:
+        start = filters["date_range"]["start"]
+        end = filters["date_range"]["end"]
+        if start and end:
+            conditions.append(f"Date Range: {start} to {end}")
+        elif start:
+            conditions.append(f"Date Range: {start} onwards")
+        elif end:
+            conditions.append(f"Date Range: up to {end}")
+    
+    # 担当者
+    if "assignee" in filters:
+        match_type = "exact match" if filters["assignee"]["exact_match"] else "partial match"
+        conditions.append(f"Assignee: {filters['assignee']['value']} ({match_type})")
+    
+    # 結果タイプ
+    if "result_type" in filters:
+        if len(filters["result_type"]) == 1:
+            conditions.append(f"Result Type: {filters['result_type'][0]}")
+        else:
+            conditions.append(f"Result Type: {', '.join(filters['result_type'])}")
+    
+    # 環境
+    if "environment" in filters:
+        match_type = "exact match" if filters["environment"]["exact_match"] else "partial match"
+        conditions.append(f"Environment: {filters['environment']['value']} ({match_type})")
+    
+    return conditions
+
 def find_excel_files(target_path):
     """Excelファイルを検索"""
     if os.path.isdir(target_path):
@@ -123,7 +248,7 @@ def find_excel_files(target_path):
     
     return True, file_list
 
-def format_output(result, filepath, show_title=True, settings=None):
+def format_output(result, filepath, show_title=True, settings=None, filters=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title:
         # ロゴを表示
@@ -135,7 +260,7 @@ def format_output(result, filepath, show_title=True, settings=None):
             pass
         print()
         print("=" * 50)
-        print("Summary Results")
+        print("TestSpecAnalytics Results")
         print("=" * 50)
         print()
     
@@ -145,11 +270,27 @@ def format_output(result, filepath, show_title=True, settings=None):
             print(f"詳細: {result['error']['details']}")
         return
     
+    # フィルタ条件の表示
+    if filters:
+        filter_conditions = format_filter_display(filters)
+        if filter_conditions:
+            print("Filter Conditions:")
+            for condition in filter_conditions:
+                print(f"- {condition}")
+            print()
+    
     # 基本情報
     print(f"File: {filepath}")
-    print(f"Total Cases: {result['stats']['all']}")
-    print(f"Available Cases: {result['stats']['available']}")
-    print(f"Excluded Cases: {result['stats']['excluded']}")
+    
+    # フィルタ適用後の統計情報
+    if filters and "filtered_stats" in result:
+        print(f"Filtered Cases: {result['filtered_stats']['filtered_count']} (from {result['stats']['all']} total cases)")
+        print(f"Available Cases: {result['stats']['available']}")
+        print(f"Excluded Cases: {result['stats']['excluded']}")
+    else:
+        print(f"Total Cases: {result['stats']['all']}")
+        print(f"Available Cases: {result['stats']['available']}")
+        print(f"Excluded Cases: {result['stats']['excluded']}")
     print()
     
     # 設定から結果タイプの順序を取得
@@ -157,7 +298,9 @@ def format_output(result, filepath, show_title=True, settings=None):
     
     # 総合結果テーブル
     if 'total' in result:
-        print("TOTAL RESULTS:")
+        # フィルタ適用後の場合は "(Filtered)" を追加
+        table_title = "TOTAL RESULTS (Filtered):" if filters else "TOTAL RESULTS:"
+        print(table_title)
         total_headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         total_row = []
         for rt in result_order:
@@ -341,6 +484,17 @@ def parse_args():
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（ファイル内の各行にパスを記述）")
+    
+    # フィルタリングオプション
+    parser.add_argument("--date-range", nargs="*", metavar=("START_DATE", "END_DATE"), 
+                       help="日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能）")
+    parser.add_argument("--assignee", help="担当者フィルタ（部分一致）")
+    parser.add_argument("--exact-match", action="store_true", 
+                       help="担当者・環境フィルタで完全一致を使用")
+    parser.add_argument("--result-type", nargs="+", 
+                       help="結果タイプフィルタ（複数指定可能）")
+    parser.add_argument("--environment", help="環境フィルタ（部分一致）")
+    
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -437,8 +591,14 @@ if __name__ == "__main__":
             continue
         
         try:
-            result = ReadData.aggregate_results(filepath, settings, verbose_logger)
+            # フィルタリング条件を作成
+            filters = create_filter_conditions(args, settings)
+            result = ReadData.aggregate_results(filepath, settings, verbose_logger, filters)
             results.append((filepath, result))
+        except ValueError as e:
+            # フィルタリング条件のバリデーションエラー
+            print(f"ERROR: {e}")
+            sys.exit(1)
         except Exception as e:
             error_result = {
                 "error": {
@@ -500,6 +660,15 @@ if __name__ == "__main__":
             for filepath, result in results:
                 file_data = result.copy()
                 file_data["file"] = filepath
+                
+                # フィルタ情報を追加
+                filters = create_filter_conditions(args, settings)
+                if filters:
+                    file_data["filters"] = filters
+                    if "filtered_stats" in file_data:
+                        file_data["filtered_cases"] = file_data["filtered_stats"]["filtered_count"]
+                        file_data["total_cases"] = file_data["filtered_stats"]["original_count"]
+                
                 summary_data["files"].append(file_data)
             
             print(json.dumps(summary_data, ensure_ascii=False, indent=2))
@@ -524,16 +693,29 @@ if __name__ == "__main__":
             print()
             for filepath, result in results:
                 print("=" * 50)
-                format_output(result, filepath, show_title=False, settings=settings)
+                # フィルタリング条件を表示
+                filters = create_filter_conditions(args, settings)
+                format_output(result, filepath, show_title=False, settings=settings, filters=filters)
     else:
         filepath, result = results[0]
         if args.output_format == "json" or args.json_output:
             import json
             # ファイル名を追加
             result["file"] = filepath
+            
+            # フィルタ情報を追加
+            filters = create_filter_conditions(args, settings)
+            if filters:
+                result["filters"] = filters
+                if "filtered_stats" in result:
+                    result["filtered_cases"] = result["filtered_stats"]["filtered_count"]
+                    result["total_cases"] = result["filtered_stats"]["original_count"]
+            
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            format_output(result, filepath, settings=settings)
+            # フィルタリング条件を表示
+            filters = create_filter_conditions(args, settings)
+            format_output(result, filepath, settings=settings, filters=filters)
     
     # 全体処理終了
     verbose_logger.end_processing() 

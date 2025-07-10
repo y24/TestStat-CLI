@@ -6,6 +6,34 @@ import argparse
 import os
 import glob
 import traceback
+import re
+
+def read_paths_from_list_file(list_file_path):
+    """リストファイルからパスを読み取る"""
+    paths = []
+    try:
+        with open(list_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):  # 空行とコメント行をスキップ
+                    continue
+                
+                # ダブルクォーテーションで囲まれたパスを処理
+                if line.startswith('"') and line.endswith('"'):
+                    path = line[1:-1]  # ダブルクォーテーションを除去
+                else:
+                    path = line
+                
+                # パスの正規化
+                path = os.path.normpath(path)
+                paths.append(path)
+                
+    except FileNotFoundError:
+        raise FileNotFoundError(f"リストファイルが見つかりません: {list_file_path}")
+    except Exception as e:
+        raise Exception(f"リストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
+    
+    return paths
 
 def get_display_width(text):
     """全角・半角を考慮した表示幅を返す"""
@@ -350,11 +378,12 @@ def parse_args():
             pass
     
     parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
-    parser.add_argument("path", help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
+    parser.add_argument("path", nargs='?', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
     parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json"], default="table", help="出力形式（table/json）")
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
+    parser.add_argument("-l", "--list", help="パスリストファイルのパス（ファイル内の各行にパスを記述）")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -382,19 +411,54 @@ if __name__ == "__main__":
         print(f"ERROR: {message}")
         sys.exit(1)
     
-    # ターゲットパスの検証
-    target_path = args.path
-    if not os.path.exists(target_path):
-        print(f"ERROR: 指定されたパスが存在しません: {target_path}")
-        sys.exit(1)
-    
-    # Excelファイルの検索
-    is_valid, file_list_or_error = find_excel_files(target_path)
-    if not is_valid:
-        print(f"ERROR: {file_list_or_error}")
-        sys.exit(1)
-    
-    file_list = file_list_or_error
+    # リストファイルまたはターゲットパスの処理
+    if args.list:
+        # リストファイルからパスを読み取る
+        try:
+            target_paths = read_paths_from_list_file(args.list)
+            if not target_paths:
+                print(f"ERROR: リストファイルに有効なパスが含まれていません: {args.list}")
+                sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            sys.exit(1)
+        
+        # 各パスからExcelファイルを検索
+        file_list = []
+        for target_path in target_paths:
+            if not os.path.exists(target_path):
+                print(f"WARNING: 指定されたパスが存在しません: {target_path}")
+                continue
+            
+            is_valid, file_list_or_error = find_excel_files(target_path)
+            if not is_valid:
+                print(f"WARNING: {file_list_or_error}")
+                continue
+            
+            if isinstance(file_list_or_error, list):
+                file_list.extend(file_list_or_error)
+        
+        if not file_list:
+            print("ERROR: 処理可能なファイルが見つかりませんでした")
+            sys.exit(1)
+    else:
+        # 従来の単一パス処理
+        if not args.path:
+            print("ERROR: パスまたはリストファイルを指定してください")
+            sys.exit(1)
+        
+        target_path = args.path
+        if not os.path.exists(target_path):
+            print(f"ERROR: 指定されたパスが存在しません: {target_path}")
+            sys.exit(1)
+        
+        # Excelファイルの検索
+        is_valid, file_list_or_error = find_excel_files(target_path)
+        if not is_valid:
+            print(f"ERROR: {file_list_or_error}")
+            sys.exit(1)
+        
+        file_list = file_list_or_error
     results = []
     
     # 各ファイルの処理
@@ -484,6 +548,8 @@ if __name__ == "__main__":
             print("=" * 50)
             print("TestSpecAnalytics Results")
             print("=" * 50)
+            if args.list:
+                print(f"List File: {args.list}")
             print(f"Processed Files: {len(file_list)}")
             # サマリー総合結果
             print_summary_total_results(results, settings)

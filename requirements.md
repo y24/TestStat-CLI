@@ -28,6 +28,7 @@ python test_spec_analytics.py [オプション] [ファイルパス/フォルダ
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |------------|--------|------|--------------|
 | `--config` | `-c` | 設定ファイルのパス | `config.json` |
+| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML形式） | なし |
 | `--output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
 | `--output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `--json-output` | `-j` | JSON形式で出力 | `false` |
@@ -45,6 +46,12 @@ python test_spec_analytics.py -j sample1.xlsx
 # フォルダ一括処理
 python test_spec_analytics.py input_sample/
 
+# プロジェクトリストファイル使用（JSON形式）
+python test_spec_analytics.py -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+python test_spec_analytics.py -l project_list.yaml
+
 # カスタム設定ファイル使用
 python test_spec_analytics.py -c custom_config.json sample1.xlsx
 
@@ -59,6 +66,9 @@ python test_spec_analytics.py -o results.xlsx sample1.xlsx
 
 # 複数ファイル処理でCSV出力
 python test_spec_analytics.py -o summary.csv input_sample/
+
+# プロジェクトリストとフィルタリング組み合わせ
+python test_spec_analytics.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
 ```
 
 ## 4. 設定ファイル仕様
@@ -73,9 +83,138 @@ python test_spec_analytics.py -o summary.csv input_sample/
 - `read_definition`: データ読み取り定義
 - `test_status`: テストステータス定義
 
+## 4.3 プロジェクトリストファイル仕様
+
+### 4.3.1 対応形式
+- **JSON形式**（.json）
+- **YAML形式**（.yaml/.yml）
+- テキスト形式（.txt）
+
+### 4.3.2 ファイル構造
+
+#### JSON形式
+```json
+{
+  "project": {
+    "project_name": "プロジェクト名",
+    "files": [
+      {
+        "identifier": "識別子1",
+        "path": "ファイルパス1"
+      },
+      {
+        "identifier": "識別子2",
+        "path": "ファイルパス2"
+      }
+    ],
+    "last_loaded": "2025-05-27 20:42:40"
+  }
+}
+```
+
+#### YAML形式
+```yaml
+project:
+  project_name: "プロジェクト名"
+  files:
+    - identifier: "識別子1"
+      path: "ファイルパス1"
+    - identifier: "識別子2"
+      path: "ファイルパス2"
+  last_loaded: "2025-05-27 20:42:40"
+```
+
+### 4.3.3 テキスト形式（従来方式）
+- 1行に1つ、処理対象のファイルパスを記載する
+- 例：
+```
+input_sample/sample1.xlsx
+input_sample/sample2_abcdegfg.xlsx
+input_sample/taihi/sample3_.xlsx
+```
+
+### 4.3.4 設定項目詳細
+
+- **project_name**: プロジェクトの名前（任意の文字列）
+- **files**: ファイルリスト（各要素に`identifier`と`path`を持つ）
+    - `identifier`: ユーザーが識別する任意の文字列
+    - `path`: 処理するファイルのパス
+- **last_loaded**: 最後にそのプロジェクトの集計を行った日時（"YYYY-MM-DD HH:MM:SS"）
+
+### 4.3.5 エラーハンドリング
+
+- 拡張子が`.json`/`.yaml`/`.yml`/`.txt`以外の場合はエラー
+- 必須フィールド（project, project_name, files, identifier, path）がない場合はエラー（JSON/YAMLのみ）
+- ファイルが存在しない場合や.xlsx以外の場合はエラー
+
+### 3.2 オプション一覧（抜粋）
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|------------|--------|------|--------------|
+| `--list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML形式） | なし |
+
+### 3.3 使用例（抜粋）
+```bash
+# プロジェクトリストファイル使用（JSON形式）
+python test_spec_analytics.py -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+python test_spec_analytics.py -l project_list.yaml
+
+# パスリスト（テキスト形式）
+python test_spec_analytics.py -l list_sample.txt
+```
+
 ## 5. 出力仕様
 
 ### 5.1 テーブル形式出力
+
+#### プロジェクトリストファイル処理の場合
+```
+==========================================
+TestSpecAnalytics Results
+==========================================
+
+Project: サンプル3
+Processed Files: 1
+Total Processing Time: 1.2s
+Last Loaded: 2025-05-27 20:42:40
+
+File: テストサンプル (D:/Script/TestProgressRecord/projects/sample1.xlsx)
+Total Cases: 150
+Available Cases: 145
+Excluded Cases: 5
+
+TOTAL RESULTS:
+┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────────┬─────────────┐
+│ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ Total   │ 完了数  │ 消化数  │ 完了率(%)   │ 消化率(%)   │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────────┼─────────────┤
+│ 33      │ 1       │ 0       │ 0       │ 0       │ 9       │ 43      │ 100     │ 120     │ 68.97       │ 82.76       │
+└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────────┴─────────────┘
+
+STATISTICS:
+┌─────────────┬─────────┐
+│ Metric      │ Count   │
+├─────────────┼─────────┤
+│ All         │ 150     │
+│ Available   │ 145     │
+│ Executed    │ 120     │
+│ Completed   │ 100     │
+│ Incompleted │ 25      │
+│ Planned     │ 80      │
+└─────────────┴─────────┘
+
+STATUS: In Progress
+Start Date: 2024-01-15
+Last Update: 2024-01-20
+
+DAILY BREAKDOWN:
+┌────────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Date       │ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ 完了数  │ 消化数  │ 計画数  │
+├────────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ 2024-01-15 │ 10      │ 0       │ 2       │ 1       │ 0       │ 0       │ 13      │ 13      │ 20      │
+│ 2024-01-16 │ 15      │ 0       │ 1       │ 0       │ 0       │ 0       │ 16      │ 16      │ 25      │
+└────────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+```
 
 #### 単一ファイル処理の場合
 ```

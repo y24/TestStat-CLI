@@ -848,31 +848,320 @@ ERROR: Excel file format error - corrupted.xlsx
 - **完了率計算**: `完了数 / Available Case * 100`（小数点以下2桁で丸め）
 - **消化率計算**: `消化数 / Available Case * 100`（小数点以下2桁で丸め）
 
-## 8. 将来拡張予定
+## 8. フィルタリング機能
 
-### 8.1 フィルタリング機能
-- 特定の日付範囲での集計
-- 特定の担当者での集計
-- 特定の結果タイプでの集計
+### 8.1 概要
+テスト結果データを特定の条件でフィルタリングし、条件に合致するデータのみを集計・表示する機能です。複数のフィルタ条件を組み合わせて使用できます。
 
-### 8.2 出力オプション
+### 8.2 フィルタリングオプション
+
+#### 8.2.1 日付範囲フィルタ（--date-range）
+- **オプション**: `--date-range START_DATE [END_DATE]`
+- **形式**: YYYY-MM-DD（例：2024-01-15）
+- **説明**: 指定された日付範囲内のテスト結果のみを集計
+- **使用例**:
+  ```bash
+  # 2024年1月15日から1月20日までのデータ（範囲指定）
+  python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 sample1.xlsx
+  
+  # 2024年1月1日から1月31日までのデータ（範囲指定）
+  python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 input_sample/
+  
+  # 2024年1月15日以降すべてのデータ（開始日のみ指定）
+  python test_spec_analytics.py --date-range 2024-01-15 sample1.xlsx
+  
+  # 2024年1月20日以前すべてのデータ（終了日のみ指定）
+  python test_spec_analytics.py --date-range "" 2024-01-20 sample1.xlsx
+  ```
+
+#### 8.2.2 担当者フィルタ（--assignee）
+- **オプション**: `--assignee ASSIGNEE_NAME [--exact-match]`
+- **形式**: 担当者名（デフォルト：部分一致、--exact-match指定時：完全一致）
+- **説明**: 指定された担当者が実行したテスト結果のみを集計
+- **使用例**:
+  ```bash
+  # 田中さんが担当したテストのみ（部分一致）
+  python test_spec_analytics.py --assignee 田中 sample1.xlsx
+  
+  # 佐藤さんが担当したテストのみ（部分一致、複数ファイル）
+  python test_spec_analytics.py --assignee 佐藤 input_sample/
+  
+  # 田中さんが担当したテストのみ（完全一致）
+  python test_spec_analytics.py --assignee 田中 --exact-match sample1.xlsx
+  
+  # "田"を含む名前の担当者のテスト
+  python test_spec_analytics.py --assignee 田 input_sample/
+  ```
+
+#### 8.2.3 結果タイプフィルタ（--result-type）
+- **オプション**: `--result-type RESULT_TYPE`
+- **形式**: Pass, Fixed, Fail, Blocked, Suspend, N/A（設定ファイルのtest_statusに定義された値）
+- **説明**: 指定された結果タイプのテスト結果のみを集計
+- **使用例**:
+  ```bash
+  # Passのみのテスト結果
+  python test_spec_analytics.py --result-type Pass sample1.xlsx
+  
+  # Failのみのテスト結果（複数ファイル）
+  python test_spec_analytics.py --result-type Fail input_sample/
+  ```
+
+#### 8.2.4 環境フィルタ（--environment）
+- **オプション**: `--environment ENV_NAME [--exact-match]`
+- **形式**: 環境名（デフォルト：部分一致、--exact-match指定時：完全一致）
+- **説明**: 指定された環境で実行されたテスト結果のみを集計
+- **使用例**:
+  ```bash
+  # セット1環境のテストのみ（部分一致）
+  python test_spec_analytics.py --environment セット1 sample1.xlsx
+  
+  # 環境a_abcのテストのみ（部分一致、複数ファイル）
+  python test_spec_analytics.py --environment 環境a_abc input_sample/
+  
+  # セット1環境のテストのみ（完全一致）
+  python test_spec_analytics.py --environment セット1 --exact-match sample1.xlsx
+  
+  # "セット"を含むすべての環境のテスト
+  python test_spec_analytics.py --environment セット input_sample/
+  ```
+
+### 8.3 複合フィルタリング
+
+複数のフィルタ条件を組み合わせて使用できます。すべての条件を満たすデータのみが集計されます。
+
+#### 8.3.1 使用例
+```bash
+# 田中さんが2024年1月15日から20日までにPassしたテスト
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
+
+# セット1環境で佐藤さんがFailしたテスト（複数ファイル）
+python test_spec_analytics.py --environment セット1 --assignee 佐藤 --result-type Fail input_sample/
+
+# 2024年1月1日から31日までにBlockedされたテスト（詳細ログ付き）
+python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 --result-type Blocked -v input_sample/
+
+# 2024年1月15日以降のすべてのテスト結果
+python test_spec_analytics.py --date-range 2024-01-15 input_sample/
+
+# 2024年1月20日以前の田中さんのテスト結果
+python test_spec_analytics.py --date-range "" 2024-01-20 --assignee 田中 sample1.xlsx
+
+# "セット"を含む環境で"田"を含む名前の担当者が実行したテスト
+python test_spec_analytics.py --environment セット --assignee 田 input_sample/
+
+# 完全一致でセット1環境のテスト
+python test_spec_analytics.py --environment セット1 --exact-match sample1.xlsx
+```
+
+### 8.4 フィルタリング結果の表示
+
+#### 8.4.1 テーブル形式出力
+フィルタリング条件が適用された場合、出力の冒頭にフィルタ条件が表示されます：
+
+```
+==========================================
+TestSpecAnalytics Results
+==========================================
+
+Filter Conditions:
+- Date Range: 2024-01-15 to 2024-01-20
+- Assignee: 田中 (partial match)
+- Result Type: Pass
+- Environment: セット1 (partial match)
+
+File: sample1.xlsx
+Filtered Cases: 15 (from 150 total cases)
+Available Cases: 145
+Excluded Cases: 5
+
+TOTAL RESULTS (Filtered):
+┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────────┬─────────────┐
+│ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ Total   │ 完了数  │ 消化数  │ 完了率(%)   │ 消化率(%)   │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────────┼─────────────┤
+│ 15      │ 0       │ 0       │ 0       │ 0       │ 0       │ 15      │ 15      │ 15      │ 100.00      │ 100.00      │
+└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────────┴─────────────┘
+```
+
+**日付範囲の表示例**:
+- 範囲指定: `Date Range: 2024-01-15 to 2024-01-20`
+- 開始日のみ: `Date Range: 2024-01-15 onwards`
+- 終了日のみ: `Date Range: up to 2024-01-20`
+
+File: sample1.xlsx
+Filtered Cases: 15 (from 150 total cases)
+Available Cases: 145
+Excluded Cases: 5
+
+TOTAL RESULTS (Filtered):
+┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────────┬─────────────┐
+│ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ Total   │ 完了数  │ 消化数  │ 完了率(%)   │ 消化率(%)   │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────────┼─────────────┤
+│ 15      │ 0       │ 0       │ 0       │ 0       │ 0       │ 15      │ 15      │ 15      │ 100.00      │ 100.00      │
+└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────────┴─────────────┘
+```
+
+#### 8.4.2 JSON形式出力
+フィルタリング条件が適用された場合、JSON出力にフィルタ情報が含まれます：
+
+**日付範囲のJSON表現**:
+- 範囲指定: `"start": "2024-01-15", "end": "2024-01-20"`
+- 開始日のみ: `"start": "2024-01-15", "end": null`
+- 終了日のみ: `"start": null, "end": "2024-01-20"`
+
+**フィルタ一致方式のJSON表現**:
+- 部分一致: `"match_type": "partial"`
+- 完全一致: `"match_type": "exact"`
+
+```json
+{
+  "filters": {
+    "date_range": {
+      "start": "2024-01-15",
+      "end": "2024-01-20"
+    },
+    "assignee": {
+      "value": "田中",
+      "match_type": "partial"
+    },
+    "result_type": "Pass",
+    "environment": {
+      "value": "セット1",
+      "match_type": "partial"
+    }
+  },
+  "file": "sample1.xlsx",
+  "filtered_cases": 15,
+  "total_cases": 150,
+  "total": {
+    "Pass": 15,
+    "Fixed": 0,
+    "Fail": 0,
+    "Blocked": 0,
+    "Suspend": 0,
+    "N/A": 0,
+    "Total": 15,
+    "完了数": 15,
+    "消化数": 15,
+    "完了率(%)": 100.00,
+    "消化率(%)": 100.00
+  }
+}
+```
+
+### 8.5 フィルタリングの詳細ログ（-v/--verbose）
+
+詳細ログオプションと組み合わせた場合、フィルタリング処理の詳細が表示されます：
+
+```
+[VERBOSE] 02:03:58.557 - フィルタ条件適用開始
+[VERBOSE] 02:03:58.557 - - 日付範囲: 2024-01-15 から 2024-01-20
+[VERBOSE] 02:03:58.557 - - 担当者: 田中 (部分一致)
+[VERBOSE] 02:03:58.557 - - 結果タイプ: Pass
+[VERBOSE] 02:03:58.557 - - 環境: セット1 (部分一致)
+[VERBOSE] 02:03:58.568 - フィルタ適用前データ: 150件
+[VERBOSE] 02:03:58.568 - 日付フィルタ適用後: 45件
+[VERBOSE] 02:03:58.568 - 担当者フィルタ適用後: 18件
+[VERBOSE] 02:03:58.568 - 結果タイプフィルタ適用後: 15件
+[VERBOSE] 02:03:58.568 - 環境フィルタ適用後: 15件
+[VERBOSE] 02:03:58.568 - フィルタ適用後データ: 15件 (90.0%削減)
+```
+
+**日付範囲の詳細ログ例**:
+```
+[VERBOSE] 02:03:58.557 - - 日付範囲: 2024-01-15 onwards (開始日のみ)
+[VERBOSE] 02:03:58.557 - - 日付範囲: up to 2024-01-20 (終了日のみ)
+[VERBOSE] 02:03:58.557 - - 日付範囲: 2024-01-15 から 2024-01-20 (範囲指定)
+```
+
+**一致方式の詳細ログ例**:
+```
+[VERBOSE] 02:03:58.557 - - 担当者: 田中 (完全一致)
+[VERBOSE] 02:03:58.557 - - 担当者: 田中 (部分一致)
+[VERBOSE] 02:03:58.557 - - 環境: セット1 (完全一致)
+[VERBOSE] 02:03:58.557 - - 環境: セット1 (部分一致)
+```
+
+### 8.6 エラーハンドリング
+
+#### 8.6.1 フィルタ条件エラー
+- 無効な日付形式
+- 存在しない担当者名（部分一致でも該当なしの場合）
+- 無効な結果タイプ
+- 存在しない環境名（部分一致でも該当なしの場合）
+- 日付範囲の開始日が終了日より後の場合
+
+#### 8.6.2 エラー出力例
+```
+ERROR: Invalid date format - 2024/01/15 (use YYYY-MM-DD)
+ERROR: Assignee not found - 山田 (available: 田中, 佐藤, 鈴木)
+ERROR: Invalid result type - Invalid (available: Pass, Fixed, Fail, Blocked, Suspend, N/A)
+ERROR: Environment not found - セット3 (available: セット1, セット2)
+ERROR: Invalid date range - start date (2024-01-20) is after end date (2024-01-15)
+ERROR: No matching assignees found - 山田 (partial match, available: 田中, 佐藤, 鈴木)
+ERROR: No matching environments found - セット3 (partial match, available: セット1, セット2)
+```
+
+### 8.7 実装上の注意事項
+
+#### 8.7.1 フィルタリング順序
+1. 日付範囲フィルタ
+2. 担当者フィルタ
+3. 結果タイプフィルタ
+4. 環境フィルタ
+
+#### 8.7.2 日付範囲フィルタの仕様
+- **範囲指定**: `--date-range START_DATE END_DATE`
+- **開始日のみ**: `--date-range START_DATE`（終了日は指定しない）
+- **終了日のみ**: `--date-range "" END_DATE`（開始日は空文字で指定）
+- **日付形式**: YYYY-MM-DD（例：2024-01-15）
+- **日付比較**: 指定された日付を含む（以上・以下）
+- **バリデーション**: 開始日が終了日より後の場合はエラー
+
+#### 8.7.3 文字列フィルタの仕様
+- **担当者・環境フィルタ**: デフォルトで部分一致、`--exact-match`指定時は完全一致
+- **部分一致**: 指定された文字列を含むすべての値にマッチ
+- **完全一致**: 指定された文字列と完全に一致する値のみマッチ
+- **大文字小文字**: 区別しない（例：「田中」と「たなか」は同じ扱い）
+- **空白文字**: 前後の空白を除去して比較
+- **バリデーション**: 部分一致でも該当する値が見つからない場合はエラー
+
+#### 8.7.4 パフォーマンス考慮
+- 大量データでのフィルタリング処理時間
+- メモリ使用量の最適化
+- 複数ファイル処理時の効率化
+
+#### 8.7.5 データ整合性
+- フィルタ適用後の統計値の再計算
+- 完了率・消化率の正確な算出
+- 日別・担当者別・環境別集計の更新
+
+## 9. 将来拡張予定
+
+### 9.1 出力オプション
 - CSV形式出力
 - Excel形式出力
 - 特定の統計情報のみ出力
 
-### 8.3 バッチ処理
+### 9.2 バッチ処理
 - 複数フォルダの一括処理
 - 処理結果のサマリーレポート
 
-## 9. 技術要件
+### 9.3 追加フィルタリング機能
+- 複数担当者指定（--assignees）
+- 複数結果タイプ指定（--result-types）
+- 複数環境指定（--environments）
+- 正規表現による部分一致フィルタ
+- 数値範囲フィルタ（テストケース数など）
 
-### 9.1 依存関係
+## 10. 技術要件
+
+### 10.1 依存関係
 - Python 3.7以上
 - openpyxl（Excelファイル読み取り）
 - argparse（コマンドライン引数処理）
 - json（設定ファイル処理）
 
-### 9.2 ファイル構成
+### 10.2 ファイル構成
 ```
 TestSpecAnalyticsCLI/
 ├── test_spec_analytics.py    # メインCLIツール
@@ -885,5 +1174,6 @@ TestSpecAnalyticsCLI/
     └── Logger.py
 ```
 
-### 9.3 主要機能実装
-- **詳細ログ出力（-v/--verbose）**: `utils/Logger.py`の`VerboseLogger`クラスで実装。ファイル処理・Excel読み取り・データ検証・集計・エラー/警告など各段階で詳細なログを出力。`utils/ReadData.py`の集計関数や`test_spec_analytics.py`のメイン処理に統合し、-v指定時のみ詳細ログが有効になる。 
+### 10.3 主要機能実装
+- **詳細ログ出力（-v/--verbose）**: `utils/Logger.py`の`VerboseLogger`クラスで実装。ファイル処理・Excel読み取り・データ検証・集計・エラー/警告など各段階で詳細なログを出力。`utils/ReadData.py`の集計関数や`test_spec_analytics.py`のメイン処理に統合し、-v指定時のみ詳細ログが有効になる。
+- **フィルタリング機能**: `utils/ReadData.py`にフィルタリングロジックを追加。日付範囲・担当者・結果タイプ・環境によるフィルタリングを実装。`test_spec_analytics.py`のargparseにフィルタリングオプションを追加し、フィルタ条件に基づいてデータを絞り込み集計する。 

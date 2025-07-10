@@ -46,7 +46,7 @@ def print_table(headers, rows):
         print(data_line)
     print(bottom_border)
 
-def format_output(result, filepath, show_title=True):
+def format_output(result, filepath, show_title=True, settings=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title:
         print("=" * 50)
@@ -65,23 +65,23 @@ def format_output(result, filepath, show_title=True):
     print(f"Excluded Cases: {result['stats']['excluded']}")
     print()
     
+    # 設定から結果タイプの順序を取得
+    result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
+    
     # 総合結果テーブル
     if 'total' in result:
         print("TOTAL RESULTS:")
-        total_headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
-        total_row = [
-            result['total'].get('Pass', 0),
-            result['total'].get('Fixed', 0),
-            result['total'].get('Fail', 0),
-            result['total'].get('Blocked', 0),
-            result['total'].get('Suspend', 0),
-            result['total'].get('N/A', 0),
+        total_headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        total_row = []
+        for rt in result_order:
+            total_row.append(result['total'].get(rt, 0))
+        total_row.extend([
             result['total'].get('Total', 0),
             result['total'].get('完了数', 0),
             result['total'].get('消化数', 0),
             result['total'].get('完了率(%)', 0),
             result['total'].get('消化率(%)', 0)
-        ]
+        ])
         print_table(total_headers, [total_row])
         print()
     
@@ -111,18 +111,14 @@ def format_output(result, filepath, show_title=True):
     if result['daily']:
         print("DAILY BREAKDOWN:")
         daily_headers = ["Date"]
-        # 結果タイプを取得（Pass, Fail, Blocked等）
-        result_types = set()
-        for date_data in result['daily'].values():
-            result_types.update(date_data.keys())
-        result_types = sorted([rt for rt in result_types if rt not in ['完了数', '消化数', '計画数']])
-        daily_headers.extend(result_types)
+        # 設定の結果タイプ順序を使用
+        daily_headers.extend(result_order)
         daily_headers.extend(["完了数", "消化数", "計画数"])
         
         daily_rows = []
         for date in sorted(result['daily'].keys()):
             row = [date]
-            for rt in result_types:
+            for rt in result_order:
                 count = result['daily'][date].get(rt, 0)
                 row.append(count)
             # 完了数、消化数、計画数を追加
@@ -165,17 +161,8 @@ def format_output(result, filepath, show_title=True):
     if result['by_env']:
         print("BY ENVIRONMENT:")
         env_headers = ["Date", "Environment"]
-        # 結果タイプを取得
-        result_types = set()
-        for date_data in result['by_env'].values():
-            if isinstance(date_data, dict):
-                for env_data in date_data.values():
-                    if isinstance(env_data, dict):
-                        for key, value in env_data.items():
-                            if key not in ['完了数', '消化数', '計画数'] and isinstance(value, (int, float)):
-                                result_types.add(key)
-        result_types = sorted(result_types)
-        env_headers.extend(result_types)
+        # 設定の結果タイプ順序を使用
+        env_headers.extend(result_order)
         env_headers.extend(["完了数", "消化数", "計画数"])
         
         env_rows = []
@@ -186,7 +173,7 @@ def format_output(result, filepath, show_title=True):
                     row = [date, env_name]
                     env_data = date_data[env_name]
                     if isinstance(env_data, dict):
-                        for rt in result_types:
+                        for rt in result_order:
                             count = env_data.get(rt, 0)
                             if isinstance(count, (int, float)):
                                 row.append(count)
@@ -202,7 +189,7 @@ def format_output(result, filepath, show_title=True):
             print_table(env_headers, env_rows)
             print()
 
-def print_summary_total_results(results):
+def print_summary_total_results(results, settings=None):
     """複数ファイルのTOTAL RESULTSを集計して表示"""
     # 各ファイルのtotal_resultsを集める
     total_results_list = [r[1]["total"] for r in results if "total" in r[1]]
@@ -250,21 +237,21 @@ def print_summary_total_results(results):
     combined_total["完了率(%)"] = round(completion_rate, 2)
     combined_total["消化率(%)"] = round(execution_rate, 2)
     
+    # 設定から結果タイプの順序を取得
+    result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
+    
     # テーブル出力
-    headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
-    row = [
-        combined_total.get("Pass", 0),
-        combined_total.get("Fixed", 0),
-        combined_total.get("Fail", 0),
-        combined_total.get("Blocked", 0),
-        combined_total.get("Suspend", 0),
-        combined_total.get("N/A", 0),
+    headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    row = []
+    for rt in result_order:
+        row.append(combined_total.get(rt, 0))
+    row.extend([
         combined_total.get("Total", 0),
         combined_total.get("完了数", 0),
         combined_total.get("消化数", 0),
         combined_total.get("完了率(%)", 0),
         combined_total.get("消化率(%)", 0)
-    ]
+    ])
     print("SUMMARY TOTAL RESULTS:")
     print_table(headers, [row])
     print()
@@ -401,14 +388,14 @@ if __name__ == "__main__":
             print("=" * 50)
             print(f"Processed Files: {len(file_list)}")
             # サマリー総合結果
-            print_summary_total_results(results)
+            print_summary_total_results(results, settings)
             # サマリー統計
             print_summary_statistics(results)
             print_summary_overall(results)
             print()
             for filepath, result in results:
                 print("=" * 50)
-                format_output(result, filepath, show_title=False)
+                format_output(result, filepath, show_title=False, settings=settings)
     else:
         filepath, result = results[0]
         if args.output_format == "json" or args.json_output:
@@ -417,4 +404,4 @@ if __name__ == "__main__":
             result["file"] = filepath
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            format_output(result, filepath) 
+            format_output(result, filepath, settings=settings) 

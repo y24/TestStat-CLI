@@ -11,9 +11,98 @@ import glob
 import traceback
 from datetime import datetime
 
-def read_paths_from_list_file(list_file_path):
-    """リストファイルからパスを読み取る"""
-    paths = []
+# YAMLライブラリのインポート（オプション）
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
+def read_project_list_file(list_file_path):
+    """プロジェクトリストファイルからファイル情報を読み取る"""
+    file_extension = os.path.splitext(list_file_path)[1].lower()
+    
+    if file_extension in ['.json', '.yaml', '.yml']:
+        return read_structured_project_list(list_file_path, file_extension)
+    elif file_extension == '.txt':
+        return read_text_project_list(list_file_path)
+    else:
+        raise ValueError(f"サポートされていないファイル形式です: {file_extension} (対応形式: .json, .yaml, .yml, .txt)")
+
+def read_structured_project_list(list_file_path, file_extension):
+    """構造化されたプロジェクトリストファイル（JSON/YAML）を読み取る"""
+    try:
+        with open(list_file_path, 'r', encoding='utf-8') as f:
+            if file_extension == '.json':
+                data = json.load(f)
+            elif file_extension in ['.yaml', '.yml']:
+                if not YAML_AVAILABLE:
+                    raise ImportError("YAMLファイルを処理するにはPyYAMLライブラリが必要です。pip install PyYAML でインストールしてください。")
+                data = yaml.safe_load(f)
+            else:
+                raise ValueError(f"サポートされていないファイル形式です: {file_extension}")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"プロジェクトリストファイルが見つかりません: {list_file_path}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSONファイルの形式が不正です: {list_file_path}, 詳細: {e}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"YAMLファイルの形式が不正です: {list_file_path}, 詳細: {e}")
+    except Exception as e:
+        raise Exception(f"プロジェクトリストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
+    
+    # データ構造の検証
+    if not isinstance(data, dict):
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: ルート要素が辞書ではありません")
+    
+    if "project" not in data:
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'project'キーが見つかりません")
+    
+    project_data = data["project"]
+    
+    # 必須フィールドの検証
+    required_fields = ["project_name", "files"]
+    for field in required_fields:
+        if field not in project_data:
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: '{field}'キーが見つかりません")
+    
+    if not isinstance(project_data["files"], list):
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'files'がリストではありません")
+    
+    # ファイル情報の検証と抽出
+    file_info_list = []
+    for i, file_info in enumerate(project_data["files"]):
+        if not isinstance(file_info, dict):
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]が辞書ではありません")
+        
+        if "path" not in file_info:
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'キーが見つかりません")
+        
+        if "identifier" not in file_info:
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'identifier'キーが見つかりません")
+        
+        file_path = file_info["path"]
+        identifier = file_info["identifier"]
+        
+        # パスの正規化
+        file_path = os.path.normpath(file_path)
+        
+        file_info_list.append({
+            "path": file_path,
+            "identifier": identifier
+        })
+    
+    if not file_info_list:
+        raise ValueError(f"プロジェクトリストファイルに有効なファイルが含まれていません: {list_file_path}")
+    
+    return {
+        "project_name": project_data["project_name"],
+        "files": file_info_list,
+        "last_loaded": project_data.get("last_loaded", "")
+    }
+
+def read_text_project_list(list_file_path):
+    """テキスト形式のプロジェクトリストファイルを読み取る（従来方式）"""
+    file_info_list = []
     try:
         with open(list_file_path, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
@@ -29,14 +118,33 @@ def read_paths_from_list_file(list_file_path):
                 
                 # パスの正規化
                 path = os.path.normpath(path)
-                paths.append(path)
+                
+                # テキスト形式では識別子はファイル名から生成
+                identifier = os.path.splitext(os.path.basename(path))[0]
+                
+                file_info_list.append({
+                    "path": path,
+                    "identifier": identifier
+                })
                 
     except FileNotFoundError:
-        raise FileNotFoundError(f"リストファイルが見つかりません: {list_file_path}")
+        raise FileNotFoundError(f"プロジェクトリストファイルが見つかりません: {list_file_path}")
     except Exception as e:
-        raise Exception(f"リストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
+        raise Exception(f"プロジェクトリストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
     
-    return paths
+    if not file_info_list:
+        raise ValueError(f"プロジェクトリストファイルに有効なファイルが含まれていません: {list_file_path}")
+    
+    return {
+        "project_name": os.path.splitext(os.path.basename(list_file_path))[0],
+        "files": file_info_list,
+        "last_loaded": ""
+    }
+
+def read_paths_from_list_file(list_file_path):
+    """リストファイルからパスを読み取る（従来の互換性のため残す）"""
+    project_data = read_project_list_file(list_file_path)
+    return [file_info["path"] for file_info in project_data["files"]]
 
 def get_display_width(text):
     """全角・半角を考慮した表示幅を返す"""
@@ -570,13 +678,14 @@ if __name__ == "__main__":
         print(f"ERROR: {message}")
         sys.exit(1)
     
-    # リストファイルまたはターゲットパスの処理
+    # プロジェクトリストファイルまたはターゲットパスの処理
+    project_info = None
     if args.list:
-        # リストファイルからパスを読み取る
+        # プロジェクトリストファイルから情報を読み取る
         try:
-            target_paths = read_paths_from_list_file(args.list)
-            if not target_paths:
-                print(f"ERROR: リストファイルに有効なパスが含まれていません: {args.list}")
+            project_info = read_project_list_file(args.list)
+            if not project_info["files"]:
+                print(f"ERROR: プロジェクトリストファイルに有効なファイルが含まれていません: {args.list}")
                 sys.exit(1)
         except Exception as e:
             print(f"ERROR: {e}")
@@ -584,7 +693,12 @@ if __name__ == "__main__":
         
         # 各パスからExcelファイルを検索
         file_list = []
-        for target_path in target_paths:
+        file_identifiers = {}  # ファイルパスとidentifierのマッピング
+        
+        for file_info in project_info["files"]:
+            target_path = file_info["path"]
+            identifier = file_info["identifier"]
+            
             if not os.path.exists(target_path):
                 print(f"WARNING: 指定されたパスが存在しません: {target_path}")
                 continue
@@ -596,6 +710,9 @@ if __name__ == "__main__":
             
             if isinstance(file_list_or_error, list):
                 file_list.extend(file_list_or_error)
+                # 各ファイルにidentifierを関連付け
+                for file_path in file_list_or_error:
+                    file_identifiers[file_path] = identifier
         
         if not file_list:
             print("ERROR: 処理可能なファイルが見つかりませんでした")
@@ -603,7 +720,7 @@ if __name__ == "__main__":
     else:
         # 従来の単一パス処理
         if not args.path:
-            print("ERROR: パスまたはリストファイルを指定してください")
+            print("ERROR: パスまたはプロジェクトリストファイルを指定してください")
             sys.exit(1)
         
         target_path = args.path
@@ -618,9 +735,22 @@ if __name__ == "__main__":
             sys.exit(1)
         
         file_list = file_list_or_error
+        file_identifiers = {}  # 単一パス処理ではidentifierは空
     
     # ファイル検索結果をログ出力
     verbose_logger.log_file_search(target_path if not args.list else args.list, len(file_list))
+    
+    # プロジェクトリストファイル処理時の情報表示
+    if args.list and project_info:
+        print("==========================================")
+        print("TestSpecAnalytics Results")
+        print("==========================================")
+        print()
+        print(f"Project: {project_info['project_name']}")
+        print(f"Processed Files: {len(file_list)}")
+        if project_info.get('last_loaded'):
+            print(f"Last Loaded: {project_info['last_loaded']}")
+        print()
     
     results = []
     
@@ -636,6 +766,11 @@ if __name__ == "__main__":
             # フィルタリング条件を作成
             filters = create_filter_conditions(args, settings)
             result = ReadData.aggregate_results(filepath, settings, verbose_logger, filters)
+            
+            # identifierを結果に追加
+            if filepath in file_identifiers:
+                result["identifier"] = file_identifiers[filepath]
+            
             results.append((filepath, result))
         except ValueError as e:
             # フィルタリング条件のバリデーションエラー

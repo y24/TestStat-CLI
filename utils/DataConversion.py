@@ -17,8 +17,8 @@ def convert_to_2d_array(data, settings):
     # データの書き込み
     for entry in data:
         file_name = entry.get("file", "")
-        # WIP: identifierは現在空文字で実装
-        identifier = ""  # TODO: 将来的にidentifierの実装が必要
+        # identifierを取得（プロジェクトリストファイルから設定された値）
+        identifier = entry.get("identifier", "")
         by_env_data = entry.get("by_env", {})
         daily_data = entry.get("daily", {})
         if not Utility.is_empty_recursive(by_env_data):

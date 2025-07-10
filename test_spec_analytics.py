@@ -219,17 +219,28 @@ def format_output(result, filepath, show_title=True, settings=None):
     # 環境別集計
     if result['by_env']:
         print("BY ENVIRONMENT:")
-        env_headers = ["Date", "Environment"]
-        # 設定の結果タイプ順序を使用
-        env_headers.extend(result_order)
-        env_headers.extend(["完了数", "消化数", "計画数"])
+        print()
         
-        env_rows = []
-        for date in sorted(result['by_env'].keys()):
-            date_data = result['by_env'][date]
+        # 環境名を取得
+        env_names = set()
+        for date_data in result['by_env'].values():
             if isinstance(date_data, dict):
-                for env_name in sorted(date_data.keys()):
-                    row = [date, env_name]
+                env_names.update(date_data.keys())
+        env_names = sorted(env_names)
+        
+        # 各環境ごとにテーブルを出力
+        for env_name in env_names:
+            print(f"{env_name}:")
+            env_headers = ["Date"]
+            # 設定の結果タイプ順序を使用
+            env_headers.extend(result_order)
+            env_headers.extend(["完了数", "消化数", "計画数"])
+            
+            env_rows = []
+            for date in sorted(result['by_env'].keys()):
+                date_data = result['by_env'][date]
+                if isinstance(date_data, dict) and env_name in date_data:
+                    row = [date]
                     env_data = date_data[env_name]
                     if isinstance(env_data, dict):
                         for rt in result_order:
@@ -243,10 +254,10 @@ def format_output(result, filepath, show_title=True, settings=None):
                         row.append(env_data.get('消化数', 0))
                         row.append(env_data.get('計画数', 0))
                         env_rows.append(row)
-        
-        if env_rows:
-            print_table(env_headers, env_rows)
-            print()
+            
+            if env_rows:
+                print_table(env_headers, env_rows)
+                print()
 
 def print_summary_total_results(results, settings=None):
     """複数ファイルのTOTAL RESULTSを集計して表示"""

@@ -626,6 +626,42 @@ def print_summary_total_results(results, settings=None):
     print_table(total_headers, [total_row])
     print()
 
+def print_summary_file_breakdown(results):
+    """ファイルごとの簡単な内訳を表示"""
+    print("FILE BREAKDOWN:")
+    headers = ["File Name", "Available Cases", "Completed", "Completion Rate(%)", "Executed", "Execution Rate(%)"]
+    
+    rows = []
+    for filepath, result in results:
+        if "error" in result:
+            # エラーの場合はファイル名のみ表示
+            rows.append([os.path.basename(filepath), "ERROR", "-", "-", "-", "-"])
+            continue
+        
+        if "stats" not in result or "total" not in result:
+            rows.append([os.path.basename(filepath), "N/A", "-", "-", "-", "-"])
+            continue
+        
+        available = result["stats"]["available"]
+        completed = result["total"].get("完了数", 0)
+        executed = result["total"].get("消化数", 0)
+        
+        # 完了率と消化率を計算
+        completion_rate = round((completed / available * 100), 2) if available > 0 else 0
+        execution_rate = round((executed / available * 100), 2) if available > 0 else 0
+        
+        rows.append([
+            os.path.basename(filepath),
+            available,
+            completed,
+            completion_rate,
+            executed,
+            execution_rate
+        ])
+    
+    print_table(headers, rows)
+    print()
+
 def print_summary_overall(results):
     # ステータス集計
     statuses = [r[1]["run"]["status"] for r in results if "run" in r[1] and r[1]["run"]["status"]]
@@ -1034,6 +1070,7 @@ if __name__ == "__main__":
             print(f"Processed Files: {len(file_list)}")
             # サマリー総合結果
             print_summary_total_results(results, settings)
+            print_summary_file_breakdown(results)
             print_summary_overall(results)
             print()
             for filepath, result in results:

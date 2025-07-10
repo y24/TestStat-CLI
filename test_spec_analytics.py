@@ -662,6 +662,20 @@ def print_summary_file_breakdown(results):
     print_table(headers, rows)
     print()
 
+def print_summary_errors(results):
+    """エラーが発生したファイルの一覧を表示"""
+    error_files = []
+    for filepath, result in results:
+        if "error" in result:
+            error_files.append(os.path.basename(filepath))
+    
+    if error_files:
+        print("ERROR SUMMARY:")
+        print(f"Files with errors: {len(error_files)}")
+        for filename in error_files:
+            print(f"  - {filename}")
+        print()
+
 def print_summary_overall(results):
     # ステータス集計
     statuses = [r[1]["run"]["status"] for r in results if "run" in r[1] and r[1]["run"]["status"]]
@@ -1071,6 +1085,7 @@ if __name__ == "__main__":
             # サマリー総合結果
             print_summary_total_results(results, settings)
             print_summary_file_breakdown(results)
+            print_summary_errors(results)
             print_summary_overall(results)
             print()
             for filepath, result in results:

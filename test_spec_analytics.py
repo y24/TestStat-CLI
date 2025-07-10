@@ -49,8 +49,16 @@ def print_table(headers, rows):
 def format_output(result, filepath, show_title=True, settings=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title:
+        # ロゴを表示
+        try:
+            with open("assets/logo.txt", "r", encoding="utf-8") as f:
+                logo = f.read()
+                print(logo)
+        except FileNotFoundError:
+            pass
+        print()
         print("=" * 50)
-        print("TestSpecAnalytics Results")
+        print("Summary Results")
         print("=" * 50)
         print()
     
@@ -309,6 +317,15 @@ def print_summary_overall(results):
     print()
 
 def parse_args():
+    # ロゴを表示
+    try:
+        with open("assets/logo.txt", "r", encoding="utf-8") as f:
+            logo = f.read()
+            print(logo)
+            print()
+    except FileNotFoundError:
+        pass
+    
     parser = argparse.ArgumentParser(description="TestSpecAnalyticsCLI: Excelテスト集計ツール")
     parser.add_argument("path", help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
     parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
@@ -383,6 +400,13 @@ if __name__ == "__main__":
             
             print(json.dumps(summary_data, ensure_ascii=False, indent=2))
         else:
+            # ロゴを表示
+            try:
+                with open("assets/logo.txt", "r", encoding="utf-8") as f:
+                    logo = f.read()
+                    print(logo)
+            except FileNotFoundError:
+                pass
             print("=" * 50)
             print("TestSpecAnalytics Results")
             print("=" * 50)

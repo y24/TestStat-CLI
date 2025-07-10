@@ -564,9 +564,11 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
             env_headers = ["Date"]
             env_headers.extend(result_order)
             env_headers.extend(["完了数", "消化数", "計画数"])
-            
+
             env_rows = []
-            for date in sorted(result['by_env'][env_name].keys()):
+            # 各環境の全日付を昇順で取得
+            dates = sorted(result['by_env'][env_name].keys())
+            for date in dates:
                 row = [date]
                 for rt in result_order:
                     count = result['by_env'][env_name][date].get(rt, 0)
@@ -577,6 +579,7 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
                 row.append(result['by_env'][env_name][date].get('計画数', 0))
                 env_rows.append(row)
             print_table(env_headers, env_rows)
+        print()
 
 def print_summary_total_results(results, settings=None):
     """複数ファイルの総合結果を表示"""

@@ -491,13 +491,8 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         "last_update": last_update
     }
 
-    # 環境別データを日付別の構造に変換
-    by_env_daily = {}
-    for env_name, env_data in data_by_env.items():
-        for date, date_data in env_data.items():
-            if date not in by_env_daily:
-                by_env_daily[date] = {}
-            by_env_daily[date][env_name] = date_data
+    # 環境別データをそのまま使用（変換しない）
+    by_env_daily = data_by_env
 
     # 総合結果データ（Pass、Fixed、Fail、Blocked、Suspend、N/Aの合計）
     total_results = {}

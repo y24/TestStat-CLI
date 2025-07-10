@@ -380,15 +380,29 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         "last_update": last_update
     }
 
+    # 環境別データを日付別の構造に変換
+    by_env_daily = {}
+    for env_name, env_data in data_by_env.items():
+        for date, date_data in env_data.items():
+            if date not in by_env_daily:
+                by_env_daily[date] = {}
+            by_env_daily[date][env_name] = date_data
+
+    # 総合結果データ（Pass、Fixed、Fail、Blocked、Suspend、N/Aの合計）
+    total_results = {}
+    for result_type in settings["test_status"]["results"]:
+        total_results[result_type] = data_total.get(result_type, 0)
+    total_results["Total"] = sum(total_results.values())
+
     # 最終出力データ
     out_data = {
         "stats": count_stats,
         "run": run_data,
         "count_by_sheet": counts_by_sheet,
         "daily": data_daily_total,
-        "total": data_total,
+        "total": total_results,
         "by_name": data_by_name,
-        "by_env": data_by_env
+        "by_env": by_env_daily
     }
 
     # データチェック

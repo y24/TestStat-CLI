@@ -18,6 +18,44 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
+def update_project_list_last_loaded(list_file_path):
+    """プロジェクトリストファイルのlast_loaded値を現在時刻に更新する"""
+    try:
+        file_extension = os.path.splitext(list_file_path)[1].lower()
+        
+        # ファイルを読み込み
+        with open(list_file_path, 'r', encoding='utf-8') as f:
+            if file_extension == '.json':
+                data = json.load(f)
+            elif file_extension in ['.yaml', '.yml']:
+                if not YAML_AVAILABLE:
+                    print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
+                    return False
+                data = yaml.safe_load(f)
+            else:
+                print(f"WARNING: サポートされていないファイル形式です: {file_extension}")
+                return False
+        
+        # last_loaded値を現在時刻に更新
+        if "project" in data:
+            data["project"]["last_loaded"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # ファイルに書き戻し
+            with open(list_file_path, 'w', encoding='utf-8') as f:
+                if file_extension == '.json':
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                elif file_extension in ['.yaml', '.yml']:
+                    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+            
+            return True
+        else:
+            print(f"WARNING: プロジェクトリストファイルの形式が不正です: {list_file_path}")
+            return False
+            
+    except Exception as e:
+        print(f"WARNING: プロジェクトリストファイルの更新に失敗しました: {list_file_path}, 詳細: {e}")
+        return False
+
 def read_project_list_file(list_file_path):
     """プロジェクトリストファイルからファイル情報を読み取る"""
     file_extension = os.path.splitext(list_file_path)[1].lower()
@@ -1001,6 +1039,12 @@ if __name__ == "__main__":
         else:
             filepath, result = results[0]
             format_output(result, filepath, settings=settings, filters=filters)
+    
+    # プロジェクトリストファイルのlast_loaded値を更新
+    if args.list:
+        update_success = update_project_list_last_loaded(args.list)
+        if update_success and verbose_logger:
+            verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
     
     # 全体処理終了
     verbose_logger.end_processing() 

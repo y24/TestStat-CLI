@@ -68,7 +68,7 @@ def format_output(result, filepath, show_title=True):
     # 総合結果テーブル
     if 'total' in result:
         print("TOTAL RESULTS:")
-        total_headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total"]
+        total_headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数"]
         total_row = [
             result['total'].get('Pass', 0),
             result['total'].get('Fixed', 0),
@@ -76,7 +76,9 @@ def format_output(result, filepath, show_title=True):
             result['total'].get('Blocked', 0),
             result['total'].get('Suspend', 0),
             result['total'].get('N/A', 0),
-            result['total'].get('Total', 0)
+            result['total'].get('Total', 0),
+            result['total'].get('完了数', 0),
+            result['total'].get('消化数', 0)
         ]
         print_table(total_headers, [total_row])
         print()
@@ -197,6 +199,59 @@ def format_output(result, filepath, show_title=True):
         if env_rows:
             print_table(env_headers, env_rows)
             print()
+
+def print_summary_total_results(results):
+    """複数ファイルのTOTAL RESULTSを集計して表示"""
+    # 各ファイルのtotal_resultsを集める
+    total_results_list = [r[1]["total"] for r in results if "total" in r[1]]
+    
+    if not total_results_list:
+        return
+    
+    # 集計用の変数を初期化
+    combined_total = {}
+    
+    # 各ファイルの結果を統合
+    for total_result in total_results_list:
+        for result_type, count in total_result.items():
+            if result_type not in ["Total", "完了数", "消化数"]:  # Total、完了数、消化数は後で計算
+                combined_total[result_type] = combined_total.get(result_type, 0) + count
+    
+    # Totalを計算
+    combined_total["Total"] = sum(combined_total.values())
+    
+    # 完了数と消化数を各ファイルのdailyデータから集計
+    completed_count = 0
+    executed_count = 0
+    
+    for filepath, result in results:
+        if "daily" in result:
+            for date_data in result["daily"].values():
+                # 完了数（completed_resultsに含まれる結果の合計）
+                completed_count += date_data.get("完了数", 0)
+                # 消化数（executed_resultsに含まれる結果の合計）
+                executed_count += date_data.get("消化数", 0)
+    
+    # 完了数と消化数を追加
+    combined_total["完了数"] = completed_count
+    combined_total["消化数"] = executed_count
+    
+    # テーブル出力
+    headers = ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数"]
+    row = [
+        combined_total.get("Pass", 0),
+        combined_total.get("Fixed", 0),
+        combined_total.get("Fail", 0),
+        combined_total.get("Blocked", 0),
+        combined_total.get("Suspend", 0),
+        combined_total.get("N/A", 0),
+        combined_total.get("Total", 0),
+        combined_total.get("完了数", 0),
+        combined_total.get("消化数", 0)
+    ]
+    print("SUMMARY TOTAL RESULTS:")
+    print_table(headers, [row])
+    print()
 
 def print_summary_statistics(results):
     # 各ファイルのstatsを集める
@@ -329,6 +384,8 @@ if __name__ == "__main__":
             print("TestSpecAnalytics Results")
             print("=" * 50)
             print(f"Processed Files: {len(file_list)}")
+            # サマリー総合結果
+            print_summary_total_results(results)
             # サマリー統計
             print_summary_statistics(results)
             print_summary_overall(results)

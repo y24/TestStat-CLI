@@ -11,6 +11,7 @@
 - `ReadData.py`と同じロジックによるデータ集計
 - 集計結果のコンソール表示（テーブル形式）
 - JSON形式での出力オプション
+- 複数ファイル処理時の統合集計機能（SUMMARY TOTAL RESULTS）
 
 ### 2.2 ファイル処理オプション
 - 単一ファイル処理：指定されたxlsxファイルを処理
@@ -135,6 +136,13 @@ TestSpecAnalytics Results
 
 Processed Files: 3
 Total Processing Time: 2.3s
+
+SUMMARY TOTAL RESULTS:
+┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Pass    │ Fixed   │ Fail    │ Blocked │ Suspend │ N/A     │ Total   │ 完了数  │ 消化数  │
+├─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ 103     │ 3       │ 1       │ 1       │ 0       │ 21      │ 129     │ 100     │ 120     │
+└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
 
 SUMMARY STATISTICS:
 ┌─────────────┬─────────┐
@@ -390,6 +398,17 @@ BY ENVIRONMENT:
   "summary": {
     "processed_files": 3,
     "processing_time": 2.3,
+    "total_results": {
+      "Pass": 103,
+      "Fixed": 3,
+      "Fail": 1,
+      "Blocked": 1,
+      "Suspend": 0,
+      "N/A": 21,
+      "Total": 129,
+      "完了数": 100,
+      "消化数": 120
+    },
     "total_stats": {
       "all": 450,
       "excluded": 15,
@@ -682,39 +701,56 @@ ERROR: Invalid configuration file - config.json
 ERROR: Excel file format error - corrupted.xlsx
 ```
 
-## 7. 将来拡張予定
+## 7. 実装済み機能
 
-### 7.1 フィルタリング機能
+### 7.1 複数ファイル統合集計機能
+- **SUMMARY TOTAL RESULTS**: 複数ファイルのTOTAL RESULTSを統合して表示
+- **完了数・消化数集計**: 各ファイルのdailyデータから完了数と消化数を統合集計
+- **表示順序**: SUMMARY TOTAL RESULTS → SUMMARY STATISTICS → OVERALL STATUS
+
+### 7.2 集計ロジック
+- 各ファイルの`total_results`を統合（Pass、Fixed、Fail、Blocked、Suspend、N/A）
+- 各ファイルの`daily`データから完了数と消化数を集計
+- 設定ファイルの`completed_results`と`executed_results`に基づいて正しい結果タイプを判定
+
+## 8. 将来拡張予定
+
+### 8.1 フィルタリング機能
 - 特定の日付範囲での集計
 - 特定の担当者での集計
 - 特定の結果タイプでの集計
 
-### 7.2 出力オプション
+### 8.2 出力オプション
 - CSV形式出力
 - Excel形式出力
 - 特定の統計情報のみ出力
 
-### 7.3 バッチ処理
+### 8.3 バッチ処理
 - 複数フォルダの一括処理
 - 処理結果のサマリーレポート
 
-## 8. 技術要件
+## 9. 技術要件
 
-### 8.1 依存関係
+### 9.1 依存関係
 - Python 3.7以上
 - openpyxl（Excelファイル読み取り）
 - argparse（コマンドライン引数処理）
 - json（設定ファイル処理）
 
-### 8.2 ファイル構成
+### 9.2 ファイル構成
 ```
 TestSpecAnalyticsCLI/
 ├── test_spec_analytics.py    # メインCLIツール
 ├── config.json        # デフォルト設定ファイル
 └── utils/                   # 既存モジュール
-    ├── ReadData.py
+    ├── ReadData.py          # データ読み取り・集計（複数ファイル統合機能含む）
     ├── OpenpyxlWrapper.py
     ├── TempDir.py
     ├── Utility.py
     └── Logger.py
-``` 
+```
+
+### 9.3 主要機能実装
+- **`ReadData.py`**: `aggregate_multiple_files_results()`関数で複数ファイルの統合集計
+- **`test_spec_analytics.py`**: `print_summary_total_results()`関数でSUMMARY TOTAL RESULTS表示
+- **集計ロジック**: 各ファイルのdailyデータから完了数・消化数を正確に集計 

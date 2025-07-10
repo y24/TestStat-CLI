@@ -393,6 +393,10 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
     for result_type in settings["test_status"]["results"]:
         total_results[result_type] = data_total.get(result_type, 0)
     total_results["Total"] = sum(total_results.values())
+    
+    # 完了数と消化数を追加
+    total_results["完了数"] = completed_count
+    total_results["消化数"] = executed_count
 
     # 最終出力データ
     out_data = {
@@ -446,3 +450,65 @@ def console_out(data):
 
     logger.debug(" ")
     logger.info("~" * 50)
+
+# 複数ファイルの集計値を計算する関数
+def aggregate_multiple_files_results(file_results_list: list, settings: dict):
+    """
+    複数ファイルの集計結果を統合して、全体の集計値を計算する
+    
+    Args:
+        file_results_list: 各ファイルの集計結果のリスト
+        settings: 設定情報
+    
+    Returns:
+        dict: 統合された集計結果
+    """
+    # 統合用の変数を初期化
+    combined_total_results = {}
+    combined_stats = {
+        "all": 0,
+        "excluded": 0,
+        "available": 0,
+        "executed": 0,
+        "completed": 0,
+        "incompleted": 0,
+        "planned": 0
+    }
+    
+    # 完了数と消化数の集計用変数
+    completed_count = 0
+    executed_count = 0
+    
+    # 各ファイルの結果を統合
+    for file_result in file_results_list:
+        # total_resultsの統合
+        for result_type, count in file_result["total"].items():
+            if result_type != "Total":  # Totalは後で計算
+                combined_total_results[result_type] = combined_total_results.get(result_type, 0) + count
+        
+        # statsの統合
+        for stat_key, count in file_result["stats"].items():
+            combined_stats[stat_key] += count
+        
+        # 完了数と消化数を各ファイルのdailyデータから集計
+        if "daily" in file_result:
+            for date_data in file_result["daily"].values():
+                # 完了数（completed_resultsに含まれる結果の合計）
+                for result_type in settings["test_status"]["completed_results"]:
+                    completed_count += date_data.get(result_type, 0)
+                
+                # 消化数（executed_resultsに含まれる結果の合計）
+                for result_type in settings["test_status"]["executed_results"]:
+                    executed_count += date_data.get(result_type, 0)
+    
+    # Totalを計算
+    combined_total_results["Total"] = sum(combined_total_results.values())
+    
+    # 完了数と消化数をtotal_resultsに追加
+    combined_total_results["完了数"] = completed_count
+    combined_total_results["消化数"] = executed_count
+    
+    return {
+        "total": combined_total_results,
+        "stats": combined_stats
+    }

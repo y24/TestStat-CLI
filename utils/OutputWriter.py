@@ -130,12 +130,12 @@ class OutputWriter:
         
         # BY ENVIRONMENT
         if "by_env" in data:
-            writer.writerow(["Date", "Environment", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
-            for date, env_data in sorted(data["by_env"].items()):
-                for env_name, env_stats in sorted(env_data.items()):
+            writer.writerow(["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
+            for env_name, env_data in sorted(data["by_env"].items()):
+                for date, env_stats in sorted(env_data.items()):
                     writer.writerow([
-                        date,
                         env_name,
+                        date,
                         env_stats.get("Pass", 0),
                         env_stats.get("Fixed", 0),
                         env_stats.get("Fail", 0),
@@ -203,6 +203,25 @@ class OutputWriter:
                         total.get("消化数", 0),
                         total.get("完了率(%)", 0),
                         total.get("消化率(%)", 0)
+                    ])
+        
+        # BY ENVIRONMENT
+        if "by_env" in data:
+            writer.writerow(["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
+            for env_name, env_data in sorted(data["by_env"].items()):
+                for date, env_stats in sorted(env_data.items()):
+                    writer.writerow([
+                        env_name,
+                        date,
+                        env_stats.get("Pass", 0),
+                        env_stats.get("Fixed", 0),
+                        env_stats.get("Fail", 0),
+                        env_stats.get("Blocked", 0),
+                        env_stats.get("Suspend", 0),
+                        env_stats.get("N/A", 0),
+                        env_stats.get("完了数", 0),
+                        env_stats.get("消化数", 0),
+                        env_stats.get("計画数", 0)
                     ])
     
     def write_excel(self, data, output_file, is_multiple_files=False, filters=None):
@@ -403,13 +422,13 @@ class OutputWriter:
     
     def _write_by_environment_sheet(self, ws, by_env_data):
         """BY ENVIRONMENT シートの書き込み"""
-        headers = ["Date", "Environment", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"]
+        headers = ["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"]
         data = []
-        for date, env_data in sorted(by_env_data.items()):
-            for env_name, env_stats in sorted(env_data.items()):
+        for env_name, env_data in sorted(by_env_data.items()):
+            for date, env_stats in sorted(env_data.items()):
                 data.append([
-                    date,
                     env_name,
+                    date,
                     env_stats.get("Pass", 0),
                     env_stats.get("Fixed", 0),
                     env_stats.get("Fail", 0),
@@ -420,9 +439,8 @@ class OutputWriter:
                     env_stats.get("消化数", 0),
                     env_stats.get("計画数", 0)
                 ])
-        
         self._write_sheet_with_formatting(ws, [headers] + data)
-    
+
     def _write_individual_files_sheet(self, ws, files_data):
         """INDIVIDUAL FILES シートの書き込み"""
         headers = ["File", "Total Cases", "Available Cases", "Excluded Cases", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]

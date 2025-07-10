@@ -443,7 +443,7 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
             pass
         print()
         print("=" * 50)
-        print("TestSpecAnalytics Results")
+        print("Summary Results")
         print("=" * 50)
         print()
     
@@ -784,7 +784,7 @@ if __name__ == "__main__":
     # プロジェクトリストファイル処理時の情報表示
     if args.list and project_info:
         print("==========================================")
-        print("TestSpecAnalytics Results")
+        print("Summary Results")
         print("==========================================")
         print()
         print(f"Project: {project_info['project_name']}")
@@ -1027,7 +1027,7 @@ if __name__ == "__main__":
                 pass
             print()
             print("=" * 50)
-            print("TestSpecAnalytics Results")
+            print("Summary Results")
             print("=" * 50)
             if args.list:
                 print(f"List File: {args.list}")

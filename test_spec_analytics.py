@@ -339,16 +339,17 @@ def print_summary_overall(results):
     print()
 
 def parse_args():
-    # ロゴを表示
-    try:
-        with open("assets/logo.txt", "r", encoding="utf-8") as f:
-            logo = f.read()
-            print(logo)
-            print()
-    except FileNotFoundError:
-        pass
+    # ヘルプ表示時のみロゴを表示
+    if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
+        try:
+            with open("assets/logo.txt", "r", encoding="utf-8") as f:
+                logo = f.read()
+                print(logo)
+                print()
+        except FileNotFoundError:
+            pass
     
-    parser = argparse.ArgumentParser(description="TestSpecAnalyticsCLI: Excelテスト集計ツール")
+    parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
     parser.add_argument("path", help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
     parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json"], default="table", help="出力形式（table/json）")
@@ -479,6 +480,7 @@ if __name__ == "__main__":
                     print(logo)
             except FileNotFoundError:
                 pass
+            print()
             print("=" * 50)
             print("TestSpecAnalytics Results")
             print("=" * 50)

@@ -16,26 +16,26 @@ def find_colnum_by_keywords(lst, keywords:list[str], ignore_words=None):
     return [i + 1 for i, item in enumerate(lst) if item and any(kw in str(item) for kw in keywords) and str(item) not in ignore_words]
 
 
-def transpose_lists(*lists):
-    return [list(row) for row in zip(*lists)]
+def transpose_lists(*lists_):
+    return [list(row) for row in zip(*lists_)]
 
 
-def check_lists_equal_length(*lists):
+def check_lists_equal_length(*lists_):
     """
     任意の数のリストを受け取り、それらの要素数がすべて同じかどうかを判定する
     
     :param lists: 可変長引数としてリストを受け取る
     :return: すべてのリストの長さが同じ場合は True、異なる場合は False
     """
-    if not lists:
+    if not lists_:
         return True  # 空の入力の場合は True を返す
     
     # すべてのリストが空の場合は False を返す
-    if all(len(lst) == 0 for lst in lists):
+    if all(len(lst) == 0 for lst in lists_):
         return False
 
-    first_length = len(lists[0])
-    return all(len(lst) == first_length for lst in lists)
+    first_length = len(lists_[0])
+    return all(len(lst) == first_length for lst in lists_)
 
 
 def get_ext_from_path(filepath:str):
@@ -140,16 +140,16 @@ def meke_rate_text(value1:int, value2:int):
     else:
         return "--"
 
-def sum_values(list, param:str):
+def sum_values(lst, param:str):
     # オブジェクト配列の各キーごとに合計値を計算
-    result = defaultdict(int)
-    for entry in list:
+    total = 0
+    for entry in lst:
         # パラメータのキーが存在しない場合はスキップ
         if param not in entry:
             continue
         for key, value in entry[param].items():
-            result[key] += value
-    return dict(result)
+            total += value
+    return total
 
 def safe_divide(a:int, b:int):
     return a / b if b else None  # bが0またはNoneならNoneを返す

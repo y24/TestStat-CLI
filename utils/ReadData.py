@@ -1,5 +1,6 @@
 from collections import defaultdict
 import pprint
+import time
 
 from utils import OpenpyxlWrapper as Excel
 from utils import Logger
@@ -122,7 +123,13 @@ def make_run_status(count_stats: dict, settings: dict) -> str:
         return "???"
 
 # Excelファイルからテスト結果データを読み取り、集計する関数
-def aggregate_results(filepath:str, settings):
+def aggregate_results(filepath:str, settings, verbose_logger=None):
+    start_time = time.time()
+    
+    # 詳細ログ開始
+    if verbose_logger:
+        verbose_logger.start_file_processing(filepath)
+    
     # 設定された検索キーワードに基づいて対象シートを特定
     workbook = Excel.load(filepath)
     sheet_names = Excel.get_sheetnames_by_keywords(
@@ -131,8 +138,14 @@ def aggregate_results(filepath:str, settings):
         ignores=settings["read_definition"]["sheet_search_ignores"]
     )
 
+    # Excelファイル情報をログ出力
+    if verbose_logger:
+        verbose_logger.log_excel_info(workbook, sheet_names)
+
     # 対象シートが見つからない場合はエラーを返却
     if len(sheet_names) == 0:
+        if verbose_logger:
+            verbose_logger.log_error_details("sheet_not_found", "シートが見つかりませんでした")
         return {
             "error": {
                 "type": "sheet_not_found",
@@ -148,11 +161,16 @@ def aggregate_results(filepath:str, settings):
 
     # 各シートのデータを処理
     for sheet_name in sheet_names:
+        if verbose_logger:
+            verbose_logger.log(f"シート処理開始: {sheet_name}")
+        
         # シートごとのデータを処理して取得
-        sheet_data = _process_sheet(workbook=workbook, sheet_name=sheet_name, settings=settings)
+        sheet_data = _process_sheet(workbook=workbook, sheet_name=sheet_name, settings=settings, verbose_logger=verbose_logger)
         
         # エラーが発生した場合は即時返却
         if "error" in sheet_data:
+            if verbose_logger:
+                verbose_logger.log_error_details(sheet_data["error"]["type"], sheet_data["error"]["message"])
             return sheet_data
         # 正常にデータが取得できた場合は集計用変数に追加
         elif sheet_data:
@@ -160,21 +178,35 @@ def aggregate_results(filepath:str, settings):
             all_plan_data.extend(sheet_data["plan_data"]) # 計画データを追加
             data_by_env.update(sheet_data["env_data"])    # 環境別データを追加
             counts_by_sheet.append(sheet_data["counts"])   # 件数情報を追加
+            
+            if verbose_logger:
+                verbose_logger.log(f"シート処理完了: {sheet_name} - データ行数: {len(sheet_data['data'])}")
 
     # 全シートの集計データを生成して返却
-    return _aggregate_final_results(
+    result = _aggregate_final_results(
             all_data=all_data,           # 全シートの結果データ
             all_plan_data=all_plan_data, # 全シートの計画データ
             data_by_env=data_by_env,     # 環境別の集計データ(計画を含む)
             counts_by_sheet=counts_by_sheet,  # シート別のテストケース件数情報
-            settings=settings            # 設定情報
+            settings=settings,            # 設定情報
+            verbose_logger=verbose_logger # 詳細ログ
         )
+    
+    # 詳細ログ終了
+    if verbose_logger:
+        verbose_logger.end_file_processing()
+        elapsed = time.time() - start_time
+        verbose_logger.log_performance("データ読み取り・集計", elapsed)
+    
+    return result
 
-def _process_sheet(workbook, sheet_name: str, settings: dict):
+def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=None):
     sheet = Excel.get_sheet_by_name(workbook=workbook, sheet_name=sheet_name)
     header_rownum = Excel.find_row(sheet, search_col=settings["read_definition"]["header"]["search_col"], search_str=settings["read_definition"]["header"]["search_key"])
 
     if not header_rownum:
+        if verbose_logger:
+            verbose_logger.log_error_details("header_not_found", "ヘッダー行が見つかりません")
         return {
             "error": {
                 "type": "header_not_found",
@@ -184,6 +216,15 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
 
     # ヘッダ行を取得
     header = Excel.get_row_values(sheet=sheet, row_num=header_rownum)
+
+    # データ範囲情報をログ出力
+    if verbose_logger:
+        # シートの最大行数を取得
+        max_row = sheet.max_row
+        data_start = header_rownum + 1
+        data_end = max_row
+        total_rows = data_end - data_start + 1
+        verbose_logger.log_data_range(header_rownum, data_start, data_end, total_rows)
 
     # 列番号(例:環境別)を取得
     # 結果
@@ -195,8 +236,15 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
     # 計画
     plan_rows = Utility.find_colnum_by_keywords(lst=header, keywords=settings["read_definition"]["plan_row"]["keys"])
 
+    # 列マッピング情報をログ出力
+    if verbose_logger:
+        verbose_logger.log_column_mapping(header, result_rows, person_rows, date_rows, plan_rows)
+
     # 結果,担当者,日付の列セットが見つからないor同数でない場合はエラー
     if Utility.check_lists_equal_length(result_rows, person_rows, date_rows) == False:
+        if verbose_logger:
+            verbose_logger.log_error_details("inconsistent_result_set", 
+                f"結果,担当者,日付のセットが正しく取得できません。結果: {len(result_rows)} 担当者: {len(person_rows)} 日付: {len(date_rows)}")
         return {
             "error": {
                 "type": "inconsistent_result_set",
@@ -206,6 +254,9 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
 
     # 計画列がある場合、結果列と計画列のセット数が一致しない場合はエラー
     if plan_rows and Utility.check_lists_equal_length(result_rows, plan_rows) == False:
+        if verbose_logger:
+            verbose_logger.log_error_details("inconsistent_plan_set", 
+                f"結果列に対して計画列の数が一致しません。結果: {len(result_rows)} 計画: {len(plan_rows)}")
         return {
             "error": {
                 "type": "inconsistent_plan_set",
@@ -221,9 +272,9 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
     env_data = {}  # 環境データを格納する辞書を初期化
     all_plan_data = []
     
-    for index, set in enumerate(sets):
+    for index, set_ in enumerate(sets):
         # セットのデータ取得
-        set_data = Excel.get_columns_data(sheet=sheet, col_nums=set, header_row=header_rownum, ignore_header=True)
+        set_data = Excel.get_columns_data(sheet=sheet, col_nums=set_, header_row=header_rownum, ignore_header=True)
 
         # 担当者名がNoneで結果と日付が存在する場合、"NO_NAME"に置き換え
         processed_data = []
@@ -236,7 +287,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
         data.extend(processed_data)
 
         # そのセットの1行目からセット名を取得(セル内改行は_に置換)
-        set_name = Excel.get_cell_value(sheet=sheet, col=set[0], row=1, replace_newline=True)
+        set_name = Excel.get_cell_value(sheet=sheet, col=set_[0], row=1, replace_newline=True)
 
         # セット名がない場合はシート名をセット
         if not set_name:
@@ -269,6 +320,9 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
     tobe_rownunms = Utility.find_colnum_by_keywords(lst=header, keywords=settings["read_definition"]["tobe_row"]["keys"])
 
     if not tobe_rownunms:
+        if verbose_logger:
+            verbose_logger.log_error_details("no_tobe_row", 
+                f"期待結果列が見つかりませんでした。定義: {settings['read_definition']['tobe_row']['keys']}")
         return {
             "error": {
                 "type": "no_tobe_row",
@@ -282,6 +336,9 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
     case_count = sum(1 for item in tobe_data if any(x is not None for x in item))
 
     if not case_count:
+        if verbose_logger:
+            verbose_logger.log_error_details("no_testcases", 
+                f"テストケース数を取得できませんでした。列番号: {tobe_rownunms}")
         return {
             "error": {
                 "type": "no_testcases",
@@ -292,6 +349,20 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
     # 計画データ
     # 計画数をカウント
     plan_count = sum(1 for item in all_plan_data if any(x is not None for x in item))
+
+    # データ検証情報をログ出力
+    if verbose_logger:
+        # 日付データの検証
+        valid_dates = len([row for row in data if row[2] and row[2] != "no_date"])
+        invalid_dates = len([row for row in data if not row[2] or row[2] == "no_date"])
+        
+        # 担当者データの抽出
+        person_list = list(set([row[1] for row in data if row[1] and row[1] != "NO_NAME"]))
+        
+        # 環境データの抽出
+        environment_list = list(env_data.keys())
+        
+        verbose_logger.log_data_validation(valid_dates, invalid_dates, person_list, environment_list)
 
     # 結果を返却
     return {
@@ -306,7 +377,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict):
         }
     }
 
-def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings):
+def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None):
     # 全セット集計(日付別)
     data_daily_total, no_date_data = get_daily(
         data=all_data,
@@ -357,6 +428,13 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         "incompleted": incompleted_count,
         "planned": total_plan_count
     }
+
+    # 詳細ログ出力
+    if verbose_logger:
+        verbose_logger.log_result_summary(data_total, available_count)
+        verbose_logger.log_daily_breakdown(data_daily_total)
+        verbose_logger.log_person_summary(data_by_name)
+        verbose_logger.log_environment_summary(data_by_env)
 
     # 実施状況
     run_status = make_run_status(count_stats, settings)
@@ -417,8 +495,12 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
 
     # データチェック
     if case_count_all == 0:
+        if verbose_logger:
+            verbose_logger.log_warning("項目数を取得できませんでした")
         out_data["warning"] = {"type": "no_data", "message": "項目数を取得できませんでした。"}
     elif executed_count > available_count:
+        if verbose_logger:
+            verbose_logger.log_warning("テストケースの完了数が項目数を上回っています")
         out_data["warning"] = {"type": "inconsistent_count", "message": "テストケースの完了数が項目数を上回っています。"}
 
     return out_data

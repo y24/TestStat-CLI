@@ -1,12 +1,12 @@
 import json
 from utils import ReadData
+from utils import Logger
 import sys
 import unicodedata
 import argparse
 import os
 import glob
 import traceback
-import re
 
 def read_paths_from_list_file(list_file_path):
     """リストファイルからパスを読み取る"""
@@ -201,7 +201,6 @@ def format_output(result, filepath, show_title=True, settings=None):
             row.append(result['daily'][date].get('消化数', 0))
             row.append(result['daily'][date].get('計画数', 0))
             daily_rows.append(row)
-        
         print_table(daily_headers, daily_rows)
         print()
     
@@ -210,139 +209,93 @@ def format_output(result, filepath, show_title=True, settings=None):
         print("BY NAME:")
         name_headers = ["Date"]
         # 担当者名を取得
-        names = set()
+        all_names = set()
         for date_data in result['by_name'].values():
-            names.update(date_data.keys())
-        names = sorted(names)
-        name_headers.extend(names)
+            all_names.update(date_data.keys())
+        name_headers.extend(sorted(all_names))
         name_headers.extend(["完了数", "消化数", "計画数"])
         
         name_rows = []
         for date in sorted(result['by_name'].keys()):
             row = [date]
-            for name in names:
+            for name in sorted(all_names):
                 count = result['by_name'][date].get(name, 0)
                 row.append(count)
-            # 完了数、消化数、計画数を追加
-            row.append(result['by_name'][date].get('完了数', 0))
-            row.append(result['by_name'][date].get('消化数', 0))
-            row.append(result['by_name'][date].get('計画数', 0))
+            # 完了数、消化数、計画数を追加（日別データから取得）
+            daily_data = result['daily'].get(date, {})
+            row.append(daily_data.get('完了数', 0))
+            row.append(daily_data.get('消化数', 0))
+            row.append(daily_data.get('計画数', 0))
             name_rows.append(row)
-        
         print_table(name_headers, name_rows)
         print()
     
     # 環境別集計
     if result['by_env']:
         print("BY ENVIRONMENT:")
-        print()
-        
-        # 環境名を取得
-        env_names = set()
-        for date_data in result['by_env'].values():
-            if isinstance(date_data, dict):
-                env_names.update(date_data.keys())
-        env_names = sorted(env_names)
-        
-        # 各環境ごとにテーブルを出力
-        for env_name in env_names:
-            print(f"{env_name}:")
+        for env_name in sorted(result['by_env'].keys()):
+            print(f"\n{env_name}:")
             env_headers = ["Date"]
-            # 設定の結果タイプ順序を使用
             env_headers.extend(result_order)
             env_headers.extend(["完了数", "消化数", "計画数"])
             
             env_rows = []
-            for date in sorted(result['by_env'].keys()):
-                date_data = result['by_env'][date]
-                if isinstance(date_data, dict) and env_name in date_data:
-                    row = [date]
-                    env_data = date_data[env_name]
-                    if isinstance(env_data, dict):
-                        for rt in result_order:
-                            count = env_data.get(rt, 0)
-                            if isinstance(count, (int, float)):
-                                row.append(count)
-                            else:
-                                row.append(0)
-                        # 完了数、消化数、計画数を追加
-                        row.append(env_data.get('完了数', 0))
-                        row.append(env_data.get('消化数', 0))
-                        row.append(env_data.get('計画数', 0))
-                        env_rows.append(row)
-            
-            if env_rows:
-                print_table(env_headers, env_rows)
-                print()
+            for date in sorted(result['by_env'][env_name].keys()):
+                row = [date]
+                for rt in result_order:
+                    count = result['by_env'][env_name][date].get(rt, 0)
+                    row.append(count)
+                # 完了数、消化数、計画数を追加
+                row.append(result['by_env'][env_name][date].get('完了数', 0))
+                row.append(result['by_env'][env_name][date].get('消化数', 0))
+                row.append(result['by_env'][env_name][date].get('計画数', 0))
+                env_rows.append(row)
+            print_table(env_headers, env_rows)
 
 def print_summary_total_results(results, settings=None):
-    """複数ファイルのTOTAL RESULTSを集計して表示"""
-    # 各ファイルのtotal_resultsを集める
-    total_results_list = [r[1]["total"] for r in results if "total" in r[1]]
-    
-    if not total_results_list:
-        return
-    
-    # 集計用の変数を初期化
-    combined_total = {}
-    
-    # 各ファイルの結果を統合
-    for total_result in total_results_list:
-        for result_type, count in total_result.items():
-            if result_type not in ["Total", "完了数", "消化数"]:  # Total、完了数、消化数は後で計算
-                combined_total[result_type] = combined_total.get(result_type, 0) + count
-    
-    # Totalを計算
-    combined_total["Total"] = sum(combined_total.values())
-    
-    # 完了数と消化数を各ファイルのdailyデータから集計
-    completed_count = 0
-    executed_count = 0
-    
-    for filepath, result in results:
-        if "daily" in result:
-            for date_data in result["daily"].values():
-                # 完了数（completed_resultsに含まれる結果の合計）
-                completed_count += date_data.get("完了数", 0)
-                # 消化数（executed_resultsに含まれる結果の合計）
-                executed_count += date_data.get("消化数", 0)
-    
-    # 完了率と消化率を計算
-    # 各ファイルのstatsからavailable_countを集計
-    available_count = 0
-    for filepath, result in results:
-        if "stats" in result and "available" in result["stats"]:
-            available_count += result["stats"]["available"]
-    
-    completion_rate = (completed_count / available_count * 100) if available_count > 0 else 0
-    execution_rate = (executed_count / available_count * 100) if available_count > 0 else 0
-    
-    # 完了数と消化数を追加
-    combined_total["完了数"] = completed_count
-    combined_total["消化数"] = executed_count
-    combined_total["完了率(%)"] = round(completion_rate, 2)
-    combined_total["消化率(%)"] = round(execution_rate, 2)
-    
-    # 設定から結果タイプの順序を取得
+    """複数ファイルの総合結果を表示"""
+    # 各ファイルのtotal_resultsを統合
+    total_results = {}
     result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
     
-    # テーブル出力
-    headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
-    row = []
+    # 初期化
     for rt in result_order:
-        row.append(combined_total.get(rt, 0))
-    row.extend([
-        combined_total.get("Total", 0),
-        combined_total.get("完了数", 0),
-        combined_total.get("消化数", 0),
-        combined_total.get("完了率(%)", 0),
-        combined_total.get("消化率(%)", 0)
-    ])
+        total_results[rt] = 0
+    total_results["Total"] = 0
+    total_results["完了数"] = 0
+    total_results["消化数"] = 0
+    
+    # 各ファイルの結果を集計
+    for filepath, result in results:
+        if "total" in result:
+            for rt in result_order:
+                total_results[rt] += result["total"].get(rt, 0)
+            total_results["Total"] += result["total"].get("Total", 0)
+            total_results["完了数"] += result["total"].get("完了数", 0)
+            total_results["消化数"] += result["total"].get("消化数", 0)
+    
+    # 完了率と消化率を計算
+    total_available = sum(r[1]["stats"]["available"] for r in results if "stats" in r[1])
+    completion_rate = (total_results["完了数"] / total_available * 100) if total_available > 0 else 0
+    execution_rate = (total_results["消化数"] / total_available * 100) if total_available > 0 else 0
+    
+    total_results["完了率(%)"] = round(completion_rate, 2)
+    total_results["消化率(%)"] = round(execution_rate, 2)
+    
     print("SUMMARY TOTAL RESULTS:")
-    print_table(headers, [row])
+    total_headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    total_row = []
+    for rt in result_order:
+        total_row.append(total_results.get(rt, 0))
+    total_row.extend([
+        total_results.get("Total", 0),
+        total_results.get("完了数", 0),
+        total_results.get("消化数", 0),
+        total_results.get("完了率(%)", 0),
+        total_results.get("消化率(%)", 0)
+    ])
+    print_table(total_headers, [total_row])
     print()
-
-
 
 def print_summary_overall(results):
     # ステータス集計
@@ -355,15 +308,19 @@ def print_summary_overall(results):
         else:
             overall_status = statuses[0]
     else:
-        overall_status = "-"
-    # 日付集計
+        overall_status = "Unknown"
+    
+    # 日付を計算
     start_dates = [r[1]["run"]["start_date"] for r in results if "run" in r[1] and r[1]["run"]["start_date"]]
     last_updates = [r[1]["run"]["last_update"] for r in results if "run" in r[1] and r[1]["run"]["last_update"]]
-    earliest_start = min(start_dates) if start_dates else "-"
-    latest_update = max(last_updates) if last_updates else "-"
+    earliest_start = min(start_dates) if start_dates else ""
+    latest_update = max(last_updates) if last_updates else ""
+    
     print(f"OVERALL STATUS: {overall_status}")
-    print(f"Earliest Start Date: {earliest_start}")
-    print(f"Latest Update: {latest_update}")
+    if earliest_start:
+        print(f"Earliest Start Date: {earliest_start}")
+    if latest_update:
+        print(f"Latest Update: {latest_update}")
     print()
 
 def parse_args():
@@ -388,6 +345,12 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    
+    # VerboseLoggerの初期化
+    verbose_logger = Logger.VerboseLogger(args.verbose)
+    
+    # 全体処理開始
+    verbose_logger.start_processing()
     
     # 設定ファイルの読み込みと検証
     try:
@@ -459,6 +422,10 @@ if __name__ == "__main__":
             sys.exit(1)
         
         file_list = file_list_or_error
+    
+    # ファイル検索結果をログ出力
+    verbose_logger.log_file_search(target_path if not args.list else args.list, len(file_list))
+    
     results = []
     
     # 各ファイルの処理
@@ -470,7 +437,7 @@ if __name__ == "__main__":
             continue
         
         try:
-            result = ReadData.aggregate_results(filepath, settings)
+            result = ReadData.aggregate_results(filepath, settings, verbose_logger)
             results.append((filepath, result))
         except Exception as e:
             error_result = {
@@ -566,4 +533,7 @@ if __name__ == "__main__":
             result["file"] = filepath
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            format_output(result, filepath, settings=settings) 
+            format_output(result, filepath, settings=settings)
+    
+    # 全体処理終了
+    verbose_logger.end_processing() 

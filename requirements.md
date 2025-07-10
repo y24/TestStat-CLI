@@ -1397,6 +1397,201 @@ ERROR: Invalid file extension - results.txt (use .csv or .xlsx)
 - **ファイルのみ**: `--output-file`指定時はコンソール出力を抑制
 - **形式指定**: `--output-format`で出力形式を明示的に指定
 
+## 12. TSVクリップボード出力機能
+
+### 12.1 概要
+`DataConversion.py`の`convert_to_2d_array`関数を使用して、集計データをTSV（Tab-Separated Values）形式に変換し、クリップボードにコピーする機能です。Excelやスプレッドシートソフトに簡単に貼り付けて分析できる形式でデータを提供します。
+
+### 12.2 コマンドラインオプション
+
+#### 12.2.1 基本オプション
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|------------|--------|------|--------------|
+| `--clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
+| `--clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
+
+#### 12.2.2 使用例
+```bash
+# コンソール出力 + クリップボードコピー
+python test_spec_analytics.py --clipboard sample1.xlsx
+
+# クリップボードのみに出力
+python test_spec_analytics.py --clipboard-only sample1.xlsx
+
+# 複数ファイル処理でクリップボードコピー
+python test_spec_analytics.py --clipboard input_sample/
+
+# フィルタリング結果をクリップボードにコピー
+python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 sample1.xlsx
+
+# 詳細ログ付きでクリップボードコピー
+python test_spec_analytics.py --clipboard -v sample1.xlsx
+```
+
+### 12.3 TSV出力仕様
+
+#### 12.3.1 データ構造
+`convert_to_2d_array`関数が生成する2次元配列をそのままTSV形式に変換します：
+
+**ヘッダー行**:
+```
+ファイル名	識別子	環境名	日付	Pass	Fixed	Fail	Blocked	Suspend	N/A	完了数	消化数	計画数
+```
+
+**データ行例**:
+```
+sample1.xlsx	TEST001	セット1	2024-01-15	10	0	2	1	0	0	13	13	20
+sample1.xlsx	TEST001	セット2	2024-01-15	5	0	1	0	0	0	6	6	10
+sample2.xlsx	TEST002	セット1	2024-01-16	15	1	0	0	0	0	16	16	25
+```
+
+#### 12.3.2 データ内容
+- **ファイル名**: 処理対象のExcelファイル名
+- **識別子**: データの識別子（設定ファイルで定義）
+- **環境名**: テスト実行環境名（空の場合は空文字）
+- **日付**: テスト実行日（空の場合は空文字）
+- **結果タイプ**: Pass, Fixed, Fail, Blocked, Suspend, N/Aの各件数
+- **完了数**: 完了したテストケース数
+- **消化数**: 実行したテストケース数
+- **計画数**: 計画されたテストケース数
+
+#### 12.3.3 複数ファイル処理時の統合
+複数ファイルを処理する場合、各ファイルのデータが統合されて1つのTSVデータとして出力されます：
+
+```
+ファイル名	識別子	環境名	日付	Pass	Fixed	Fail	Blocked	Suspend	N/A	完了数	消化数	計画数
+sample1.xlsx	TEST001	セット1	2024-01-15	10	0	2	1	0	0	13	13	20
+sample1.xlsx	TEST001	セット2	2024-01-15	5	0	1	0	0	0	6	6	10
+sample2.xlsx	TEST002	セット1	2024-01-16	15	1	0	0	0	0	16	16	25
+sample2.xlsx	TEST002	セット2	2024-01-16	8	0	1	0	0	0	9	9	15
+sample3.xlsx	TEST003	セット1	2024-01-17	12	0	0	0	0	0	12	12	18
+```
+
+### 12.4 フィルタリング対応
+
+#### 12.4.1 フィルタ適用後のデータ
+フィルタリング条件が適用された場合、条件に合致するデータのみがTSVに出力されます：
+
+```bash
+# 田中さんが担当したテストのみ
+python test_spec_analytics.py --clipboard --assignee 田中 sample1.xlsx
+```
+
+出力例：
+```
+ファイル名	識別子	環境名	日付	Pass	Fixed	Fail	Blocked	Suspend	N/A	完了数	消化数	計画数
+sample1.xlsx	TEST001	セット1	2024-01-15	8	0	1	0	0	0	9	9	15
+sample1.xlsx	TEST001	セット2	2024-01-15	3	0	0	0	0	0	3	3	5
+```
+
+#### 12.4.2 複合フィルタリング
+複数のフィルタ条件を組み合わせた場合も対応：
+
+```bash
+# 田中さんが2024年1月15日から20日までにPassしたテスト
+python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
+```
+
+### 12.5 エラーハンドリング
+
+#### 12.5.1 クリップボードエラー
+- クリップボードアクセス権限がない
+- クリップボードが他のアプリケーションでロックされている
+- 大量データによるクリップボード容量制限
+
+#### 12.5.2 エラー出力例
+```
+ERROR: Clipboard access denied - insufficient permissions
+ERROR: Clipboard is locked by another application
+ERROR: Data too large for clipboard - 10MB limit exceeded
+WARNING: Some data may be truncated due to clipboard size limits
+```
+
+#### 12.5.3 フォールバック機能
+クリップボードへのコピーが失敗した場合：
+- エラーメッセージを表示
+- コンソールにTSVデータを出力（`--clipboard-only`指定時）
+- 処理を継続（他の出力オプションがある場合）
+
+### 12.6 実装上の注意事項
+
+#### 12.6.1 依存関係
+- **クリップボード操作**: pyperclip（Windows/Linux/macOS対応）
+- **TSV変換**: `DataConversion.py`の`convert_to_2d_array`関数
+- **文字エンコーディング**: UTF-8
+
+#### 12.6.2 パフォーマンス考慮
+- 大量データでのクリップボード処理時間
+- メモリ使用量の最適化
+- クリップボード容量制限への対応
+
+#### 12.6.3 データ整合性
+- タブ文字のエスケープ処理
+- 改行文字の適切な処理
+- 文字エンコーディングの統一
+
+#### 12.6.4 オプション組み合わせ
+- **`--clipboard`**: コンソール出力 + クリップボードコピー
+- **`--clipboard-only`**: クリップボードのみに出力
+- **`--clipboard` + `--output-file`**: ファイル出力 + クリップボードコピー
+- **`--clipboard` + フィルタリング**: フィルタ適用後のデータをクリップボードにコピー
+
+#### 12.6.5 詳細ログ対応
+`-v/--verbose`オプションと組み合わせた場合：
+```
+[VERBOSE] 02:03:58.572 - TSVデータ変換開始
+[VERBOSE] 02:03:58.573 - 変換データ行数: 45行
+[VERBOSE] 02:03:58.573 - クリップボードコピー開始
+[VERBOSE] 02:03:58.574 - クリップボードコピー完了 - データサイズ: 2.3KB
+```
+
+### 12.7 使用例
+
+#### 12.7.1 基本的な使用例
+```bash
+# 単一ファイルのデータをクリップボードにコピー
+python test_spec_analytics.py --clipboard sample1.xlsx
+
+# 複数ファイルの統合データをクリップボードにコピー
+python test_spec_analytics.py --clipboard input_sample/
+
+# フィルタリング結果をクリップボードにコピー
+python test_spec_analytics.py --clipboard --result-type Pass Fail sample1.xlsx
+```
+
+#### 12.7.2 高度な使用例
+```bash
+# 特定の日付範囲のデータをクリップボードにコピー
+python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 input_sample/
+
+# 特定の担当者の完了したテストをクリップボードにコピー
+python test_spec_analytics.py --clipboard --assignee 田中 --result-type Pass Fixed sample1.xlsx
+
+# 特定の環境のデータをクリップボードにコピー
+python test_spec_analytics.py --clipboard --environment セット1 input_sample/
+
+# 詳細ログ付きでクリップボードコピー
+python test_spec_analytics.py --clipboard -v sample1.xlsx
+```
+
+### 12.8 出力データの活用
+
+#### 12.8.1 Excelでの活用
+1. クリップボードにコピーされたTSVデータをExcelに貼り付け
+2. データタブ → テキストまたはCSVから → 区切り文字で分割
+3. タブ区切りとして認識し、列に分割
+4. ピボットテーブルやグラフ作成に活用
+
+#### 12.8.2 スプレッドシートソフトでの活用
+- Google Sheets、LibreOffice Calc等でも同様に貼り付け可能
+- タブ区切りデータとして自動認識
+- データ分析・可視化に活用
+
+#### 12.8.3 データ分析での活用
+- 統計分析ソフトでの読み込み
+- データベースへのインポート
+- レポート作成ツールでの利用
+
 ### 9.2 バッチ処理
 - 複数フォルダの一括処理
 - 処理結果のサマリーレポート
@@ -1415,6 +1610,7 @@ ERROR: Invalid file extension - results.txt (use .csv or .xlsx)
 - openpyxl（Excelファイル読み取り）
 - argparse（コマンドライン引数処理）
 - json（設定ファイル処理）
+- pyperclip（クリップボード操作）
 
 ### 10.2 ファイル構成
 ```
@@ -1431,4 +1627,5 @@ TestSpecAnalyticsCLI/
 
 ### 10.3 主要機能実装
 - **詳細ログ出力（-v/--verbose）**: `utils/Logger.py`の`VerboseLogger`クラスで実装。ファイル処理・Excel読み取り・データ検証・集計・エラー/警告など各段階で詳細なログを出力。`utils/ReadData.py`の集計関数や`test_spec_analytics.py`のメイン処理に統合し、-v指定時のみ詳細ログが有効になる。
-- **フィルタリング機能**: `utils/ReadData.py`にフィルタリングロジックを追加。日付範囲・担当者・結果タイプ・環境によるフィルタリングを実装。`test_spec_analytics.py`のargparseにフィルタリングオプションを追加し、フィルタ条件に基づいてデータを絞り込み集計する。 
+- **フィルタリング機能**: `utils/ReadData.py`にフィルタリングロジックを追加。日付範囲・担当者・結果タイプ・環境によるフィルタリングを実装。`test_spec_analytics.py`のargparseにフィルタリングオプションを追加し、フィルタ条件に基づいてデータを絞り込み集計する。
+- **TSVクリップボード出力機能**: `utils/DataConversion.py`の`convert_to_2d_array`関数を使用してTSV形式に変換し、pyperclipライブラリでクリップボードにコピーする機能を実装。`test_spec_analytics.py`のargparseに`--clipboard`と`--clipboard-only`オプションを追加し、フィルタリング機能と組み合わせて使用可能。 

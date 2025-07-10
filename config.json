@@ -1,0 +1,31 @@
+{
+    "read_definition": {
+        "sheet_search_keys": ["テスト項目"],
+        "sheet_search_ignores": [],
+        "header": {"search_col": "A", "search_key": "#"},
+        "tobe_row": {"keys": ["期待", "実施対象"]},
+        "result_row": {"keys": ["結果"], "ignores": ["期待結果"]},
+        "person_row": {"keys": ["担当者"]},
+        "date_row": {"keys": ["日付", "実施日"]},
+        "plan_row": {"keys": ["計画"]},
+        "excluded": ["対象外"]
+    },
+    "test_status": {
+        "results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
+        "completed_results": ["Pass", "Fixed", "Suspend", "N/A"],
+        "executed_results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
+        "labels": {
+            "completed": "完了数",
+            "executed": "消化数",
+            "planned": "計画数",
+            "not_run": "未着手"
+        }
+    },
+    "output_definition": {
+        "state": {
+            "completed": {"name": "完了", "foreground": "darkgreen", "background": "darkseagreen1"},
+            "in_progress": {"name": "進行中", "foreground": "dodgerblue4", "background": "skyblue"},
+            "not_started": {"name": "未着手", "foreground": "dimgray", "background": "silver"}
+        }
+    }
+}

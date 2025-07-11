@@ -8,11 +8,11 @@
       },
       {
         "identifier": "TEST002",
-        "path": "input_sample/sample2_abcdegfg.xlsx"
+        "path": "input_sample/sample2.xlsx"
       },
       {
         "identifier": "TEST003",
-        "path": "input_sample/taihi/sample3_.xlsx"
+        "path": "input_sample/sample3.xlsx"
       }
     ],
     "last_loaded": "2025-01-27 15:30:00"

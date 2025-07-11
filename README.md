@@ -387,10 +387,25 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 TestSpecAnalyticsCLI/
 ├── test_spec_analytics.py  # メインCLI
 ├── config.json             # 設定ファイル
+├── requirements.txt         # 依存関係
+├── project_list.json       # プロジェクト設定
+├── project_list.yaml       # プロジェクト設定（YAML）
+├── plan.md                 # 開発計画
+├── requirements.md         # 要件定義
+├── list_sample.txt         # サンプルリスト
+├── setup.bat              # Windowsセットアップスクリプト
+├── tsana.bat              # Windows実行スクリプト
+├── tsana.sh               # Linux実行スクリプト
 ├── utils/                  # ユーティリティ
+│   ├── __init__.py        # パッケージ初期化
 │   ├── ReadData.py        # データ読み取り
 │   ├── OpenpyxlWrapper.py # Excel操作
-│   └── Logger.py          # ログ機能
+│   ├── Logger.py          # ログ機能
+│   ├── OutputWriter.py    # 出力処理
+│   ├── DataConversion.py  # データ変換
+│   ├── Labels.py          # ラベル管理
+│   ├── ClipboardWriter.py # クリップボード出力
+│   └── Utility.py         # 汎用ユーティリティ
 └── assets/               # アセット
     └── logo.txt          # ロゴ
 ```

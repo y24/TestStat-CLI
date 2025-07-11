@@ -24,17 +24,21 @@ def update_project_list_last_loaded(list_file_path):
         file_extension = os.path.splitext(list_file_path)[1].lower()
         
         # ファイルを読み込み
-        with open(list_file_path, 'r', encoding='utf-8') as f:
-            if file_extension == '.json':
+        if file_extension == '.json':
+            with open(list_file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            elif file_extension in ['.yaml', '.yml']:
-                if not YAML_AVAILABLE:
-                    print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
-                    return False
-                data = yaml.safe_load(f)
-            else:
-                print(f"WARNING: サポートされていないファイル形式です: {file_extension}")
+        elif file_extension in ['.yaml', '.yml']:
+            if not YAML_AVAILABLE:
+                print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
                 return False
+            with open(list_file_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+        elif file_extension == '.txt':
+            # テキスト形式はlast_loadedの更新対象外（何もしないで成功とする）
+            return True
+        else:
+            print(f"WARNING: サポートされていないファイル形式です: {file_extension}")
+            return False
         
         # last_loaded値を現在時刻に更新
         if "project" in data:

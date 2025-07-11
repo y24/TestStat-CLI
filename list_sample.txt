@@ -1,3 +1,10 @@
-"D:\Script\TestSpecAnalyticsCLI\input_sample\sample1.xlsx"
-D:\Script\TestSpecAnalyticsCLI\input_sample\sample2_abcdegfg.xlsx
+# "#"でコメントアウト可能
+
+# ディレクトリパス
 D:\Script\TestSpecAnalyticsCLI\input_sample\taihi
+
+# ファイルパス
+D:\Script\TestSpecAnalyticsCLI\input_sample\sample2_abcdegfg.xlsx
+
+# ファイルパス（ダブルクォーテーション付き）
+"D:\Script\TestSpecAnalyticsCLI\input_sample\sample1.xlsx"

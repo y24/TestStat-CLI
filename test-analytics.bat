@@ -1,32 +1,27 @@
 @echo off
-chcp 65001 >nul
 REM TestSpecAnalyticsCLI - シンプルコマンド実行用バッチファイル
 REM 使用方法: test-analytics [オプション] [ファイルパス/フォルダパス]
 
 REM スクリプトのディレクトリに移動
 cd /d "%~dp0"
 
-REM Python環境の確認
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Pythonがインストールされていません。
-    echo Python 3.7以上をインストールしてください。
-    pause
-    exit /b 1
+REM 仮想環境がなければ作成
+if not exist ".venv\Scripts\activate.bat" (
+    echo [INFO] Creating virtual environment...
+    python -m venv .venv
 )
 
-REM 仮想環境の確認とアクティベート
-if exist ".venv\Scripts\activate.bat" (
-    call ".venv\Scripts\activate.bat"
-) else (
-    echo WARNING: 仮想環境が見つかりません。システムのPythonを使用します。
-)
+REM 仮想環境の有効化
+call .venv\Scripts\activate.bat
+
+REM 依存関係のインストール
+REM pip install -r requirements.txt
 
 REM 依存関係の確認
-python -c "import openpyxl, pyperclip" >nul 2>&1
+python -c "import openpyxl, pyperclip, yaml" >nul 2>&1
 if errorlevel 1 (
     echo ERROR: 必要なライブラリがインストールされていません。
-    echo 以下のコマンドでインストールしてください：
+    echo コマンドプロンプトで次を実行してください:
     echo pip install -r requirements.txt
     pause
     exit /b 1
@@ -38,9 +33,7 @@ python test_spec_analytics.py %*
 REM エラーコードを保持
 set EXIT_CODE=%errorlevel%
 
-REM 仮想環境を非アクティブ化
-if exist ".venv\Scripts\activate.bat" (
-    call ".venv\Scripts\deactivate.bat"
-)
+REM 仮想環境の無効化
+deactivate
 
 exit /b %EXIT_CODE% 

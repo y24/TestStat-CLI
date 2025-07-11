@@ -44,141 +44,18 @@ pip install -r requirements.txt
 
 ## 使い方
 
-### シンプルコマンド（推奨）
+### 基本コマンド
 
-本ツールは`test-analytics`というシンプルなコマンドで実行できます：
+本ツールのフォルダを環境変数PATHに追加することで、`tsana` というコマンドで実行することができます。
 
 ```bash
-test-analytics [オプション] [ファイルパス/フォルダパス]
+tsana [オプション] [ファイルパス/フォルダパス]
 ```
 
-#### 環境変数PATHへの追加
+または、下記のように直接実行します。
 
-`test-analytics` コマンドをどのフォルダからでも使いたい場合は、
-**test-analytics.bat のあるフォルダを「環境変数PATH」に追加**してください。
-
-1. エクスプローラーで `test-analytics.bat` があるフォルダを開き、アドレスバーを右クリックして「パスのコピー」を選択します。
-2. スタートメニューで「環境変数」と検索し、「システム環境変数の編集」を開きます。
-3. 「環境変数(N)...」ボタンをクリックします。
-4. 「システム環境変数」または「ユーザー環境変数」の中から「Path」を選択し、「編集(E)...」をクリックします。
-5. 「新規(N)」をクリックし、先ほどコピーしたフォルダのパスを貼り付けます。
-6. 「OK」を何度か押してすべてのウィンドウを閉じます。
-7. 新しく開いたコマンドプロンプトやPowerShellで `test-analytics` コマンドが使えるようになります。
-
-### 基本的な使い方
-
-#### シンプルコマンド使用例（推奨）
 ```bash
-# 単一ファイルの集計
-test-analytics input_sample/sample1.xlsx
-
-# フォルダ内の全Excelファイルを集計
-test-analytics input_sample/
-
-# プロジェクトリストファイル使用（JSON形式）
-test-analytics -l project_list.json
-
-# プロジェクトリストファイル使用（YAML形式）
-test-analytics -l project_list.yaml
-
-# プロジェクトリストファイル使用（テキスト形式）
-test-analytics -l list_sample.txt
-
-# カスタム設定ファイルを使用
-test-analytics input_sample/sample1.xlsx -c custom_config.json
-
-# JSON形式で出力
-test-analytics input_sample/sample1.xlsx -j
-
-# CSV形式でファイル出力
-test-analytics input_sample/sample1.xlsx -o results.csv
-
-# Excel形式でファイル出力
-test-analytics input_sample/sample1.xlsx -o results.xlsx
-
-# 複数ファイル処理でCSV出力
-test-analytics input_sample/ -o summary.csv
-
-# 詳細ログ出力
-test-analytics input_sample/sample1.xlsx -v
-
-# TSV形式でクリップボードにコピー
-test-analytics input_sample/sample1.xlsx -p
-
-# クリップボードのみに出力
-test-analytics input_sample/sample1.xlsx -P
-
-# 日付範囲フィルタ
-test-analytics --date-range 2024-01-15 2024-01-20 input_sample/sample1.xlsx
-
-# 担当者フィルタ
-test-analytics --tester 田中 input_sample/sample1.xlsx
-
-# 結果タイプフィルタ
-test-analytics --result-type Pass Fail input_sample/sample1.xlsx
-
-# 環境フィルタ
-test-analytics --environment セット1 input_sample/sample1.xlsx
-
-# 複合フィルタリング
-test-analytics --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass input_sample/sample1.xlsx
-```
-
-#### 従来のコマンド形式使用例
-```bash
-# 単一ファイルの集計
-python test_spec_analytics.py input_sample/sample1.xlsx
-
-# フォルダ内の全Excelファイルを集計
-python test_spec_analytics.py input_sample/
-
-# プロジェクトリストファイル使用（JSON形式）
-python test_spec_analytics.py -l project_list.json
-
-# プロジェクトリストファイル使用（YAML形式）
-python test_spec_analytics.py -l project_list.yaml
-
-# プロジェクトリストファイル使用（テキスト形式）
-python test_spec_analytics.py -l list_sample.txt
-
-# カスタム設定ファイルを使用
-python test_spec_analytics.py input_sample/sample1.xlsx -c custom_config.json
-
-# JSON形式で出力
-python test_spec_analytics.py input_sample/sample1.xlsx -j
-
-# CSV形式でファイル出力
-python test_spec_analytics.py input_sample/sample1.xlsx -o results.csv
-
-# Excel形式でファイル出力
-python test_spec_analytics.py input_sample/sample1.xlsx -o results.xlsx
-
-# 複数ファイル処理でCSV出力
-python test_spec_analytics.py input_sample/ -o summary.csv
-
-# 詳細ログ出力
-python test_spec_analytics.py input_sample/sample1.xlsx -v
-
-# TSV形式でクリップボードにコピー
-python test_spec_analytics.py input_sample/sample1.xlsx -p
-
-# クリップボードのみに出力
-python test_spec_analytics.py input_sample/sample1.xlsx -P
-
-# 日付範囲フィルタ
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 input_sample/sample1.xlsx
-
-# 担当者フィルタ
-python test_spec_analytics.py --tester 田中 input_sample/sample1.xlsx
-
-# 結果タイプフィルタ
-python test_spec_analytics.py --result-type Pass Fail input_sample/sample1.xlsx
-
-# 環境フィルタ
-python test_spec_analytics.py --environment セット1 input_sample/sample1.xlsx
-
-# 複合フィルタリング
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass input_sample/sample1.xlsx
+.\tsana.bat [オプション] [ファイルパス/フォルダパス]
 ```
 
 ### コマンドラインオプション
@@ -191,15 +68,72 @@ python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中
 | `-f, --output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
 | `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `-j, --json-output` | `-j` | JSON形式で出力 | `false` |
-| `-v, --verbose` | `-v` | 詳細ログ出力 | `false` |
-| `-p, --clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
+| `-v, --verbose` | `-v` | 詳細ログ出力（エラー発生時のトレース） | `false` |
+| `-p, --clipboard` | `-p` | 集計データをTSV形式でクリップボードにコピー | `false` |
 | `-P, --clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
 | `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
 | `--tester` | - | 担当者フィルタ（部分一致） | なし |
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
-| `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
+| `--result-type` | - | 結果タイプフィルタ（複数指定可） | なし |
 | `--environment` | - | 環境フィルタ（部分一致） | なし |
 | `-h, --help` | `-h` | ヘルプ表示 | - |
+
+### オプション使用例
+```bash
+# 単一ファイルの集計
+tsana path/to/your_file.xlsx
+
+# フォルダ内の全Excelファイルを集計
+tsana path/to/your_file.xlsx
+
+# プロジェクトリストファイル使用（JSON形式）
+tsana -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+tsana -l project_list.yaml
+
+# プロジェクトリストファイル使用（テキスト形式）
+tsana -l list_sample.txt
+
+# カスタム設定ファイルを使用
+tsana path/to/your_file.xlsx -c custom_config.json
+
+# JSON形式で出力
+tsana path/to/your_file.xlsx -j
+
+# CSV形式でファイル出力
+tsana path/to/your_file.xlsx -o results.csv
+
+# Excel形式でファイル出力
+tsana path/to/your_file.xlsx -o results.xlsx
+
+# 複数ファイル処理でCSV出力
+tsana path/to/your_file.xlsx -o summary.csv
+
+# 詳細ログ出力
+tsana path/to/your_file.xlsx -v
+
+# TSV形式でクリップボードにコピー
+tsana path/to/your_file.xlsx -p
+
+# クリップボードのみに出力
+tsana path/to/your_file.xlsx -P
+
+# 日付範囲フィルタ
+tsana --date-range 2024-01-15 2024-01-20 path/to/your_file.xlsx
+
+# 担当者フィルタ
+tsana --tester 田中 path/to/your_file.xlsx
+
+# 結果タイプフィルタ
+tsana --result-type Pass Fail path/to/your_file.xlsx
+
+# 環境フィルタ
+tsana --environment セット1 path/to/your_file.xlsx
+
+# 複合フィルタリング
+tsana --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass path/to/your_file.xlsx
+```
 
 ## 出力形式
 
@@ -210,7 +144,7 @@ python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中
 Summary Results
 ==================================================
 
-File: input_sample/sample1.xlsx
+File: path/to/your_file.xlsx
 Total Cases: 150
 Available Cases: 145
 Excluded Cases: 5
@@ -239,11 +173,11 @@ Start Date: 2024-01-15
 Last Update: 2024-01-20
 ```
 
-### JSON形式出力
+### JSON形式出力（`-j, --json-output` オプション）
 
 ```json
 {
-  "file": "input_sample/sample1.xlsx",
+  "file": "path/to/your_file.xlsx",
   "stats": {
     "all": 150,
     "available": 145,
@@ -274,7 +208,7 @@ Last Update: 2024-01-20
 }
 ```
 
-### CSV形式出力
+### CSV形式出力（`-f, --output-format` オプションで `csv` を指定）
 
 CSV形式でファイルに出力する場合、以下のような構造でデータが出力されます：
 
@@ -290,7 +224,7 @@ CSV形式でファイルに出力する場合、以下のような構造でデ�
 - SUMMARY STATISTICS: 統合統計情報
 - INDIVIDUAL FILES: 各ファイルのサマリー
 
-### Excel形式出力
+### Excel形式出力（`-f, --output-format` オプションで `excel` を指定）
 
 Excel形式でファイルに出力する場合、複数のシートに分けてデータが整理されます：
 
@@ -311,7 +245,7 @@ Excel形式でファイルに出力する場合、複数のシートに分けて
 6. BY ENVIRONMENT - 統合環境別集計
 7. METADATA - 処理情報・フィルタ条件
 
-### ファイル名の自動生成
+### 出力ファイル名（`-o, --output-file` オプション）
 
 フィルタリング条件を指定した場合、ファイル名に条件が自動的に含まれます：
 
@@ -332,6 +266,9 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 ## 設定ファイル仕様
 
 ### config.json
+
+デフォルトで `config.json` の設定を使用します。
+`-c, --config` で任意のファイルを読み込むこともできます。
 
 ```json
 {
@@ -379,9 +316,9 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 - `excluded`: 除外対象のキーワード
 
 #### test_status
-- `results`: 結果タイプの一覧（表示順序）
-- `completed_results`: 完了として扱う結果タイプ
-- `executed_results`: 消化として扱う結果タイプ
+- `results`: 結果タイプの名称および順序
+- `completed_results`: 完了数のカウントに含める結果タイプ
+- `executed_results`: 消化数のカウントに含める結果タイプ
 - `labels`: 各指標の表示ラベル
 
 #### output_definition
@@ -454,7 +391,6 @@ TestSpecAnalyticsCLI/
 │   ├── ReadData.py        # データ読み取り
 │   ├── OpenpyxlWrapper.py # Excel操作
 │   └── Logger.py          # ログ機能
-├── input_sample/          # サンプルデータ
 └── assets/               # アセット
     └── logo.txt          # ロゴ
 ```

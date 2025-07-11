@@ -17,17 +17,16 @@ Excelテスト仕様書からテスト結果を集計・分析するCLIツール
 ### 前提条件
 
 - Python 3.7以上
-- openpyxlライブラリ
 
 ### セットアップ
 
 ```bash
-# 依存パッケージのインストール
-pip install openpyxl
-
 # リポジトリのクローン
 git clone <repository-url>
 cd TestSpecAnalyticsCLI
+
+# 依存パッケージのインストール
+pip install -r requirements.txt
 ```
 
 ## 使い方

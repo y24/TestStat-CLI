@@ -38,6 +38,8 @@ fi
 # メインスクリプトの実行
 $PYTHON_CMD test_spec_analytics.py "$@"
 
+pause
+
 # エラーコードを保持
 EXIT_CODE=$?
 

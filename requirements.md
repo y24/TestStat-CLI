@@ -4,6 +4,15 @@
 
 既存の`ReadData.py`モジュールを基に、Windowsコマンドラインで実行可能なCLIツールを開発します。Excelファイル（.xlsx）からテスト結果データを読み取り、集計結果をコンソールに表示するツールです。
 
+### 1.1 シンプルコマンド対応
+
+本ツールは`test-analytics`というシンプルなコマンドで実行できるようになっています：
+
+- **Windows環境**: `test-analytics.bat`を使用
+- **Linux/macOS環境**: `test-analytics.sh`を使用
+
+これにより、長いPythonコマンドを覚える必要がなく、直感的にツールを使用できます。
+
 ## 2. 基本機能
 
 ### 2.1 コア機能
@@ -20,6 +29,17 @@
 ## 3. コマンドライン仕様
 
 ### 3.1 基本コマンド形式
+
+#### 3.1.1 シンプルコマンド（推奨）
+```bash
+# Windows環境
+test-analytics [オプション] [ファイルパス/フォルダパス]
+
+# Linux/macOS環境
+./test-analytics.sh [オプション] [ファイルパス/フォルダパス]
+```
+
+#### 3.1.2 従来のコマンド形式
 ```bash
 python test_spec_analytics.py [オプション] [ファイルパス/フォルダパス]
 ```
@@ -44,6 +64,68 @@ python test_spec_analytics.py [オプション] [ファイルパス/フォルダ
 | `--help` | `-h` | ヘルプ表示 | - |
 
 ### 3.3 使用例
+
+#### 3.3.1 シンプルコマンド使用例（推奨）
+```bash
+# 単一ファイル処理（テーブル形式）
+test-analytics sample1.xlsx
+
+# 単一ファイル処理（JSON形式）
+test-analytics -j sample1.xlsx
+
+# フォルダ一括処理
+test-analytics input_sample/
+
+# プロジェクトリストファイル使用（JSON形式）
+test-analytics -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+test-analytics -l project_list.yaml
+
+# プロジェクトリストファイル使用（テキスト形式）
+test-analytics -l list_sample.txt
+
+# カスタム設定ファイル使用
+test-analytics -c custom_config.json sample1.xlsx
+
+# 詳細ログ付き
+test-analytics -v sample1.xlsx
+
+# CSV形式でファイル出力
+test-analytics -o results.csv sample1.xlsx
+
+# Excel形式でファイル出力
+test-analytics -o results.xlsx sample1.xlsx
+
+# 複数ファイル処理でCSV出力
+test-analytics -o summary.csv input_sample/
+
+# TSV形式でクリップボードにコピー
+test-analytics -p sample1.xlsx
+
+# クリップボードのみに出力
+test-analytics -P sample1.xlsx
+
+# 日付範囲フィルタ
+test-analytics --date-range 2024-01-15 2024-01-20 sample1.xlsx
+
+# 担当者フィルタ
+test-analytics --tester 田中 sample1.xlsx
+
+# 結果タイプフィルタ
+test-analytics --result-type Pass Fail sample1.xlsx
+
+# 環境フィルタ
+test-analytics --environment セット1 sample1.xlsx
+
+# 複合フィルタリング
+test-analytics --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
+
+# プロジェクトリストとフィルタリング組み合わせ
+test-analytics -l project_list.yaml --date-range 2024-01-15 2024-01-20
+```
+
+#### 3.3.2 従来のコマンド形式使用例
 ```bash
 # 単一ファイル処理（テーブル形式）
 python test_spec_analytics.py sample1.xlsx
@@ -1043,16 +1125,16 @@ ERROR: Excel file format error - corrupted.xlsx
 - **使用例**:
   ```bash
   # 2024年1月15日から1月20日までのデータ（範囲指定）
-  python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 sample1.xlsx
+  test-analytics --date-range 2024-01-15 2024-01-20 sample1.xlsx
   
   # 2024年1月1日から1月31日までのデータ（範囲指定）
-  python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 input_sample/
+  test-analytics --date-range 2024-01-01 2024-01-31 input_sample/
   
   # 2024年1月15日以降すべてのデータ（開始日のみ指定）
-  python test_spec_analytics.py --date-range 2024-01-15 sample1.xlsx
+  test-analytics --date-range 2024-01-15 sample1.xlsx
   
   # 2024年1月20日以前すべてのデータ（終了日のみ指定）
-  python test_spec_analytics.py --date-range "" 2024-01-20 sample1.xlsx
+  test-analytics --date-range "" 2024-01-20 sample1.xlsx
   ```
 
 #### 8.2.2 担当者フィルタ（--tester）
@@ -1062,16 +1144,16 @@ ERROR: Excel file format error - corrupted.xlsx
 - **使用例**:
   ```bash
   # 田中さんが担当したテストのみ（部分一致）
-  python test_spec_analytics.py --tester 田中 sample1.xlsx
+  test-analytics --tester 田中 sample1.xlsx
   
   # 佐藤さんが担当したテストのみ（部分一致、複数ファイル）
-  python test_spec_analytics.py --tester 佐藤 input_sample/
+  test-analytics --tester 佐藤 input_sample/
   
   # 田中さんが担当したテストのみ（完全一致）
-  python test_spec_analytics.py --tester 田中 --exact-match sample1.xlsx
+  test-analytics --tester 田中 --exact-match sample1.xlsx
   
   # "田"を含む名前の担当者のテスト
-  python test_spec_analytics.py --tester 田 input_sample/
+  test-analytics --tester 田 input_sample/
   ```
 
 #### 8.2.3 結果タイプフィルタ（--result-type）
@@ -1081,19 +1163,19 @@ ERROR: Excel file format error - corrupted.xlsx
 - **使用例**:
   ```bash
   # Passのみのテスト結果
-  python test_spec_analytics.py --result-type Pass sample1.xlsx
+  test-analytics --result-type Pass sample1.xlsx
   
   # Failのみのテスト結果（複数ファイル）
-  python test_spec_analytics.py --result-type Fail input_sample/
+  test-analytics --result-type Fail input_sample/
   
   # PassとFailのテスト結果
-  python test_spec_analytics.py --result-type Pass Fail sample1.xlsx
+  test-analytics --result-type Pass Fail sample1.xlsx
   
   # 完了したテスト結果（Pass, Fixed）
-  python test_spec_analytics.py --result-type Pass Fixed input_sample/
+  test-analytics --result-type Pass Fixed input_sample/
   
   # 問題のあるテスト結果（Fail, Blocked）
-  python test_spec_analytics.py --result-type Fail Blocked sample1.xlsx
+  test-analytics --result-type Fail Blocked sample1.xlsx
   ```
 
 #### 8.2.4 環境フィルタ（--environment）
@@ -1103,16 +1185,16 @@ ERROR: Excel file format error - corrupted.xlsx
 - **使用例**:
   ```bash
   # セット1環境のテストのみ（部分一致）
-  python test_spec_analytics.py --environment セット1 sample1.xlsx
+  test-analytics --environment セット1 sample1.xlsx
   
   # 環境a_abcのテストのみ（部分一致、複数ファイル）
-  python test_spec_analytics.py --environment 環境a_abc input_sample/
+  test-analytics --environment 環境a_abc input_sample/
   
   # セット1環境のテストのみ（完全一致）
-  python test_spec_analytics.py --environment セット1 --exact-match sample1.xlsx
+  test-analytics --environment セット1 --exact-match sample1.xlsx
   
   # "セット"を含むすべての環境のテスト
-  python test_spec_analytics.py --environment セット input_sample/
+  test-analytics --environment セット input_sample/
   ```
 
 ### 8.3 複合フィルタリング
@@ -1122,31 +1204,31 @@ ERROR: Excel file format error - corrupted.xlsx
 #### 8.3.1 使用例
 ```bash
 # 田中さんが2024年1月15日から20日までにPassしたテスト
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
+test-analytics --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
 
 # セット1環境で佐藤さんがFailしたテスト（複数ファイル）
-python test_spec_analytics.py --environment セット1 --tester 佐藤 --result-type Fail input_sample/
+test-analytics --environment セット1 --tester 佐藤 --result-type Fail input_sample/
 
 # 2024年1月1日から31日までにBlockedされたテスト（詳細ログ付き）
-python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 --result-type Blocked -v input_sample/
+test-analytics --date-range 2024-01-01 2024-01-31 --result-type Blocked -v input_sample/
 
 # 完了したテスト結果（Pass, Fixed）を日付範囲で絞り込み
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --result-type Pass Fixed sample1.xlsx
+test-analytics --date-range 2024-01-15 2024-01-20 --result-type Pass Fixed sample1.xlsx
 
 # 問題のあるテスト結果（Fail, Blocked）を担当者で絞り込み
-python test_spec_analytics.py --tester 田中 --result-type Fail Blocked input_sample/
+test-analytics --tester 田中 --result-type Fail Blocked input_sample/
 
 # 2024年1月15日以降のすべてのテスト結果
-python test_spec_analytics.py --date-range 2024-01-15 input_sample/
+test-analytics --date-range 2024-01-15 input_sample/
 
 # 2024年1月20日以前の田中さんのテスト結果
-python test_spec_analytics.py --date-range "" 2024-01-20 --tester 田中 sample1.xlsx
+test-analytics --date-range "" 2024-01-20 --tester 田中 sample1.xlsx
 
 # "セット"を含む環境で"田"を含む名前の担当者が実行したテスト
-python test_spec_analytics.py --environment セット --tester 田 input_sample/
+test-analytics --environment セット --tester 田 input_sample/
 
 # 完全一致でセット1環境のテスト
-python test_spec_analytics.py --environment セット1 --exact-match sample1.xlsx
+test-analytics --environment セット1 --exact-match sample1.xlsx
 ```
 
 ### 8.4 フィルタリング結果の表示
@@ -1371,19 +1453,19 @@ ERROR: Invalid result types - Pass, Invalid, Fail (available: Pass, Fixed, Fail,
 #### 11.2.2 使用例
 ```bash
 # CSV形式でファイル出力
-python test_spec_analytics.py -o results.csv sample1.xlsx
+test-analytics -o results.csv sample1.xlsx
 
 # Excel形式でファイル出力
-python test_spec_analytics.py -o results.xlsx sample1.xlsx
+test-analytics -o results.xlsx sample1.xlsx
 
 # JSON形式でファイル出力
-python test_spec_analytics.py -o results.json -f json sample1.xlsx
+test-analytics -o results.json -f json sample1.xlsx
 
 # 複数ファイル処理でCSV出力
-python test_spec_analytics.py -o summary.csv input_sample/
+test-analytics -o summary.csv input_sample/
 
 # フィルタリング結果をExcel出力
-python test_spec_analytics.py -o filtered_results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
+test-analytics -o filtered_results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
 ```
 
 ### 11.3 CSV形式出力仕様
@@ -1584,19 +1666,19 @@ ERROR: Invalid file extension - results.txt (use .csv or .xlsx)
 #### 12.2.2 使用例
 ```bash
 # コンソール出力 + クリップボードコピー
-python test_spec_analytics.py --clipboard sample1.xlsx
+test-analytics --clipboard sample1.xlsx
 
 # クリップボードのみに出力
-python test_spec_analytics.py --clipboard-only sample1.xlsx
+test-analytics --clipboard-only sample1.xlsx
 
 # 複数ファイル処理でクリップボードコピー
-python test_spec_analytics.py --clipboard input_sample/
+test-analytics --clipboard input_sample/
 
 # フィルタリング結果をクリップボードにコピー
-python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 sample1.xlsx
+test-analytics --clipboard --date-range 2024-01-15 2024-01-20 sample1.xlsx
 
 # 詳細ログ付きでクリップボードコピー
-python test_spec_analytics.py --clipboard -v sample1.xlsx
+test-analytics --clipboard -v sample1.xlsx
 ```
 
 ### 12.3 TSV出力仕様
@@ -1733,16 +1815,16 @@ python test_spec_analytics.py --clipboard --result-type Pass Fail sample1.xlsx
 #### 12.7.2 高度な使用例
 ```bash
 # 特定の日付範囲のデータをクリップボードにコピー
-python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 input_sample/
+test-analytics --clipboard --date-range 2024-01-15 2024-01-20 input_sample/
 
 # 特定の担当者の完了したテストをクリップボードにコピー
-python test_spec_analytics.py --clipboard --tester 田中 --result-type Pass Fixed sample1.xlsx
+test-analytics --clipboard --tester 田中 --result-type Pass Fixed sample1.xlsx
 
 # 特定の環境のデータをクリップボードにコピー
-python test_spec_analytics.py --clipboard --environment セット1 input_sample/
+test-analytics --clipboard --environment セット1 input_sample/
 
 # 詳細ログ付きでクリップボードコピー
-python test_spec_analytics.py --clipboard -v sample1.xlsx
+test-analytics --clipboard -v sample1.xlsx
 ```
 
 ### 12.8 出力データの活用

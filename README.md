@@ -44,8 +44,87 @@ pip install -r requirements.txt
 
 ## 使い方
 
+### シンプルコマンド（推奨）
+
+本ツールは`test-analytics`というシンプルなコマンドで実行できます：
+
+```bash
+test-analytics [オプション] [ファイルパス/フォルダパス]
+```
+
+#### 環境変数PATHへの追加
+
+`test-analytics` コマンドをどのフォルダからでも使いたい場合は、
+**test-analytics.bat のあるフォルダを「環境変数PATH」に追加**してください。
+
+1. エクスプローラーで `test-analytics.bat` があるフォルダを開き、アドレスバーを右クリックして「パスのコピー」を選択します。
+2. スタートメニューで「環境変数」と検索し、「システム環境変数の編集」を開きます。
+3. 「環境変数(N)...」ボタンをクリックします。
+4. 「システム環境変数」または「ユーザー環境変数」の中から「Path」を選択し、「編集(E)...」をクリックします。
+5. 「新規(N)」をクリックし、先ほどコピーしたフォルダのパスを貼り付けます。
+6. 「OK」を何度か押してすべてのウィンドウを閉じます。
+7. 新しく開いたコマンドプロンプトやPowerShellで `test-analytics` コマンドが使えるようになります。
+
 ### 基本的な使い方
 
+#### シンプルコマンド使用例（推奨）
+```bash
+# 単一ファイルの集計
+test-analytics input_sample/sample1.xlsx
+
+# フォルダ内の全Excelファイルを集計
+test-analytics input_sample/
+
+# プロジェクトリストファイル使用（JSON形式）
+test-analytics -l project_list.json
+
+# プロジェクトリストファイル使用（YAML形式）
+test-analytics -l project_list.yaml
+
+# プロジェクトリストファイル使用（テキスト形式）
+test-analytics -l list_sample.txt
+
+# カスタム設定ファイルを使用
+test-analytics input_sample/sample1.xlsx -c custom_config.json
+
+# JSON形式で出力
+test-analytics input_sample/sample1.xlsx -j
+
+# CSV形式でファイル出力
+test-analytics input_sample/sample1.xlsx -o results.csv
+
+# Excel形式でファイル出力
+test-analytics input_sample/sample1.xlsx -o results.xlsx
+
+# 複数ファイル処理でCSV出力
+test-analytics input_sample/ -o summary.csv
+
+# 詳細ログ出力
+test-analytics input_sample/sample1.xlsx -v
+
+# TSV形式でクリップボードにコピー
+test-analytics input_sample/sample1.xlsx -p
+
+# クリップボードのみに出力
+test-analytics input_sample/sample1.xlsx -P
+
+# 日付範囲フィルタ
+test-analytics --date-range 2024-01-15 2024-01-20 input_sample/sample1.xlsx
+
+# 担当者フィルタ
+test-analytics --tester 田中 input_sample/sample1.xlsx
+
+# 結果タイプフィルタ
+test-analytics --result-type Pass Fail input_sample/sample1.xlsx
+
+# 環境フィルタ
+test-analytics --environment セット1 input_sample/sample1.xlsx
+
+# 複合フィルタリング
+test-analytics --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass input_sample/sample1.xlsx
+```
+
+#### 従来のコマンド形式使用例
 ```bash
 # 単一ファイルの集計
 python test_spec_analytics.py input_sample/sample1.xlsx
@@ -387,12 +466,7 @@ TestSpecAnalyticsCLI/
 
 ## ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。
-
-## 貢献
-
-バグ報告や機能要望は、GitHubのIssueでお知らせください。
-Pull Requestも歓迎します。
+MIT
 
 ## 更新履歴
 

@@ -108,18 +108,18 @@ class OutputWriter:
         # BY NAME
         if "by_name" in data:
             # 担当者名を取得
-            assignees = set()
+            testers = set()
             for daily_data in data["by_name"].values():
-                assignees.update(daily_data.keys())
-            assignees = sorted([a for a in assignees if a not in ["完了数", "消化数", "計画数"]])
+                testers.update(daily_data.keys())
+            testers = sorted([a for a in testers if a not in ["完了数", "消化数", "計画数"]])
             
-            if assignees:
-                headers = ["Date"] + assignees + ["完了数", "消化数", "計画数"]
+            if testers:
+                headers = ["Date"] + testers + ["完了数", "消化数", "計画数"]
                 writer.writerow(headers)
                 for date, name_data in sorted(data["by_name"].items()):
                     row = [date]
-                    for assignee in assignees:
-                        row.append(name_data.get(assignee, 0))
+                    for tester in testers:
+                        row.append(name_data.get(tester, 0))
                     row.extend([
                         name_data.get("完了数", 0),
                         name_data.get("消化数", 0),
@@ -399,18 +399,18 @@ class OutputWriter:
     def _write_by_name_sheet(self, ws, by_name_data):
         """BY NAME シートの書き込み"""
         # 担当者名を取得
-        assignees = set()
+        testers = set()
         for daily_data in by_name_data.values():
-            assignees.update(daily_data.keys())
-        assignees = sorted([a for a in assignees if a not in ["完了数", "消化数", "計画数"]])
+            testers.update(daily_data.keys())
+        testers = sorted([a for a in testers if a not in ["完了数", "消化数", "計画数"]])
         
-        if assignees:
-            headers = ["Date"] + assignees + ["完了数", "消化数", "計画数"]
+        if testers:
+            headers = ["Date"] + testers + ["完了数", "消化数", "計画数"]
             data = []
             for date, name_data in sorted(by_name_data.items()):
                 row = [date]
-                for assignee in assignees:
-                    row.append(name_data.get(assignee, 0))
+                for tester in testers:
+                    row.append(name_data.get(tester, 0))
                 row.extend([
                     name_data.get("完了数", 0),
                     name_data.get("消化数", 0),
@@ -549,10 +549,10 @@ class OutputWriter:
                 elif date_range.get("end"):
                     filter_info.append(f"日付範囲: {date_range['end']} 以前")
             
-            if "assignee" in filters:
-                assignee = filters["assignee"]
-                match_type = "完全一致" if assignee.get("exact_match") else "部分一致"
-                filter_info.append(f"担当者: {assignee['value']} ({match_type})")
+            if "tester" in filters:
+                tester = filters["tester"]
+                match_type = "完全一致" if tester.get("exact_match") else "部分一致"
+                filter_info.append(f"担当者: {tester['value']} ({match_type})")
             
             if "result_type" in filters:
                 filter_info.append(f"結果タイプ: {', '.join(filters['result_type'])}")
@@ -643,8 +643,8 @@ class OutputWriter:
                 filename_parts.append(f"up_to_{date_range['end']}")
         
         # 担当者
-        if "assignee" in filters:
-            filename_parts.append(filters["assignee"]["value"])
+        if "tester" in filters:
+            filename_parts.append(filters["tester"]["value"])
         
         # 結果タイプ
         if "result_type" in filters:

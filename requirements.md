@@ -37,7 +37,7 @@ python test_spec_analytics.py [オプション] [ファイルパス/フォルダ
 | `--clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
 | `--clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
 | `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
-| `--assignee` | - | 担当者フィルタ（部分一致） | なし |
+| `--tester` | - | 担当者フィルタ（部分一致） | なし |
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
 | `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
 | `--environment` | - | 環境フィルタ（部分一致） | なし |
@@ -88,7 +88,7 @@ python test_spec_analytics.py -P sample1.xlsx
 python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 sample1.xlsx
 
 # 担当者フィルタ
-python test_spec_analytics.py --assignee 田中 sample1.xlsx
+python test_spec_analytics.py --tester 田中 sample1.xlsx
 
 # 結果タイプフィルタ
 python test_spec_analytics.py --result-type Pass Fail sample1.xlsx
@@ -97,7 +97,7 @@ python test_spec_analytics.py --result-type Pass Fail sample1.xlsx
 python test_spec_analytics.py --environment セット1 sample1.xlsx
 
 # 複合フィルタリング
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
 
 # プロジェクトリストとフィルタリング組み合わせ
 python test_spec_analytics.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
@@ -1055,23 +1055,23 @@ ERROR: Excel file format error - corrupted.xlsx
   python test_spec_analytics.py --date-range "" 2024-01-20 sample1.xlsx
   ```
 
-#### 8.2.2 担当者フィルタ（--assignee）
-- **オプション**: `--assignee ASSIGNEE_NAME [--exact-match]`
+#### 8.2.2 担当者フィルタ（--tester）
+- **オプション**: `--tester TESTER_NAME [--exact-match]`
 - **形式**: 担当者名（デフォルト：部分一致、--exact-match指定時：完全一致）
 - **説明**: 指定された担当者が実行したテスト結果のみを集計
 - **使用例**:
   ```bash
   # 田中さんが担当したテストのみ（部分一致）
-  python test_spec_analytics.py --assignee 田中 sample1.xlsx
+  python test_spec_analytics.py --tester 田中 sample1.xlsx
   
   # 佐藤さんが担当したテストのみ（部分一致、複数ファイル）
-  python test_spec_analytics.py --assignee 佐藤 input_sample/
+  python test_spec_analytics.py --tester 佐藤 input_sample/
   
   # 田中さんが担当したテストのみ（完全一致）
-  python test_spec_analytics.py --assignee 田中 --exact-match sample1.xlsx
+  python test_spec_analytics.py --tester 田中 --exact-match sample1.xlsx
   
   # "田"を含む名前の担当者のテスト
-  python test_spec_analytics.py --assignee 田 input_sample/
+  python test_spec_analytics.py --tester 田 input_sample/
   ```
 
 #### 8.2.3 結果タイプフィルタ（--result-type）
@@ -1122,10 +1122,10 @@ ERROR: Excel file format error - corrupted.xlsx
 #### 8.3.1 使用例
 ```bash
 # 田中さんが2024年1月15日から20日までにPassしたテスト
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
 
 # セット1環境で佐藤さんがFailしたテスト（複数ファイル）
-python test_spec_analytics.py --environment セット1 --assignee 佐藤 --result-type Fail input_sample/
+python test_spec_analytics.py --environment セット1 --tester 佐藤 --result-type Fail input_sample/
 
 # 2024年1月1日から31日までにBlockedされたテスト（詳細ログ付き）
 python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 --result-type Blocked -v input_sample/
@@ -1134,16 +1134,16 @@ python test_spec_analytics.py --date-range 2024-01-01 2024-01-31 --result-type B
 python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --result-type Pass Fixed sample1.xlsx
 
 # 問題のあるテスト結果（Fail, Blocked）を担当者で絞り込み
-python test_spec_analytics.py --assignee 田中 --result-type Fail Blocked input_sample/
+python test_spec_analytics.py --tester 田中 --result-type Fail Blocked input_sample/
 
 # 2024年1月15日以降のすべてのテスト結果
 python test_spec_analytics.py --date-range 2024-01-15 input_sample/
 
 # 2024年1月20日以前の田中さんのテスト結果
-python test_spec_analytics.py --date-range "" 2024-01-20 --assignee 田中 sample1.xlsx
+python test_spec_analytics.py --date-range "" 2024-01-20 --tester 田中 sample1.xlsx
 
 # "セット"を含む環境で"田"を含む名前の担当者が実行したテスト
-python test_spec_analytics.py --environment セット --assignee 田 input_sample/
+python test_spec_analytics.py --environment セット --tester 田 input_sample/
 
 # 完全一致でセット1環境のテスト
 python test_spec_analytics.py --environment セット1 --exact-match sample1.xlsx
@@ -1161,7 +1161,7 @@ TestSpecAnalytics Results
 
 Filter Conditions:
 - Date Range: 2024-01-15 to 2024-01-20
-- Assignee: 田中 (partial match)
+- Tester: 田中 (partial match)
 - Result Type: Pass, Fixed
 - Environment: セット1 (partial match)
 
@@ -1219,7 +1219,7 @@ TOTAL RESULTS (Filtered):
       "start": "2024-01-15",
       "end": "2024-01-20"
     },
-    "assignee": {
+    "tester": {
       "value": "田中",
       "match_type": "partial"
     },
@@ -1300,11 +1300,11 @@ TOTAL RESULTS (Filtered):
 #### 8.6.2 エラー出力例
 ```
 ERROR: Invalid date format - 2024/01/15 (use YYYY-MM-DD)
-ERROR: Assignee not found - 山田 (available: 田中, 佐藤, 鈴木)
+ERROR: Tester not found - 山田 (available: 田中, 佐藤, 鈴木)
 ERROR: Invalid result type - Invalid (available: Pass, Fixed, Fail, Blocked, Suspend, N/A)
 ERROR: Environment not found - セット3 (available: セット1, セット2)
 ERROR: Invalid date range - start date (2024-01-20) is after end date (2024-01-15)
-ERROR: No matching assignees found - 山田 (partial match, available: 田中, 佐藤, 鈴木)
+ERROR: No matching testers found - 山田 (partial match, available: 田中, 佐藤, 鈴木)
 ERROR: No matching environments found - セット3 (partial match, available: セット1, セット2)
 ERROR: Invalid result types - Pass, Invalid, Fail (available: Pass, Fixed, Fail, Blocked, Suspend, N/A)
 ```
@@ -1521,7 +1521,7 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 # → results_2024-01-15_to_2024-01-20.xlsx
 
 # 複合フィルタ
-python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --assignee 田中 sample1.xlsx
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester 田中 sample1.xlsx
 # → results_2024-01-15_to_2024-01-20_田中.xlsx
 ```
 
@@ -1645,7 +1645,7 @@ sample3.xlsx	TEST003	セット1	2024-01-17	12	0	0	0	0	0	12	12	18
 
 ```bash
 # 田中さんが担当したテストのみ
-python test_spec_analytics.py --clipboard --assignee 田中 sample1.xlsx
+python test_spec_analytics.py --clipboard --tester 田中 sample1.xlsx
 ```
 
 出力例：
@@ -1660,7 +1660,7 @@ sample1.xlsx	TEST001	セット2	2024-01-15	3	0	0	0	0	0	3	3	5
 
 ```bash
 # 田中さんが2024年1月15日から20日までにPassしたテスト
-python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass sample1.xlsx
+python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
 ```
 
 ### 12.5 エラーハンドリング
@@ -1736,7 +1736,7 @@ python test_spec_analytics.py --clipboard --result-type Pass Fail sample1.xlsx
 python test_spec_analytics.py --clipboard --date-range 2024-01-15 2024-01-20 input_sample/
 
 # 特定の担当者の完了したテストをクリップボードにコピー
-python test_spec_analytics.py --clipboard --assignee 田中 --result-type Pass Fixed sample1.xlsx
+python test_spec_analytics.py --clipboard --tester 田中 --result-type Pass Fixed sample1.xlsx
 
 # 特定の環境のデータをクリップボードにコピー
 python test_spec_analytics.py --clipboard --environment セット1 input_sample/
@@ -1768,7 +1768,7 @@ python test_spec_analytics.py --clipboard -v sample1.xlsx
 - 処理結果のサマリーレポート
 
 ### 9.3 追加フィルタリング機能
-- 複数担当者指定（--assignees）
+- 複数担当者指定（--testers）
 - 複数結果タイプ指定（--result-types）
 - 複数環境指定（--environments）
 - 正規表現による部分一致フィルタ

@@ -322,9 +322,9 @@ def create_filter_conditions(args, settings):
         }
     
     # 担当者フィルタ
-    if args.assignee:
-        filters["assignee"] = {
-            "value": args.assignee.strip(),
+    if args.tester:
+        filters["tester"] = {
+            "value": args.tester.strip(),
             "exact_match": args.exact_match
         }
     
@@ -363,9 +363,9 @@ def format_filter_display(filters):
             filter_lines.append(f"Date Range: up to {end}")
     
     # 担当者フィルタ
-    if "assignee" in filters:
-        match_type = "exact match" if filters["assignee"]["exact_match"] else "partial match"
-        filter_lines.append(f"Assignee: {filters['assignee']['value']} ({match_type})")
+    if "tester" in filters:
+        match_type = "exact match" if filters["tester"]["exact_match"] else "partial match"
+        filter_lines.append(f"Tester: {filters['tester']['value']} ({match_type})")
     
     # 結果タイプフィルタ
     if "result_type" in filters:
@@ -379,42 +379,7 @@ def format_filter_display(filters):
         match_type = "exact match" if filters["environment"]["exact_match"] else "partial match"
         filter_lines.append(f"Environment: {filters['environment']['value']} ({match_type})")
     
-    return "\n".join(filter_lines)
-    """フィルタ条件を表示用にフォーマット"""
-    if not filters:
-        return None
-    
-    conditions = []
-    
-    # 日付範囲
-    if "date_range" in filters:
-        start = filters["date_range"]["start"]
-        end = filters["date_range"]["end"]
-        if start and end:
-            conditions.append(f"Date Range: {start} to {end}")
-        elif start:
-            conditions.append(f"Date Range: {start} onwards")
-        elif end:
-            conditions.append(f"Date Range: up to {end}")
-    
-    # 担当者
-    if "assignee" in filters:
-        match_type = "exact match" if filters["assignee"]["exact_match"] else "partial match"
-        conditions.append(f"Assignee: {filters['assignee']['value']} ({match_type})")
-    
-    # 結果タイプ
-    if "result_type" in filters:
-        if len(filters["result_type"]) == 1:
-            conditions.append(f"Result Type: {filters['result_type'][0]}")
-        else:
-            conditions.append(f"Result Type: {', '.join(filters['result_type'])}")
-    
-    # 環境
-    if "environment" in filters:
-        match_type = "exact match" if filters["environment"]["exact_match"] else "partial match"
-        conditions.append(f"Environment: {filters['environment']['value']} ({match_type})")
-    
-    return conditions
+    return filter_lines
 
 def find_excel_files(target_path):
     """Excelファイルを検索"""
@@ -729,7 +694,7 @@ def parse_args():
     # フィルタリングオプション
     parser.add_argument("--date-range", nargs="*", metavar=("START_DATE", "END_DATE"), 
                        help="日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能）")
-    parser.add_argument("--assignee", help="担当者フィルタ（部分一致）")
+    parser.add_argument("--tester", help="担当者フィルタ（部分一致）")
     parser.add_argument("--exact-match", action="store_true", 
                        help="担当者・環境フィルタで完全一致を使用")
     parser.add_argument("--result-type", nargs="+", 

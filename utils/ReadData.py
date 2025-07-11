@@ -144,9 +144,9 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
             elif end:
                 verbose_logger.log(f"- 日付範囲: up to {end} (終了日のみ)")
         
-        if "assignee" in filters:
-            match_type = "完全一致" if filters["assignee"]["exact_match"] else "部分一致"
-            verbose_logger.log(f"- 担当者: {filters['assignee']['value']} ({match_type})")
+        if "tester" in filters:
+            match_type = "完全一致" if filters["tester"]["exact_match"] else "部分一致"
+            verbose_logger.log(f"- 担当者: {filters['tester']['value']} ({match_type})")
         
         if "result_type" in filters:
             if len(filters["result_type"]) == 1:
@@ -667,8 +667,8 @@ def apply_filters(all_data, all_plan_data, data_by_env, filters, verbose_logger=
             include_row = check_date_filter(date, filters["date_range"], verbose_logger)
         
         # 担当者フィルタ
-        if "assignee" in filters and include_row:
-            include_row = check_assignee_filter(name, filters["assignee"], verbose_logger)
+        if "tester" in filters and include_row:
+            include_row = check_tester_filter(name, filters["tester"], verbose_logger)
         
         # 結果タイプフィルタ
         if "result_type" in filters and include_row:
@@ -730,14 +730,14 @@ def check_date_filter(date, date_range, verbose_logger=None):
         # 日付形式が無効な場合は除外
         return False
 
-def check_assignee_filter(name, assignee_filter, verbose_logger=None):
+def check_tester_filter(name, tester_filter, verbose_logger=None):
     """担当者フィルタをチェック"""
     if not name:
         return False
     
-    target_name = assignee_filter["value"].strip().lower()
+    target_name = tester_filter["value"].strip().lower()
     actual_name = name.strip().lower()
-    exact_match = assignee_filter["exact_match"]
+    exact_match = tester_filter["exact_match"]
     
     if exact_match:
         return actual_name == target_name

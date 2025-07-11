@@ -90,7 +90,7 @@ python test_spec_analytics.py input_sample/sample1.xlsx -P
 python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 input_sample/sample1.xlsx
 
 # 担当者フィルタ
-python test_spec_analytics.py --assignee 田中 input_sample/sample1.xlsx
+python test_spec_analytics.py --tester 田中 input_sample/sample1.xlsx
 
 # 結果タイプフィルタ
 python test_spec_analytics.py --result-type Pass Fail input_sample/sample1.xlsx
@@ -99,7 +99,7 @@ python test_spec_analytics.py --result-type Pass Fail input_sample/sample1.xlsx
 python test_spec_analytics.py --environment セット1 input_sample/sample1.xlsx
 
 # 複合フィルタリング
-python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田中 --result-type Pass input_sample/sample1.xlsx
+python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass input_sample/sample1.xlsx
 ```
 
 ### コマンドラインオプション
@@ -116,7 +116,7 @@ python test_spec_analytics.py --date-range 2024-01-15 2024-01-20 --assignee 田�
 | `-p, --clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
 | `-P, --clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
 | `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
-| `--assignee` | - | 担当者フィルタ（部分一致） | なし |
+| `--tester` | - | 担当者フィルタ（部分一致） | なし |
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
 | `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
 | `--environment` | - | 環境フィルタ（部分一致） | なし |
@@ -246,7 +246,7 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 # → results_2024-01-15_to_2024-01-20.xlsx
 
 # 複合フィルタ
-python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --assignee 田中 sample1.xlsx
+python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester 田中 sample1.xlsx
 # → results_2024-01-15_to_2024-01-20_田中.xlsx
 ```
 

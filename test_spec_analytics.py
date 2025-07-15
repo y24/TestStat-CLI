@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
             sys.exit(1)
         elif args.clipboard_only:
             # クリップボードのみの場合は処理終了
-            print("TSVデータをクリップボードにコピーしました。Excelに貼り付けてご利用ください。")
+            # print("TSVデータをクリップボードにコピーしました。Excelに貼り付けてご利用ください。")
             sys.exit(0)
     
     # コンソール出力処理

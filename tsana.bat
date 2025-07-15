@@ -15,7 +15,7 @@ if errorlevel 1 (
 )
 
 REM メインスクリプトの実行
-echo [INFO] Running test-analytics...
+echo [INFO] Running Application...
 python test_spec_analytics.py %*
 
 REM エラーコードを保持

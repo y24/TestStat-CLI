@@ -1,5 +1,6 @@
 from utils import Utility, Labels
 from collections import defaultdict
+import os
 
 def convert_to_2d_array(data, settings):
     # ヘッダーの作成
@@ -16,7 +17,9 @@ def convert_to_2d_array(data, settings):
 
     # データの書き込み
     for entry in data:
-        file_name = entry.get("file", "")
+        file_path = entry.get("file", "")
+        # フルパスからファイル名のみを抽出
+        file_name = os.path.basename(file_path)
         # identifierを取得（プロジェクトリストファイルから設定された値）
         identifier = entry.get("identifier", "")
         by_env_data = entry.get("by_env", {})
@@ -54,9 +57,11 @@ def create_export_data(input_data: list, settings: dict) -> list:
     # 各ファイルのデータを追加
     for index, file_data in enumerate(input_data, 1):
         display_data = _extract_file_data(file_data)
+        # フルパスからファイル名のみを抽出
+        file_name = os.path.basename(file_data['file'])
         export_row = [
             index,  # No.
-            file_data['file'],  # ファイル名
+            file_name,  # ファイル名
             display_data["available"],  # 項目数
             display_data["last_update"] or "",  # 更新日
             display_data["completed"],  # 完了数

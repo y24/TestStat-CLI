@@ -1,6 +1,6 @@
 @echo off
-REM TestSpecAnalyticsCLI - シンプルコマンド実行用バッチファイル
-REM 使用方法: test-analytics [オプション] [ファイルパス/フォルダパス]
+REM TestStatCLI - シンプルコマンド実行用バッチファイル
+REM 使用方法: tstat [オプション] [ファイルパス/フォルダパス]
 
 REM スクリプトのディレクトリに移動
 cd /d "%~dp0"
@@ -16,7 +16,7 @@ if errorlevel 1 (
 
 REM メインスクリプトの実行
 echo [INFO] Running Application...
-python test_spec_analytics.py %*
+python test_stat_cli.py %*
 
 REM エラーコードを保持
 set EXIT_CODE=%errorlevel%

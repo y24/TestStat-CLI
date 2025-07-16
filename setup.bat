@@ -1,5 +1,5 @@
 @echo off
-REM TestSpecAnalyticsCLI - セットアップ用バッチファイル
+REM TestStatCLI - セットアップ用バッチファイル
 REM 使用方法: setup.bat
 
 REM スクリプトのディレクトリに移動

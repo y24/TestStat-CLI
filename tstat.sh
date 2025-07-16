@@ -1,6 +1,6 @@
 #!/bin/bash
-# TestSpecAnalyticsCLI - シンプルコマンド実行用シェルスクリプト
-# 使用方法: ./test-analytics.sh [オプション] [ファイルパス/フォルダパス]
+# TestStatCLI - シンプルコマンド実行用シェルスクリプト
+# 使用方法: ./tstat.sh [オプション] [ファイルパス/フォルダパス]
 
 # スクリプトのディレクトリに移動
 cd "$(dirname "$0")"
@@ -36,7 +36,7 @@ if ! $PYTHON_CMD -c "import openpyxl, pyperclip" &> /dev/null; then
 fi
 
 # メインスクリプトの実行
-$PYTHON_CMD test_spec_analytics.py "$@"
+$PYTHON_CMD test_stat_cli.py "$@"
 
 pause
 

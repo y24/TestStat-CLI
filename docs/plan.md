@@ -1,8 +1,8 @@
-# TestSpecAnalyticsCLI 開発作業計画
+# TestStatCLI 開発作業計画
 
 ## 1. プロジェクト初期設定
 - [x] リポジトリ構成の確認・整備
-- [x] 必要なディレクトリ・ファイルの作成（test_spec_analytics.py, utils/ など）
+- [x] 必要なディレクトリ・ファイルの作成（test_stat.py, utils/ など）
 - [x] Python仮想環境の準備
 - [x] 依存パッケージ（openpyxl, argparse, json等）のインストール
 

@@ -1,16 +1,11 @@
-# TestSpecAnalytics CLI
+# TestStat CLI
 
 ```
-  _____         _     ____
- |_   _|__  ___| |_  / ___| _ __   ___  ___
-   | |/ _ \/ __| __| \___ \| '_ \ / _ \/ __|
-   | |  __/\__ \ |_   ___) | |_) |  __/ (__
-   |_|\___||___/\__| |____/| .__/ \___|\___|    ____ _     ___
-    / \   _ __   __ _| |_  |_| |_(_) ___ ___   / ___| |   |_ _|
-   / _ \ | '_ \ / _` | | | | | __| |/ __/ __| | |   | |    | |
-  / ___ \| | | | (_| | | |_| | |_| | (__\__ \ | |___| |___ | |
- /_/   \_\_| |_|\__,_|_|\__, |\__|_|\___|___/  \____|_____|___|
-                        |___/
+  _____         _   ____  _        _      ____ _     ___
+ |_   _|__  ___| |_/ ___|| |_ __ _| |_   / ___| |   |_ _|
+   | |/ _ \/ __| __\___ \| __/ _` | __| | |   | |    | |
+   | |  __/\__ \ |_ ___) | || (_| | |_  | |___| |___ | |
+   |_|\___||___/\__|____/ \__\__,_|\__|  \____|_____|___|
 ```
 
 Excelテスト仕様書からテスト結果を集計・分析するCLIツールです。
@@ -36,7 +31,7 @@ Excelテスト仕様書からテスト結果を集計・分析するCLIツール
 ```bash
 # リポジトリのクローン
 git clone <repository-url>
-cd TestSpecAnalyticsCLI
+cd TestStatCLI
 
 # 依存パッケージのインストール
 pip install -r requirements.txt
@@ -46,16 +41,16 @@ pip install -r requirements.txt
 
 ### 基本コマンド
 
-本ツールのフォルダを環境変数PATHに追加することで、`tsana` というコマンドで実行することができます。
+本ツールのフォルダを環境変数PATHに追加することで、`tstat` というコマンドで実行することができます。
 
 ```bash
-tsana [オプション] [ファイルパス/フォルダパス]
+tstat [オプション] [ファイルパス/フォルダパス]
 ```
 
 または、下記のように直接実行します。
 
 ```bash
-.\tsana.bat [オプション] [ファイルパス/フォルダパス]
+.\tstat.bat [オプション] [ファイルパス/フォルダパス]
 ```
 
 ### コマンドラインオプション
@@ -81,58 +76,58 @@ tsana [オプション] [ファイルパス/フォルダパス]
 ### オプション使用例
 ```bash
 # 単一ファイルの集計
-tsana path/to/your_file.xlsx
+tstat path/to/your_file.xlsx
 
 # フォルダ内の全Excelファイルを集計
-tsana path/to/your_file.xlsx
+tstat path/to/your_file.xlsx
 
 # プロジェクトリストファイル使用（JSON形式）
-tsana -l project_list.json
+tstat -l project_list.json
 
 # プロジェクトリストファイル使用（YAML形式）
-tsana -l project_list.yaml
+tstat -l project_list.yaml
 
 # プロジェクトリストファイル使用（テキスト形式）
-tsana -l list_sample.txt
+tstat -l list_sample.txt
 
 # カスタム設定ファイルを使用
-tsana path/to/your_file.xlsx -c custom_config.json
+tstat path/to/your_file.xlsx -c custom_config.json
 
 # JSON形式で出力
-tsana path/to/your_file.xlsx -j
+tstat path/to/your_file.xlsx -j
 
 # CSV形式でファイル出力
-tsana path/to/your_file.xlsx -o results.csv
+tstat path/to/your_file.xlsx -o results.csv
 
 # Excel形式でファイル出力
-tsana path/to/your_file.xlsx -o results.xlsx
+tstat path/to/your_file.xlsx -o results.xlsx
 
 # 複数ファイル処理でCSV出力
-tsana path/to/your_file.xlsx -o summary.csv
+tstat path/to/your_file.xlsx -o summary.csv
 
 # 詳細ログ出力
-tsana path/to/your_file.xlsx -v
+tstat path/to/your_file.xlsx -v
 
 # TSV形式でクリップボードにコピー
-tsana path/to/your_file.xlsx -p
+tstat path/to/your_file.xlsx -p
 
 # クリップボードのみに出力
-tsana path/to/your_file.xlsx -P
+tstat path/to/your_file.xlsx -P
 
 # 日付範囲フィルタ
-tsana --date-range 2024-01-15 2024-01-20 path/to/your_file.xlsx
+tstat --date-range 2024-01-15 2024-01-20 path/to/your_file.xlsx
 
 # 担当者フィルタ
-tsana --tester 田中 path/to/your_file.xlsx
+tstat --tester 田中 path/to/your_file.xlsx
 
 # 結果タイプフィルタ
-tsana --result-type Pass Fail path/to/your_file.xlsx
+tstat --result-type Pass Fail path/to/your_file.xlsx
 
 # 環境フィルタ
-tsana --environment セット1 path/to/your_file.xlsx
+tstat --environment セット1 path/to/your_file.xlsx
 
 # 複合フィルタリング
-tsana --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass path/to/your_file.xlsx
+tstat --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass path/to/your_file.xlsx
 ```
 
 ## 出力形式
@@ -251,15 +246,15 @@ Excel形式でファイルに出力する場合、複数のシートに分けて
 
 ```bash
 # 基本出力
-python test_spec_analytics.py -o results.xlsx sample1.xlsx
+python test_stat_cli.py -o results.xlsx sample1.xlsx
 # → results.xlsx
 
 # 日付フィルタ
-python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
+python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 sample1.xlsx
 # → results_2024-01-15_to_2024-01-20.xlsx
 
 # 複合フィルタ
-python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester 田中 sample1.xlsx
+python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester 田中 sample1.xlsx
 # → results_2024-01-15_to_2024-01-20_田中.xlsx
 ```
 
@@ -384,13 +379,13 @@ python test_spec_analytics.py -o results.xlsx --date-range 2024-01-15 2024-01-20
 
 ### プロジェクト構造
 ```
-TestSpecAnalyticsCLI/
-├── test_spec_analytics.py  # メインCLI
+TestStatCLI/
+├── test_stat_cli.py  # メインCLI
 ├── config.json             # 設定ファイル
 ├── requirements.txt        # 依存関係
 ├── setup.bat               # Windowsセットアップスクリプト
-├── tsana.bat               # Windows実行スクリプト
-├── tsana.sh                # Linux実行スクリプト
+├── tstat.bat               # Windows実行スクリプト
+├── tstat.sh                # Linux実行スクリプト
 ├── list_samples/           # サンプルファイル
 │   ├── list_sample.json    # jsonサンプル
 │   ├── list_sample.txt     # txtサンプル
@@ -412,7 +407,7 @@ TestSpecAnalyticsCLI/
 ### 拡張ポイント
 - `utils/ReadData.py`: データ読み取りロジックのカスタマイズ
 - `config.json`: 設定による動作のカスタマイズ
-- `test_spec_analytics.py`: 出力形式のカスタマイズ
+- `test_stat_cli.py`: 出力形式のカスタマイズ
 
 ## ライセンス
 

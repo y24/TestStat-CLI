@@ -173,11 +173,11 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
     # 対象シートが見つからない場合はエラーを返却
     if len(sheet_names) == 0:
         if verbose_logger:
-            verbose_logger.log_error_details("sheet_not_found", "シートが見つかりませんでした")
+            verbose_logger.log_error_details("sheet_not_found", f"シートが見つかりませんでした。（キーワード: {settings['read_definition']['sheet_search_keys']}）")
         return {
             "error": {
                 "type": "sheet_not_found",
-                "message": "シートが見つかりませんでした。"
+                "message": f"シートが見つかりませんでした。（キーワード: {settings['read_definition']['sheet_search_keys']}）"
             }
         }
 
@@ -243,7 +243,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
         return {
             "error": {
                 "type": "header_not_found",
-                "message": "ヘッダー行が見つかりません。"
+                "message": f"ヘッダー行が見つかりません。（列:{settings['read_definition']['header']['search_col']} キーワード:{settings['read_definition']['header']['search_key']}）"
             }
         }
 
@@ -277,11 +277,11 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
     if Utility.check_lists_equal_length(result_rows, person_rows, date_rows) == False:
         if verbose_logger:
             verbose_logger.log_error_details("inconsistent_result_set", 
-                f"結果,担当者,日付のセットが正しく取得できません。結果: {len(result_rows)} 担当者: {len(person_rows)} 日付: {len(date_rows)}")
+                f"結果,担当者,日付のセットが正しく取得できません。（結果: {len(result_rows)}列 / 担当者: {len(person_rows)}列 / 日付: {len(date_rows)}列）")
         return {
             "error": {
                 "type": "inconsistent_result_set",
-                "message": f"結果,担当者,日付のセットが正しく取得できません。\n結果: {len(result_rows)} 担当者: {len(person_rows)} 日付: {len(date_rows)}"
+                "message": f"結果,担当者,日付のセットが正しく取得できません。（結果: {len(result_rows)}列 / 担当者: {len(person_rows)}列 / 日付: {len(date_rows)}列）"
             }
         }
 
@@ -289,11 +289,11 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
     if plan_rows and Utility.check_lists_equal_length(result_rows, plan_rows) == False:
         if verbose_logger:
             verbose_logger.log_error_details("inconsistent_plan_set", 
-                f"結果列に対して計画列の数が一致しません。結果: {len(result_rows)} 計画: {len(plan_rows)}")
+                f"結果列に対して計画列の数が一致しません。（結果: {len(result_rows)}列 / 計画: {len(plan_rows)}列）")
         return {
             "error": {
                 "type": "inconsistent_plan_set",
-                "message": f"結果列に対して計画列の数が一致しません。\n結果: {len(result_rows)} 計画: {len(plan_rows)}"
+                "message": f"結果列に対して計画列の数が一致しません。（結果: {len(result_rows)}列 / 計画: {len(plan_rows)}列）"
             }
         }
 
@@ -355,11 +355,11 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
     if not tobe_rownunms:
         if verbose_logger:
             verbose_logger.log_error_details("no_tobe_row", 
-                f"期待結果列が見つかりませんでした。定義: {settings['read_definition']['tobe_row']['keys']}")
+                f"期待結果列が見つかりませんでした。（キーワード: {settings['read_definition']['tobe_row']['keys']}）")
         return {
             "error": {
                 "type": "no_tobe_row",
-                "message": f"期待結果列が見つかりませんでした。\n定義: {settings['read_definition']['tobe_row']['keys']}"
+                "message": f"期待結果列が見つかりませんでした。（キーワード: {settings['read_definition']['tobe_row']['keys']}）"
             }
         }
 
@@ -371,11 +371,11 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
     if not case_count:
         if verbose_logger:
             verbose_logger.log_error_details("no_testcases", 
-                f"テストケース数を取得できませんでした。列番号: {tobe_rownunms}")
+                f"テストケース数を取得できませんでした。（列番号: {tobe_rownunms}）")
         return {
             "error": {
                 "type": "no_testcases",
-                "message": f"テストケース数を取得できませんでした。\n列番号: {tobe_rownunms}"
+                "message": f"テストケース数を取得できませんでした。（列番号: {tobe_rownunms}）"
             }
         }
 

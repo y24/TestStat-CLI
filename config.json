@@ -23,9 +23,9 @@
     },
     "output_definition": {
         "state": {
-            "completed": {"name": "完了", "foreground": "darkgreen", "background": "darkseagreen1"},
-            "in_progress": {"name": "進行中", "foreground": "dodgerblue4", "background": "skyblue"},
-            "not_started": {"name": "未着手", "foreground": "dimgray", "background": "silver"}
+            "completed": {"name": "完了"},
+            "in_progress": {"name": "進行中"},
+            "not_started": {"name": "未着手"}
         }
     }
 }

@@ -665,17 +665,21 @@ def print_summary_file_breakdown(results):
     print()
 
 def print_summary_errors(results):
-    """エラーが発生したファイルの一覧を表示"""
+    """エラーが発生したファイルの一覧を表示（エラーメッセージ付き）"""
     error_files = []
     for filepath, result in results:
         if "error" in result:
-            error_files.append(os.path.basename(filepath))
+            error_files.append((os.path.basename(filepath), result["error"].get("message", ""), result["error"].get("details", "")))
     
     if error_files:
         print("ERROR SUMMARY:")
         print(f"Files with errors: {len(error_files)}")
-        for filename in error_files:
+        for filename, message, details in error_files:
             print(f"  - {filename}")
+            if message:
+                print(f"    {message}")
+            if details:
+                print(f"    ({details})")
         print()
 
 def print_summary_overall(results):

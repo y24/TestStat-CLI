@@ -22,6 +22,6 @@ REM Store error code
 set EXIT_CODE=%errorlevel%
 
 REM Deactivate virtual environment
-deactivate
+REM deactivate
 
 exit /b %EXIT_CODE% 

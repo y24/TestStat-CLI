@@ -1,11 +1,11 @@
 @echo off
-REM TestStatCLI - セットアップ用バッチファイル
-REM 使用方法: setup.bat
+REM TestStatCLI - Setup batch file
+REM Usage: setup.bat
 
-REM スクリプトのディレクトリに移動
+REM Move to the script directory
 cd /d "%~dp0"
 
-REM 仮想環境がなければ作成
+REM Create virtual environment if it does not exist
 if not exist ".venv\Scripts\activate.bat" (
     echo [INFO] Creating virtual environment...
     python -m venv .venv
@@ -16,7 +16,7 @@ if not exist ".venv\Scripts\activate.bat" (
     )
 )
 
-REM 仮想環境の有効化
+REM Activate virtual environment
 echo [INFO] Activating virtual environment...
 call .venv\Scripts\activate.bat
 if errorlevel 1 (
@@ -25,11 +25,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 仮想環境が有効化されたか確認
+REM Check if virtual environment is activated
 echo [INFO] Checking Python path...
 where python
 
-REM 依存関係のインストール
+REM Install dependencies
 echo [INFO] Installing dependencies...
 pip install -r requirements.txt
 if errorlevel 1 (

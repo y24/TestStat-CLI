@@ -1,11 +1,11 @@
 @echo off
-REM TestStatCLI - シンプルコマンド実行用バッチファイル
-REM 使用方法: tstat [オプション] [ファイルパス/フォルダパス]
+REM TestStatCLI - Simple command execution batch file
+REM Usage: tstat [options] [file path/folder path]
 
-REM スクリプトのディレクトリに移動
+REM Move to the script directory
 cd /d "%~dp0"
 
-REM 仮想環境の有効化
+REM Activate virtual environment
 echo [INFO] Activating virtual environment...
 call .venv\Scripts\activate.bat
 if errorlevel 1 (
@@ -14,14 +14,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM メインスクリプトの実行
+REM Run main script
 echo [INFO] Running Application...
 python test_stat_cli.py %*
 
-REM エラーコードを保持
+REM Store error code
 set EXIT_CODE=%errorlevel%
 
-REM 仮想環境の無効化
+REM Deactivate virtual environment
 deactivate
 
 exit /b %EXIT_CODE% 

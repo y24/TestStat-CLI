@@ -595,6 +595,38 @@ def print_summary_total_results(results, settings=None):
     print_table(total_headers, [total_row])
     print()
 
+# ファイル名を省略表示する関数
+def shorten_filename(filename, max_width=30):
+    """ファイル名が長い場合、先頭と末尾を残して中央を...で省略する（全角半角幅考慮）"""
+    if get_display_width(filename) <= max_width:
+        return filename
+    # 省略記号の幅
+    ellipsis = '...'
+    ellipsis_width = get_display_width(ellipsis)
+    # 先頭・末尾に残す幅を計算
+    remain_width = max_width - ellipsis_width
+    head_width = remain_width // 2
+    tail_width = remain_width - head_width
+    # 先頭部分
+    head = ''
+    w = 0
+    for ch in filename:
+        ch_w = get_display_width(ch)
+        if w + ch_w > head_width:
+            break
+        head += ch
+        w += ch_w
+    # 末尾部分
+    tail = ''
+    w = 0
+    for ch in reversed(filename):
+        ch_w = get_display_width(ch)
+        if w + ch_w > tail_width:
+            break
+        tail = ch + tail
+        w += ch_w
+    return head + ellipsis + tail
+
 def print_summary_file_breakdown(results):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
@@ -602,13 +634,14 @@ def print_summary_file_breakdown(results):
     
     rows = []
     for filepath, result in results:
+        display_name = shorten_filename(os.path.basename(filepath), 30)
         if "error" in result:
             # エラーの場合はファイル名のみ表示
-            rows.append([os.path.basename(filepath), "ERROR", "-", "-", "-", "-"])
+            rows.append([display_name, "ERROR", "-", "-", "-", "-"])
             continue
         
         if "stats" not in result or "total" not in result:
-            rows.append([os.path.basename(filepath), "N/A", "-", "-", "-", "-"])
+            rows.append([display_name, "N/A", "-", "-", "-", "-"])
             continue
         
         available = result["stats"]["available"]
@@ -620,7 +653,7 @@ def print_summary_file_breakdown(results):
         execution_rate = round((executed / available * 100), 2) if available > 0 else 0
         
         rows.append([
-            os.path.basename(filepath),
+            display_name,
             available,
             completed,
             completion_rate,

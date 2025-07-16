@@ -8,17 +8,17 @@
    |_|\___||___/\__|____/ \__\__,_|\__|  \____|_____|___|
 ```
 
-Excelテスト仕様書からテスト結果を集計・分析するCLIツールです。
+Excelテスト仕様書からテスト結果を集計するCLIツールです。
 
 ## 概要
 
-このツールは、Excelファイル（.xlsx）に記録されたテスト結果を読み取り、以下の集計・分析を行います：
+このツールは、Excelファイル（.xlsx）に記録されたテスト結果を読み取り、以下の集計を行います：
 
-- テストケース数の統計
-- 結果別（Pass/Fail/Blocked等）の集計
+- テストケース数の集計
+- テスト結果別（Pass/Fail/Blocked...）の集計
 - 日別・担当者別・環境別の集計
 - 完了率・消化率の算出
-- 美しいテーブル形式での出力
+- テーブル形式でのコンソール出力、Excel/CSV形式でのレポートなど様々な形式での出力
 
 ## インストール
 
@@ -118,7 +118,7 @@ tstat path/to/your_file.xlsx -P
 tstat --date-range 2024-01-15 2024-01-20 path/to/your_file.xlsx
 
 # 担当者フィルタ
-tstat --tester 田中 path/to/your_file.xlsx
+tstat --tester テスト太郎 path/to/your_file.xlsx
 
 # 結果タイプフィルタ
 tstat --result-type Pass Fail path/to/your_file.xlsx
@@ -127,7 +127,7 @@ tstat --result-type Pass Fail path/to/your_file.xlsx
 tstat --environment セット1 path/to/your_file.xlsx
 
 # 複合フィルタリング
-tstat --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass path/to/your_file.xlsx
+tstat --date-range 2024-01-15 2024-01-20 --tester テスト太郎 --result-type Pass path/to/your_file.xlsx
 ```
 
 ## 出力形式
@@ -254,8 +254,8 @@ python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 sampl
 # → results_2024-01-15_to_2024-01-20.xlsx
 
 # 複合フィルタ
-python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester 田中 sample1.xlsx
-# → results_2024-01-15_to_2024-01-20_田中.xlsx
+python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tester テスト太郎 sample1.xlsx
+# → results_2024-01-15_to_2024-01-20_テスト太郎.xlsx
 ```
 
 ## 設定ファイル仕様
@@ -337,9 +337,9 @@ python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tes
 ### サンプルデータ
 ```
 # テスト項目    結果    担当者    日付      計画
-テストケース1   Pass    田中     2024-01-15 2024-01-10
-テストケース2   Fail    佐藤     2024-01-16 2024-01-10
-テストケース3   Blocked 鈴木     2024-01-17 2024-01-10
+テストケース1   Pass    テスト太郎     2024-01-15 2024-01-10
+テストケース2   Fail    テスト次郎     2024-01-16 2024-01-10
+テストケース3   Blocked テスト三郎     2024-01-17 2024-01-10
 ```
 
 ## エラーハンドリング

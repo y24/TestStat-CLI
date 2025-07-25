@@ -837,20 +837,6 @@ if __name__ == "__main__":
     # ファイル検索結果をログ出力
     verbose_logger.log_file_search(target_path if not args.list else args.list, len(file_list))
     
-    # プロジェクトリストファイル処理時の情報表示
-    # --- ここを削除 ---
-    # if args.list and project_info:
-    #     print("==========================================")
-    #     print("Summary Results")
-    #     print("==========================================")
-    #     print()
-    #     print(f"Project: {project_info['project_name']}")
-    #     print(f"Processed Files: {len(file_list)}")
-    #     if project_info.get('last_loaded'):
-    #         print(f"Last Loaded: {project_info['last_loaded']}")
-    #     print()
-    # --- ここまで削除 ---
-    
     results = []
     
     # 各ファイルの処理

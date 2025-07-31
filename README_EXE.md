@@ -1,6 +1,14 @@
-# TestStat-CLI exe版
+# TestStat-CLI
 
-Excelテスト仕様書集計ツールのexeファイル版です。
+```
+  _____         _   ____  _        _      ____ _     ___
+ |_   _|__  ___| |_/ ___|| |_ __ _| |_   / ___| |   |_ _|
+   | |/ _ \/ __| __\___ \| __/ _` | __| | |   | |    | |
+   | |  __/\__ \ |_ ___) | || (_| | |_  | |___| |___ | |
+   |_|\___||___/\__|____/ \__\__,_|\__|  \____|_____|___|
+```
+
+Excelテスト仕様書からテスト結果を集計するCLIツールです。
 
 ## ファイル構成
 
@@ -23,11 +31,14 @@ tstat.exe --help
 # 単一ファイルの集計
 tstat.exe "path/to/test_spec.xlsx"
 
+# 複数ファイルの集計（複数のxlsxファイルを直接指定）
+tstat.exe "path/to/file1.xlsx" "path/to/file2.xlsx" "path/to/file3.xlsx"
+
 # ディレクトリ内の全Excelファイルを集計
 tstat.exe "path/to/test_folder"
 
 # プロジェクトリストファイルを使用
-tstat.exe -l "path/to/project_list.json" "path/to/test_folder"
+tstat.exe -l "path/to/project_list.json"
 ```
 
 ### 出力オプション
@@ -76,8 +87,20 @@ tstat.exe "test_spec.xlsx" --environment "本番環境"
 - **completed_results**: 完了とみなす結果タイプ
 - **executed_results**: 実施済みとみなす結果タイプ
 
-## プロジェクトリストファイル
+## 複数ファイル処理
 
+複数のxlsxファイルを同時に処理する場合、以下の方法があります：
+
+### 1. 直接指定による複数ファイル処理
+```bash
+# 複数のxlsxファイルを直接指定
+tstat.exe file1.xlsx file2.xlsx file3.xlsx
+
+# パスに空白が含まれる場合は引用符で囲む
+tstat.exe "D:\Script\TestStat-CLI\input_sample\sample1.xlsx" "D:\Script\TestStat-CLI\input_sample\sample2_abcdegfg.xlsx"
+```
+
+### 2. プロジェクトリストファイルによる複数ファイル処理
 複数のファイルを一括処理する場合は、プロジェクトリストファイルを使用できます。
 
 ### JSON形式
@@ -117,6 +140,15 @@ project:
 path/to/file1.xlsx
 path/to/file2.xlsx
 ```
+
+### 複数ファイル処理の出力内容
+複数ファイルを処理した場合、以下の情報が表示されます：
+
+- **SUMMARY TOTAL RESULTS**: 全ファイルの統合集計結果
+- **FILE BREAKDOWN**: 各ファイルの個別サマリー
+- **ERROR SUMMARY**: エラーが発生したファイルの一覧
+- **OVERALL STATUS**: 全体のステータス情報
+- **各ファイルの詳細**: 各ファイルの個別詳細集計
 
 ## トラブルシューティング
 

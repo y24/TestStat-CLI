@@ -1,4 +1,4 @@
-# TestStat CLI
+# TestStat-CLI
 
 ```
   _____         _   ____  _        _      ____ _     ___
@@ -78,8 +78,11 @@ tstat [オプション] [ファイルパス/フォルダパス]
 # 単一ファイルの集計
 tstat path/to/your_file.xlsx
 
+# 複数ファイルの集計（複数のxlsxファイルを直接指定）
+tstat path/to/file1.xlsx path/to/file2.xlsx path/to/file3.xlsx
+
 # フォルダ内の全Excelファイルを集計
-tstat path/to/your_file.xlsx
+tstat path/to/your_folder
 
 # プロジェクトリストファイル使用（JSON形式）
 tstat -l project_list.json
@@ -202,6 +205,40 @@ Last Update: 2024-01-20
   }
 }
 ```
+
+### 複数ファイル処理
+
+複数のxlsxファイルを同時に処理する場合、以下の方法があります：
+
+#### 1. 直接指定による複数ファイル処理
+```bash
+# 複数のxlsxファイルを直接指定
+tstat.exe file1.xlsx file2.xlsx file3.xlsx
+
+# パスに空白が含まれる場合は引用符で囲む
+tstat.exe "D:\Script\TestStat-CLI\input_sample\sample1.xlsx" "D:\Script\TestStat-CLI\input_sample\sample2_abcdegfg.xlsx"
+```
+
+#### 2. プロジェクトリストファイルによる複数ファイル処理
+```bash
+# JSON形式のプロジェクトリストファイルを使用
+tstat.exe -l project_list.json
+
+# YAML形式のプロジェクトリストファイルを使用
+tstat.exe -l project_list.yaml
+
+# テキスト形式のプロジェクトリストファイルを使用
+tstat.exe -l file_list.txt
+```
+
+#### 複数ファイル処理の出力内容
+複数ファイルを処理した場合、以下の情報が表示されます：
+
+- **SUMMARY TOTAL RESULTS**: 全ファイルの統合集計結果
+- **FILE BREAKDOWN**: 各ファイルの個別サマリー
+- **ERROR SUMMARY**: エラーが発生したファイルの一覧
+- **OVERALL STATUS**: 全体のステータス情報
+- **各ファイルの詳細**: 各ファイルの個別詳細集計
 
 ### CSV形式出力（`-f, --output-format` オプションで `csv` を指定）
 

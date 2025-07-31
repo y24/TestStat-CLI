@@ -720,7 +720,7 @@ def parse_args():
             pass
     
     parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
-    parser.add_argument("path", nargs='?', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）")
+    parser.add_argument("path", nargs='*', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）。複数指定可能")
     parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv", "excel"], default="table", help="出力形式（table/json/csv/excel）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
@@ -815,27 +815,38 @@ if __name__ == "__main__":
             print("ERROR: 処理可能なファイルが見つかりませんでした")
             sys.exit(1)
     else:
-        # 従来の単一パス処理
+        # 複数パス処理
         if not args.path:
             print("ERROR: パスまたはプロジェクトリストファイルを指定してください")
             sys.exit(1)
         
-        target_path = args.path
-        if not os.path.exists(target_path):
-            print(f"ERROR: 指定されたパスが存在しません: {target_path}")
-            sys.exit(1)
+        # 各パスからExcelファイルを検索
+        file_list = []
+        file_identifiers = {}  # 複数パス処理ではidentifierは空
         
-        # Excelファイルの検索
-        is_valid, file_list_or_error = find_excel_files(target_path)
-        if not is_valid:
-            print(f"ERROR: {file_list_or_error}")
-            sys.exit(1)
+        for target_path in args.path:
+            if not os.path.exists(target_path):
+                print(f"WARNING: 指定されたパスが存在しません: {target_path}")
+                continue
+            
+            # Excelファイルの検索
+            is_valid, file_list_or_error = find_excel_files(target_path)
+            if not is_valid:
+                print(f"WARNING: {file_list_or_error}")
+                continue
+            
+            if isinstance(file_list_or_error, list):
+                file_list.extend(file_list_or_error)
         
-        file_list = file_list_or_error
-        file_identifiers = {}  # 単一パス処理ではidentifierは空
+        if not file_list:
+            print("ERROR: 処理可能なファイルが見つかりませんでした")
+            sys.exit(1)
     
     # ファイル検索結果をログ出力
-    verbose_logger.log_file_search(target_path if not args.list else args.list, len(file_list))
+    if args.list:
+        verbose_logger.log_file_search(args.list, len(file_list))
+    else:
+        verbose_logger.log_file_search(f"{len(args.path)} paths", len(file_list))
     
     results = []
     
@@ -1083,6 +1094,11 @@ if __name__ == "__main__":
             # --- ここまで追加 ---
             if args.list:
                 print(f"List File: {args.list}")
+            else:
+                print(f"Input Paths: {len(args.path)}")
+                for i, path in enumerate(args.path, 1):
+                    print(f"  {i}. {path}")
+                print()
             print(f"Processed Files: {len(file_list)}")
             # サマリー総合結果
             print_summary_total_results(results, settings)

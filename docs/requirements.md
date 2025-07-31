@@ -61,6 +61,7 @@ python test_stat.py [オプション] [ファイルパス/フォルダパス]
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
 | `--result-type` | - | 結果タイプフィルタ（複数指定可能） | なし |
 | `--environment` | - | 環境フィルタ（部分一致） | なし |
+| `--detailed` | - | 複数ファイル処理時にファイル別の詳細結果も表示 | `false` |
 | `--help` | `-h` | ヘルプ表示 | - |
 
 ### 3.3 使用例
@@ -180,6 +181,9 @@ python test_stat.py --environment セット1 sample1.xlsx
 
 # 複合フィルタリング
 python test_stat.py --date-range 2024-01-15 2024-01-20 --tester 田中 --result-type Pass sample1.xlsx
+
+# 詳細出力オプション（複数ファイル処理時）
+python test_stat.py --detailed sample1.xlsx sample2.xlsx
 
 # プロジェクトリストとフィルタリング組み合わせ
 python test_stat.py -l project_list.yaml --date-range 2024-01-15 2024-01-20

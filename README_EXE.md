@@ -71,6 +71,9 @@ tstat.exe "test_spec.xlsx" --result-type Pass Fail
 
 # 環境フィルタ
 tstat.exe "test_spec.xlsx" --environment "本番環境"
+
+# 詳細出力オプション（複数ファイル処理時）
+tstat.exe "file1.xlsx" "file2.xlsx" --detailed
 ```
 
 ## 設定ファイル
@@ -148,7 +151,11 @@ path/to/file2.xlsx
 - **FILE BREAKDOWN**: 各ファイルの個別サマリー
 - **ERROR SUMMARY**: エラーが発生したファイルの一覧
 - **OVERALL STATUS**: 全体のステータス情報
-- **各ファイルの詳細**: 各ファイルの個別詳細集計
+- **各ファイルの詳細**: 各ファイルの個別詳細集計（`--detailed`オプション指定時のみ）
+
+**デフォルト動作**: 複数ファイル処理時は、サマリー情報のみが表示され、各ファイルの詳細な結果（日別集計、担当者別集計、環境別集計など）は表示されません。
+
+**詳細出力**: `--detailed`オプションを指定すると、各ファイルの詳細な結果も表示されます。
 
 ## トラブルシューティング
 
@@ -173,11 +180,3 @@ path/to/file2.xlsx
 ```bash
 tstat.exe "test_spec.xlsx" -v
 ```
-
-## 更新履歴
-
-- v1.0.0: 初回リリース
-  - 基本的な集計機能
-  - 複数ファイル対応
-  - フィルタリング機能
-  - 各種出力形式対応 

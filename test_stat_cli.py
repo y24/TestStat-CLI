@@ -742,6 +742,10 @@ def parse_args():
                        help="結果タイプフィルタ（複数指定可能）")
     parser.add_argument("--environment", help="環境フィルタ（部分一致）")
     
+    # 詳細出力オプション
+    parser.add_argument("--detailed", action="store_true", 
+                       help="複数ファイル処理時にファイル別の詳細結果も表示")
+    
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -1105,10 +1109,13 @@ if __name__ == "__main__":
             print_summary_file_breakdown(results)
             print_summary_errors(results)
             print_summary_overall(results)
-            print()
-            for filepath, result in results:
-                print("=" * 50)
-                format_output(result, filepath, show_title=False, settings=settings, filters=filters)
+            
+            # 詳細出力オプションが指定されている場合のみファイル別の結果を表示
+            if args.detailed:
+                print()
+                for filepath, result in results:
+                    print("=" * 50)
+                    format_output(result, filepath, show_title=False, settings=settings, filters=filters)
         else:
             filepath, result = results[0]
             format_output(result, filepath, settings=settings, filters=filters)

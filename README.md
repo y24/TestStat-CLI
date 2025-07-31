@@ -375,45 +375,163 @@ python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tes
 - **設定ファイルエラー**: JSON形式の構文を確認
 - **シートが見つからない**: Excelファイル内に「テスト項目」を含むシートが存在することを確認
 
+## exeファイルのビルド
+
+### 前提条件
+
+- Python 3.7以上
+- Windows環境（exeファイル作成のため）
+
+### ビルド手順
+
+#### 方法1: バッチファイルを使用（推奨）
+
+```bash
+# ビルド実行
+build_exe.bat
+
+# または、配布パッケージまで作成
+package_exe.bat
+```
+
+#### 方法2: Pythonスクリプトを使用
+
+```bash
+# exeファイルのビルド
+python build_exe.py build
+
+# ビルドファイルのクリーンアップ
+python build_exe.py clean
+
+# 配布パッケージの作成
+python package_exe.py
+
+# 配布パッケージのクリーンアップ
+python package_exe.py clean
+```
+
+### ビルド結果
+
+ビルドが成功すると、以下のファイルが作成されます：
+
+- `dist/tstat.exe` - メインの実行ファイル
+- `dist_package/` - 配布用フォルダ
+- `TestStat-CLI_v1.0.0_*.zip` - 配布用ZIPパッケージ
+
+### 配布パッケージの内容
+
+```
+dist_package/
+├── tstat.exe              # 実行ファイル
+├── config.json            # 設定ファイル
+├── config_example.json    # 設定ファイル例
+├── README.md              # 使用方法（英語）
+├── 使用方法.txt           # 使用方法（日本語）
+├── assets/
+│   └── logo.txt          # ロゴファイル
+└── samples/              # サンプルファイル
+    ├── input_sample/     # 入力サンプル
+    ├── list_samples/     # リストサンプル
+    └── batch_samples/    # バッチサンプル
+```
+
+### exeファイルの使用方法
+
+```bash
+# ヘルプ表示
+tstat.exe --help
+
+# 単一ファイルの集計
+tstat.exe "path/to/test_spec.xlsx"
+
+# ディレクトリ内の全Excelファイルを集計
+tstat.exe "path/to/test_folder"
+
+# 設定ファイルを指定
+tstat.exe "test_spec.xlsx" -c config.json
+
+# 結果をCSVファイルに出力
+tstat.exe "test_spec.xlsx" -o "output.csv" -f csv
+
+# クリップボードにコピー
+tstat.exe "test_spec.xlsx" -p
+```
+
+### トラブルシューティング
+
+#### よくあるエラー
+
+1. **enum34パッケージエラー**
+   ```
+   ERROR: The 'enum34' package is an obsolete backport...
+   ```
+   **対処法**: `python -m pip uninstall enum34 -y` を実行してから再ビルド
+
+2. **PyInstallerが見つからない**
+   ```
+   ModuleNotFoundError: No module named 'PyInstaller'
+   ```
+   **対処法**: `pip install pyinstaller` を実行
+
+3. **ビルドエラー**
+   ```
+   CalledProcessError: Command returned non-zero exit status
+   ```
+   **対処法**: 
+   - 依存パッケージを再インストール: `pip install -r requirements.txt`
+   - ビルドファイルをクリーンアップ: `python build_exe.py clean`
+   - 再ビルドを実行
+
 ## 開発・カスタマイズ
 
 ### プロジェクト構造
 ```
 TestStatCLI/
-├── test_stat_cli.py  # メインCLI
-├── config.json             # 設定ファイル
-├── requirements.txt        # 依存関係
-├── setup.bat               # Windowsセットアップスクリプト
-├── tstat.bat               # Windows実行スクリプト
-├── tstat.sh                # Linux実行スクリプト
-├── list_samples/           # サンプルファイル
-│   ├── list_sample.json    # jsonサンプル
-│   ├── list_sample.txt     # txtサンプル
-│   └── list_sample.yaml    # yamlサンプル
-├── utils/                  # ユーティリティ
-│   ├── __init__.py         # パッケージ初期化
-│   ├── ReadData.py         # データ読み取り
-│   ├── OpenpyxlWrapper.py  # Excel操作
-│   ├── Logger.py           # ログ機能
-│   ├── OutputWriter.py     # 出力処理
-│   ├── DataConversion.py   # データ変換
-│   ├── Labels.py           # ラベル管理
-│   ├── ClipboardWriter.py  # クリップボード出力
-│   └── Utility.py          # 汎用ユーティリティ
-└── assets/                 # アセット
-    └── logo.txt            # ロゴ
+├── test_stat_cli.py       # メインCLI
+├── config.json            # 設定ファイル
+├── requirements.txt       # 依存関係
+├── build_exe.py          # exeビルドスクリプト
+├── build_exe.bat         # exeビルドバッチ
+├── package_exe.py        # 配布パッケージ作成スクリプト
+├── package_exe.bat       # 配布パッケージ作成バッチ
+├── setup.bat             # Windowsセットアップスクリプト
+├── tstat.bat             # Windows実行スクリプト
+├── tstat.sh              # Linux実行スクリプト
+├── list_samples/         # サンプルファイル
+│   ├── list_sample.json  # jsonサンプル
+│   ├── list_sample.txt   # txtサンプル
+│   └── list_sample.yaml  # yamlサンプル
+├── utils/                # ユーティリティ
+│   ├── __init__.py       # パッケージ初期化
+│   ├── ReadData.py       # データ読み取り
+│   ├── OpenpyxlWrapper.py # Excel操作
+│   ├── Logger.py         # ログ機能
+│   ├── OutputWriter.py   # 出力処理
+│   ├── DataConversion.py # データ変換
+│   ├── Labels.py         # ラベル管理
+│   ├── ClipboardWriter.py # クリップボード出力
+│   └── Utility.py        # 汎用ユーティリティ
+└── assets/               # アセット
+    └── logo.txt          # ロゴ
 ```
 
 ### 拡張ポイント
 - `utils/ReadData.py`: データ読み取りロジックのカスタマイズ
 - `config.json`: 設定による動作のカスタマイズ
 - `test_stat_cli.py`: 出力形式のカスタマイズ
+- `build_exe.py`: exeビルド設定のカスタマイズ
 
 ## ライセンス
 
 MIT
 
 ## 更新履歴
+
+- v1.1.0: exeファイル対応
+  - PyInstallerを使用したexeファイルビルド機能
+  - 配布用パッケージ作成機能
+  - スタンドアロン実行対応
+  - ビルドスクリプトとバッチファイル追加
 
 - v1.0.0: 初期リリース
   - 基本的な集計機能

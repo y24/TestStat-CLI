@@ -1,2 +1,6 @@
 utils/__pycache__/*
 input_sample/*
+build/*
+dist/*
+dist_package/*
+*.zip

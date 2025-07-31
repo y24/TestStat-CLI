@@ -508,7 +508,6 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
         for date_data in result['by_name'].values():
             all_names.update(date_data.keys())
         name_headers.extend(sorted(all_names))
-        name_headers.extend(["完了数", "消化数", "計画数"])
         
         name_rows = []
         for date in sorted(result['by_name'].keys()):
@@ -516,11 +515,6 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
             for name in sorted(all_names):
                 count = result['by_name'][date].get(name, 0)
                 row.append(count)
-            # 完了数、消化数、計画数を追加（日別データから取得）
-            daily_data = result['daily'].get(date, {})
-            row.append(daily_data.get('完了数', 0))
-            row.append(daily_data.get('消化数', 0))
-            row.append(daily_data.get('計画数', 0))
             name_rows.append(row)
         print_table(name_headers, name_rows)
         print()

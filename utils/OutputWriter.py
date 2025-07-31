@@ -114,17 +114,12 @@ class OutputWriter:
             testers = sorted([a for a in testers if a not in ["完了数", "消化数", "計画数"]])
             
             if testers:
-                headers = ["Date"] + testers + ["完了数", "消化数", "計画数"]
+                headers = ["Date"] + testers
                 writer.writerow(headers)
                 for date, name_data in sorted(data["by_name"].items()):
                     row = [date]
                     for tester in testers:
                         row.append(name_data.get(tester, 0))
-                    row.extend([
-                        name_data.get("完了数", 0),
-                        name_data.get("消化数", 0),
-                        name_data.get("計画数", 0)
-                    ])
                     writer.writerow(row)
                 writer.writerow([])  # 空行
         
@@ -204,6 +199,37 @@ class OutputWriter:
                         total.get("完了率(%)", 0),
                         total.get("消化率(%)", 0)
                     ])
+            writer.writerow([])  # 空行
+        
+        # BY NAME
+        if "files" in data:
+            # 全ファイルの担当者別データを統合
+            combined_by_name = {}
+            for file_data in data["files"]:
+                if "by_name" in file_data:
+                    for date, name_data in file_data["by_name"].items():
+                        if date not in combined_by_name:
+                            combined_by_name[date] = {}
+                        for name, count in name_data.items():
+                            if name not in combined_by_name[date]:
+                                combined_by_name[date][name] = 0
+                            combined_by_name[date][name] += count
+            
+            # 担当者名を取得
+            testers = set()
+            for daily_data in combined_by_name.values():
+                testers.update(daily_data.keys())
+            testers = sorted([a for a in testers if a not in ["完了数", "消化数", "計画数"]])
+            
+            if testers:
+                headers = ["Date"] + testers
+                writer.writerow(headers)
+                for date, name_data in sorted(combined_by_name.items()):
+                    row = [date]
+                    for tester in testers:
+                        row.append(name_data.get(tester, 0))
+                    writer.writerow(row)
+                writer.writerow([])  # 空行
         
         # BY ENVIRONMENT
         if "by_env" in data:
@@ -405,17 +431,12 @@ class OutputWriter:
         testers = sorted([a for a in testers if a not in ["完了数", "消化数", "計画数"]])
         
         if testers:
-            headers = ["Date"] + testers + ["完了数", "消化数", "計画数"]
+            headers = ["Date"] + testers
             data = []
             for date, name_data in sorted(by_name_data.items()):
                 row = [date]
                 for tester in testers:
                     row.append(name_data.get(tester, 0))
-                row.extend([
-                    name_data.get("完了数", 0),
-                    name_data.get("消化数", 0),
-                    name_data.get("計画数", 0)
-                ])
                 data.append(row)
             
             self._write_sheet_with_formatting(ws, [headers] + data)

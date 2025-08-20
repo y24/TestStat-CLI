@@ -742,7 +742,7 @@ def parse_args():
     
     return parser.parse_args()
 
-if __name__ == "__main__":
+def main():
     args = parse_args()
     
     # VerboseLoggerの初期化
@@ -1121,4 +1121,7 @@ if __name__ == "__main__":
             verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
     
     # 全体処理終了
-    verbose_logger.end_processing() 
+    verbose_logger.end_processing()
+
+if __name__ == "__main__":
+    main() 

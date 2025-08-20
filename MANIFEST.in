@@ -1,0 +1,13 @@
+include README.md
+include requirements.txt
+include config.json
+include dist_config.json
+include *.bat
+include *.sh
+include *.spec
+include assets/*
+include list_samples/*
+include input_sample/*
+recursive-include utils *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

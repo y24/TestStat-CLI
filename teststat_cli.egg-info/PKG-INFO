@@ -1,3 +1,35 @@
+Metadata-Version: 2.4
+Name: teststat-cli
+Version: 1.0.0
+Summary: Excelテスト仕様書からテスト結果を集計するCLIツール
+Home-page: 
+Author: TestStat-CLI Team
+Author-email: 
+License: MIT
+Keywords: excel,testing,cli,statistics,reporting,xlsx
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Office/Business :: Financial :: Spreadsheet
+Classifier: Topic :: Utilities
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: openpyxl>=3.0.0
+Requires-Dist: pyperclip>=1.8.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: pyinstaller>=5.0.0
+Dynamic: requires-python
+
 # TestStat-CLI
 
 ```
@@ -28,6 +60,8 @@ Excelテスト仕様書からテスト結果を集計するCLIツールです。
 
 ### セットアップ
 
+#### 方法1: pip install（推奨）
+
 ```bash
 # リポジトリのクローン
 git clone <repository-url>
@@ -42,12 +76,39 @@ pip install -e .
 
 インストール後、`tstat`コマンドがグローバルに利用可能になります。
 
+#### 方法2: 従来の方法
+
+```bash
+# リポジトリのクローン
+git clone <repository-url>
+cd TestStat-CLI
+
+# 依存パッケージのインストール
+pip install -r requirements.txt
+```
+
 ## 使い方
 
 ### 基本コマンド
 
+#### pip installでインストールした場合
+
 ```bash
 tstat [オプション] [ファイルパス/フォルダパス]
+```
+
+#### 従来の方法でインストールした場合
+
+本ツールのフォルダを環境変数PATHに追加することで、`tstat` というコマンドで実行することができます。
+
+```bash
+tstat [オプション] [ファイルパス/フォルダパス]
+```
+
+または、下記のように直接実行します。
+
+```bash
+.\tstat.bat [オプション] [ファイルパス/フォルダパス]
 ```
 
 ### コマンドラインオプション

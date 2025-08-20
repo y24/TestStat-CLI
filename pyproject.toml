@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststat-cli"
+version = "1.0.0"
+description = "Excelテスト仕様書からテスト結果を集計するCLIツール"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "TestStat-CLI Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "openpyxl>=3.0.0",
+    "pyperclip>=1.8.0",
+    "PyYAML>=6.0",
+    "pyinstaller>=5.0.0",
+]
+keywords = ["excel", "testing", "cli", "statistics", "reporting", "xlsx"]
+
+[project.scripts]
+tstat = "test_stat_cli:main"
+
+[project.urls]
+# Homepage = ""
+# Repository = ""
+# Documentation = ""
+
+[tool.setuptools]
+packages = ["utils"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.txt", "*.yaml", "*.yml"]

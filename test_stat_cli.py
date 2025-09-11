@@ -1066,7 +1066,6 @@ def main():
     
     # コンソール出力処理
     if args.output_format == "json" or args.json_output:
-        import json
         print(json.dumps(output_data, ensure_ascii=False, indent=2))
     else:
         # テーブル形式出力

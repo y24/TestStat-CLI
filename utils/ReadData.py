@@ -34,7 +34,12 @@ def get_daily(data, results: list[str], completed_label:str, completed_results: 
             result_count[plan_date][plan_label] += 1
 
         # 実績データの日付別集計
-        result, name, date = row
+        if len(row) >= 4:
+            result, name, date, sheet_name = row[0], row[1], row[2], row[3]
+        else:
+            # 後方互換性のため、シート名がない場合は空文字を設定
+            result, name, date = row[0], row[1], row[2]
+            sheet_name = ""
         
         # 日付が未設定の場合は特別な識別子「no_date」として扱う
         if not date: date = "no_date"
@@ -72,7 +77,12 @@ def get_daily_by_name(data):
 
     # 結果が空ではない行を日付および名前ごとにカウント
     for row in data:
-        result, name, date = row
+        if len(row) >= 4:
+            result, name, date, sheet_name = row[0], row[1], row[2], row[3]
+        else:
+            # 後方互換性のため、シート名がない場合は空文字を設定
+            result, name, date = row[0], row[1], row[2]
+            sheet_name = ""
         if result:  # 結果が空ではない場合
             date_name_count[date][name] += 1
 
@@ -186,6 +196,7 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
     all_plan_data = []     # 全シートの計画データを格納
     data_by_env = {}       # 環境別の集計データを格納
     counts_by_sheet = []   # シート別の件数情報を格納
+    sheet_name_mapping = {} # 環境名とシート名のマッピング
 
     # 各シートのデータを処理
     for sheet_name in sheet_names:
@@ -206,6 +217,7 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
             all_plan_data.extend(sheet_data["plan_data"]) # 計画データを追加
             data_by_env.update(sheet_data["env_data"])    # 環境別データを追加
             counts_by_sheet.append(sheet_data["counts"])   # 件数情報を追加
+            sheet_name_mapping.update(sheet_data.get("sheet_name_mapping", {}))  # シート名マッピングを追加
             
             if verbose_logger:
                 verbose_logger.log(f"シート処理完了: {sheet_name} - データ行数: {len(sheet_data['data'])}")
@@ -222,7 +234,8 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
             counts_by_sheet=counts_by_sheet,  # シート別のテストケース件数情報
             settings=settings,            # 設定情報
             verbose_logger=verbose_logger, # 詳細ログ
-            filters=filters              # フィルタリング条件
+            filters=filters,             # フィルタリング条件
+            sheet_name_mapping=sheet_name_mapping  # シート名マッピング
         )
     
     # 詳細ログ終了
@@ -304,17 +317,21 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
     data = []
     env_data = {}  # 環境データを格納する辞書を初期化
     all_plan_data = []
+    sheet_name_mapping = {}  # 環境名とシート名のマッピング
     
     for index, set_ in enumerate(sets):
         # セットのデータ取得
         set_data = Excel.get_columns_data(sheet=sheet, col_nums=set_, header_row=header_rownum, ignore_header=True)
 
         # 担当者名がNoneで結果と日付が存在する場合、"NO_NAME"に置き換え
+        # 各データ行にシート名を追加
         processed_data = []
         for row in set_data:
             if row[0] is not None and row[2] is not None and row[1] is None:
                 row = [row[0], "NO_NAME", row[2]]
-            processed_data.append(row)
+            # シート名を4番目の要素として追加
+            row_with_sheet = row + [sheet_name]
+            processed_data.append(row_with_sheet)
 
         # 全セット合計のデータにも追加
         data.extend(processed_data)
@@ -345,6 +362,9 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
             plan_label=settings["test_status"]["labels"]["planned"],
             plan_data=plan_data
         )
+        
+        # 環境名とシート名のマッピングを保存
+        sheet_name_mapping[set_name] = sheet_name
 
     # 環境数
     env_count = len(sets)
@@ -402,6 +422,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
         "data": data,
         "plan_data": all_plan_data,
         "env_data": env_data,
+        "sheet_name_mapping": sheet_name_mapping,
         "counts": {
             "sheet_name": sheet_name,
             "env_count": env_count,
@@ -410,7 +431,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
         }
     }
 
-def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, filters=None):
+def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, filters=None, sheet_name_mapping=None):
     # 全セット集計(日付別)
     data_daily_total, no_date_data = get_daily(
         data=all_data,
@@ -518,7 +539,8 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         "daily": data_daily_total,
         "total": total_results,
         "by_name": data_by_name,
-        "by_env": by_env_daily
+        "by_env": by_env_daily,
+        "sheet_name_mapping": sheet_name_mapping or {}
     }
 
     # フィルタ適用後の統計情報を追加
@@ -658,7 +680,15 @@ def apply_filters(all_data, all_plan_data, data_by_env, filters, verbose_logger=
     if verbose_logger:
         verbose_logger.log(f"フィルタ適用前データ: {original_count}件")
     
-    for i, (result, name, date) in enumerate(all_data):
+    for i, row in enumerate(all_data):
+        # データ行の構造: (result, name, date, sheet_name)
+        if len(row) >= 4:
+            result, name, date, sheet_name = row[0], row[1], row[2], row[3]
+        else:
+            # 後方互換性のため、シート名がない場合は空文字を設定
+            result, name, date = row[0], row[1], row[2]
+            sheet_name = ""
+        
         # 各フィルタ条件をチェック
         include_row = True
         
@@ -680,7 +710,7 @@ def apply_filters(all_data, all_plan_data, data_by_env, filters, verbose_logger=
         
         # フィルタ条件を満たす場合は結果に含める
         if include_row:
-            filtered_data.append((result, name, date))
+            filtered_data.append((result, name, date, sheet_name))
             if i < len(all_plan_data):
                 filtered_plan_data.append(all_plan_data[i])
     

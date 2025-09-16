@@ -4,7 +4,7 @@ import os
 
 def convert_to_2d_array(data, settings):
     # ヘッダーの作成
-    base_header = ["ファイル名", "識別子", "環境名", "日付"]
+    base_header = ["ファイル名", "識別子", "環境名", "日付", "シート名"]
     completed_label = settings["test_status"]["labels"]["completed"]
     executed_label = settings["test_status"]["labels"]["executed"]
     planned_label = settings["test_status"]["labels"]["planned"]
@@ -28,17 +28,52 @@ def convert_to_2d_array(data, settings):
             # 環境別データがある場合
             for env, env_data in by_env_data.items():
                 for date, values in env_data.items():
-                    out_arr.append([file_name, identifier, env, date] + [values.get(v, 0) for v in out_results])
+                    # シート名を取得（環境名から推測またはデフォルト値）
+                    sheet_name = _extract_sheet_name_from_env(env, entry)
+                    out_arr.append([file_name, identifier, env, date, sheet_name] + [values.get(v, 0) for v in out_results])
         elif not Utility.is_empty_recursive(daily_data):
             # 環境別データがないが日付別データがある場合は、環境名は空で出力
             for date, values in entry.get("daily", {}).items():
-                out_arr.append([file_name, identifier, "", date] + [values.get(v, 0) for v in out_results])
+                # シート名を取得（デフォルト値または最初のシート名）
+                sheet_name = _extract_default_sheet_name(entry)
+                out_arr.append([file_name, identifier, "", date, sheet_name] + [values.get(v, 0) for v in out_results])
         else:
             # 環境別データも日付別データもない場合は、環境名と日付を空で合計データを出力
             total_data = entry.get("total", {})
             stats_data = entry.get("stats", {})
-            out_arr.append([file_name, identifier, "", ""] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)])
+            # シート名を取得（デフォルト値または最初のシート名）
+            sheet_name = _extract_default_sheet_name(entry)
+            out_arr.append([file_name, identifier, "", "", sheet_name] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)])
     return out_arr
+
+def _extract_sheet_name_from_env(env_name, entry):
+    """環境名からシート名を推測する"""
+    # シート名マッピングから取得
+    sheet_name_mapping = entry.get("sheet_name_mapping", {})
+    if env_name in sheet_name_mapping:
+        return sheet_name_mapping[env_name]
+    
+    # フォールバック: count_by_sheetからシート名を取得
+    count_by_sheet = entry.get("count_by_sheet", [])
+    if count_by_sheet:
+        # 最初のシート名を返す（複数シートがある場合は最初のものを使用）
+        return count_by_sheet[0].get("sheet_name", "")
+    return ""
+
+def _extract_default_sheet_name(entry):
+    """デフォルトのシート名を取得する"""
+    # シート名マッピングから最初のシート名を取得
+    sheet_name_mapping = entry.get("sheet_name_mapping", {})
+    if sheet_name_mapping:
+        # 最初のシート名を返す
+        return list(sheet_name_mapping.values())[0]
+    
+    # フォールバック: count_by_sheetからシート名を取得
+    count_by_sheet = entry.get("count_by_sheet", [])
+    if count_by_sheet:
+        # 最初のシート名を返す
+        return count_by_sheet[0].get("sheet_name", "")
+    return ""
 
 def create_export_data(input_data: list, settings: dict) -> list:
     """エクスポート用のデータを生成する

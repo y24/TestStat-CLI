@@ -459,11 +459,12 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
         # フィルタ適用後の場合は "(Filtered)" を追加
         table_title = "TOTAL RESULTS (Filtered):" if filters else "TOTAL RESULTS:"
         print(table_title)
-        total_headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        total_headers = result_order + ["未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         total_row = []
         for rt in result_order:
             total_row.append(result['total'].get(rt, 0))
         total_row.extend([
+            result['total'].get('未実施', 0),
             result['total'].get('Total', 0),
             result['total'].get('完了数', 0),
             result['total'].get('消化数', 0),
@@ -559,6 +560,7 @@ def print_summary_total_results(results, settings=None):
     # 初期化
     for rt in result_order:
         total_results[rt] = 0
+    total_results["未実施"] = 0
     total_results["Total"] = 0
     total_results["完了数"] = 0
     total_results["消化数"] = 0
@@ -568,6 +570,7 @@ def print_summary_total_results(results, settings=None):
         if "total" in result:
             for rt in result_order:
                 total_results[rt] += result["total"].get(rt, 0)
+            total_results["未実施"] += result["total"].get("未実施", 0)
             total_results["Total"] += result["total"].get("Total", 0)
             total_results["完了数"] += result["total"].get("完了数", 0)
             total_results["消化数"] += result["total"].get("消化数", 0)
@@ -581,11 +584,12 @@ def print_summary_total_results(results, settings=None):
     total_results["消化率(%)"] = round(execution_rate, 2)
     
     print("SUMMARY TOTAL RESULTS:")
-    total_headers = result_order + ["Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    total_headers = result_order + ["未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
     total_row = []
     for rt in result_order:
         total_row.append(total_results.get(rt, 0))
     total_row.extend([
+        total_results.get("未実施", 0),
         total_results.get("Total", 0),
         total_results.get("完了数", 0),
         total_results.get("消化数", 0),
@@ -926,7 +930,7 @@ def main():
         # TOTAL RESULTSの統合計算
         total_results = {
             "Pass": 0, "Fixed": 0, "Fail": 0, "Blocked": 0, "Suspend": 0, "N/A": 0,
-            "Total": 0, "完了数": 0, "消化数": 0, "完了率(%)": 0, "消化率(%)": 0
+            "未実施": 0, "Total": 0, "完了数": 0, "消化数": 0, "完了率(%)": 0, "消化率(%)": 0
         }
         
         for filepath, result in results:

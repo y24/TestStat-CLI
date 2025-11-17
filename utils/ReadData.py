@@ -519,7 +519,13 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
     total_results = {}
     for result_type in settings["test_status"]["results"]:
         total_results[result_type] = data_total.get(result_type, 0)
-    total_results["Total"] = sum(total_results.values())
+    
+    # 未実施を計算（Available Cases - Executed）
+    not_executed_count = max(0, available_count - executed_count)
+    total_results["未実施"] = not_executed_count
+    
+    # Totalは結果タイプの合計 + 未実施
+    total_results["Total"] = sum(data_total.get(rt, 0) for rt in settings["test_status"]["results"]) + not_executed_count
     
     # 完了率と消化率を計算
     completion_rate = (completed_count / available_count * 100) if available_count > 0 else 0

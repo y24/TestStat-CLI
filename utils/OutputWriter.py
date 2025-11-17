@@ -60,7 +60,7 @@ class OutputWriter:
         
         # TOTAL RESULTS
         if "total" in data:
-            writer.writerow(["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
+            writer.writerow(["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
             total = data["total"]
             writer.writerow([
                 "TOTAL RESULTS",
@@ -70,6 +70,7 @@ class OutputWriter:
                 total.get("Blocked", 0),
                 total.get("Suspend", 0),
                 total.get("N/A", 0),
+                total.get("未実施", 0),
                 total.get("Total", 0),
                 total.get("完了数", 0),
                 total.get("消化数", 0),
@@ -148,7 +149,7 @@ class OutputWriter:
         
         # SUMMARY TOTAL RESULTS
         if "summary" in data and "total_results" in data["summary"]:
-            writer.writerow(["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
+            writer.writerow(["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
             total = data["summary"]["total_results"]
             writer.writerow([
                 "SUMMARY TOTAL RESULTS",
@@ -158,6 +159,7 @@ class OutputWriter:
                 total.get("Blocked", 0),
                 total.get("Suspend", 0),
                 total.get("N/A", 0),
+                total.get("未実施", 0),
                 total.get("Total", 0),
                 total.get("完了数", 0),
                 total.get("消化数", 0),
@@ -334,7 +336,7 @@ class OutputWriter:
         # SUMMARY TOTAL RESULTS シート
         ws_summary = wb.create_sheet("SUMMARY TOTAL RESULTS")
         if "summary" in data and "total_results" in data["summary"]:
-            self._write_total_results_sheet(ws_summary, data["summary"]["total_results"])
+            self._write_summary_total_results_sheet(ws_summary, data["summary"]["total_results"])
         
         # SUMMARY STATISTICS シート
         ws_stats = wb.create_sheet("SUMMARY STATISTICS")
@@ -367,7 +369,7 @@ class OutputWriter:
     
     def _write_total_results_sheet(self, ws, total_data):
         """TOTAL RESULTS シートの書き込み"""
-        headers = ["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        headers = ["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         data = [
             "TOTAL RESULTS",
             total_data.get("Pass", 0),
@@ -376,6 +378,28 @@ class OutputWriter:
             total_data.get("Blocked", 0),
             total_data.get("Suspend", 0),
             total_data.get("N/A", 0),
+            total_data.get("未実施", 0),
+            total_data.get("Total", 0),
+            total_data.get("完了数", 0),
+            total_data.get("消化数", 0),
+            total_data.get("完了率(%)", 0),
+            total_data.get("消化率(%)", 0)
+        ]
+        
+        self._write_sheet_with_formatting(ws, [headers, data])
+    
+    def _write_summary_total_results_sheet(self, ws, total_data):
+        """SUMMARY TOTAL RESULTS シートの書き込み"""
+        headers = ["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        data = [
+            "SUMMARY TOTAL RESULTS",
+            total_data.get("Pass", 0),
+            total_data.get("Fixed", 0),
+            total_data.get("Fail", 0),
+            total_data.get("Blocked", 0),
+            total_data.get("Suspend", 0),
+            total_data.get("N/A", 0),
+            total_data.get("未実施", 0),
             total_data.get("Total", 0),
             total_data.get("完了数", 0),
             total_data.get("消化数", 0),

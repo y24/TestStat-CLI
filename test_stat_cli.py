@@ -188,6 +188,10 @@ def read_paths_from_list_file(list_file_path):
     project_data = read_project_list_file(list_file_path)
     return [file_info["path"] for file_info in project_data["files"]]
 
+def get_script_root_dir():
+    """スクリプトのルートディレクトリのパスを返す"""
+    return os.path.dirname(os.path.abspath(__file__))
+
 def get_display_width(text):
     """全角・半角を考慮した表示幅を返す"""
     text = str(text)
@@ -405,7 +409,9 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
     if show_title:
         # ロゴを表示
         try:
-            with open("assets/logo.txt", "r", encoding="utf-8") as f:
+            script_dir = get_script_root_dir()
+            logo_path = os.path.join(script_dir, "assets", "logo.txt")
+            with open(logo_path, "r", encoding="utf-8") as f:
                 logo = f.read()
                 print(logo)
         except FileNotFoundError:
@@ -703,10 +709,15 @@ def print_summary_overall(results):
     print()
 
 def parse_args():
+    # スクリプトのルートディレクトリを取得
+    script_dir = get_script_root_dir()
+    default_config_path = os.path.join(script_dir, "config.json")
+    
     # ヘルプ表示時のみロゴを表示
     if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
         try:
-            with open("assets/logo.txt", "r", encoding="utf-8") as f:
+            logo_path = os.path.join(script_dir, "assets", "logo.txt")
+            with open(logo_path, "r", encoding="utf-8") as f:
                 logo = f.read()
                 print(logo)
                 print()
@@ -715,7 +726,7 @@ def parse_args():
     
     parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
     parser.add_argument("path", nargs='*', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）。複数指定可能")
-    parser.add_argument("-c", "--config", default="config.json", help="設定ファイルのパス（デフォルト: config.json）")
+    parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv", "excel"], default="table", help="出力形式（table/json/csv/excel）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
@@ -1072,7 +1083,9 @@ def main():
         if len(file_list) > 1:
             # ロゴを表示
             try:
-                with open("assets/logo.txt", "r", encoding="utf-8") as f:
+                script_dir = get_script_root_dir()
+                logo_path = os.path.join(script_dir, "assets", "logo.txt")
+                with open(logo_path, "r", encoding="utf-8") as f:
                     logo = f.read()
                     print(logo)
             except FileNotFoundError:

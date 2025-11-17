@@ -9,7 +9,10 @@ def convert_to_2d_array(data, settings):
     executed_label = settings["test_status"]["labels"]["executed"]
     planned_label = settings["test_status"]["labels"]["planned"]
     results = settings["test_status"]["results"]
-    out_results = results + [executed_label, completed_label, planned_label]
+    use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False)
+    out_results = results + [executed_label, completed_label]
+    if use_plan_row:
+        out_results.append(planned_label)
     header = base_header + out_results
 
     # 出力用の2次元配列の作成
@@ -43,7 +46,10 @@ def convert_to_2d_array(data, settings):
             stats_data = entry.get("stats", {})
             # シート名を取得（デフォルト値または最初のシート名）
             sheet_name = _extract_default_sheet_name(entry)
-            out_arr.append([file_name, identifier, "", "", sheet_name] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)])
+            row_data = [file_name, identifier, "", "", sheet_name] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)]
+            if use_plan_row:
+                row_data.append(stats_data.get("planned", 0))
+            out_arr.append(row_data)
     return out_arr
 
 def _extract_sheet_name_from_env(env_name, entry):

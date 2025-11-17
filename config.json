@@ -26,6 +26,7 @@
             "completed": {"name": "完了"},
             "in_progress": {"name": "進行中"},
             "not_started": {"name": "未着手"}
-        }
+        },
+        "use_plan_row": false
     }
 }

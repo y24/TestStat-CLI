@@ -490,7 +490,11 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
         daily_headers = ["Date"]
         # 設定の結果タイプ順序を使用
         daily_headers.extend(result_order)
-        daily_headers.extend(["完了数", "消化数", "計画数"])
+        daily_headers.extend(["完了数", "消化数"])
+        # use_plan_rowがtrueの場合のみ計画数を追加
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
+        if use_plan_row:
+            daily_headers.append("計画数")
         
         daily_rows = []
         for date in sorted(result['daily'].keys()):
@@ -498,10 +502,12 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
             for rt in result_order:
                 count = result['daily'][date].get(rt, 0)
                 row.append(count)
-            # 完了数、消化数、計画数を追加
+            # 完了数、消化数を追加
             row.append(result['daily'][date].get('完了数', 0))
             row.append(result['daily'][date].get('消化数', 0))
-            row.append(result['daily'][date].get('計画数', 0))
+            # use_plan_rowがtrueの場合のみ計画数を追加
+            if use_plan_row:
+                row.append(result['daily'][date].get('計画数', 0))
             daily_rows.append(row)
         print_table(daily_headers, daily_rows)
         print()
@@ -529,11 +535,15 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
     # 環境別集計
     if result['by_env']:
         print("BY ENVIRONMENT:")
+        # use_plan_rowがtrueの場合のみ計画数を追加
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         for env_name in sorted(result['by_env'].keys()):
             print(f"\n{env_name}:")
             env_headers = ["Date"]
             env_headers.extend(result_order)
-            env_headers.extend(["完了数", "消化数", "計画数"])
+            env_headers.extend(["完了数", "消化数"])
+            if use_plan_row:
+                env_headers.append("計画数")
 
             env_rows = []
             # 各環境の全日付を昇順で取得
@@ -543,10 +553,12 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
                 for rt in result_order:
                     count = result['by_env'][env_name][date].get(rt, 0)
                     row.append(count)
-                # 完了数、消化数、計画数を追加
+                # 完了数、消化数を追加
                 row.append(result['by_env'][env_name][date].get('完了数', 0))
                 row.append(result['by_env'][env_name][date].get('消化数', 0))
-                row.append(result['by_env'][env_name][date].get('計画数', 0))
+                # use_plan_rowがtrueの場合のみ計画数を追加
+                if use_plan_row:
+                    row.append(result['by_env'][env_name][date].get('計画数', 0))
                 env_rows.append(row)
             print_table(env_headers, env_rows)
         print()
@@ -1034,9 +1046,9 @@ def main():
         
         # ファイル出力実行
         if output_format == "csv":
-            success, error = output_writer.write_csv(output_data, output_file, is_multiple_files)
+            success, error = output_writer.write_csv(output_data, output_file, is_multiple_files, settings)
         elif output_format == "excel":
-            success, error = output_writer.write_excel(output_data, output_file, is_multiple_files, filters)
+            success, error = output_writer.write_excel(output_data, output_file, is_multiple_files, filters, settings)
         else:
             success, error = False, f"サポートされていない出力形式です: {output_format}"
         

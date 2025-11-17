@@ -12,7 +12,7 @@ class OutputWriter:
     def __init__(self, verbose_logger=None):
         self.verbose_logger = verbose_logger
     
-    def write_csv(self, data, output_file, is_multiple_files=False):
+    def write_csv(self, data, output_file, is_multiple_files=False, settings=None):
         """CSV形式でファイルに出力"""
         try:
             # 出力ディレクトリの確認・作成
@@ -29,9 +29,9 @@ class OutputWriter:
             
             with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
                 if is_multiple_files:
-                    self._write_multiple_files_csv(data, csvfile)
+                    self._write_multiple_files_csv(data, csvfile, settings)
                 else:
-                    self._write_single_file_csv(data, csvfile)
+                    self._write_single_file_csv(data, csvfile, settings)
             
             if self.verbose_logger:
                 self.verbose_logger.log(f"CSVファイルを出力しました: {output_file}")
@@ -54,9 +54,10 @@ class OutputWriter:
                 self.verbose_logger.log(f"ERROR: {error_msg}")
             return False, error_msg
     
-    def _write_single_file_csv(self, data, csvfile):
+    def _write_single_file_csv(self, data, csvfile, settings=None):
         """単一ファイルのCSV出力"""
         writer = csv.writer(csvfile)
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         
         # TOTAL RESULTS
         if "total" in data:
@@ -90,9 +91,12 @@ class OutputWriter:
         
         # DAILY BREAKDOWN
         if "daily" in data:
-            writer.writerow(["Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
+            headers = ["Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数"]
+            if use_plan_row:
+                headers.append("計画数")
+            writer.writerow(headers)
             for date, daily_data in sorted(data["daily"].items()):
-                writer.writerow([
+                row = [
                     date,
                     daily_data.get("Pass", 0),
                     daily_data.get("Fixed", 0),
@@ -101,9 +105,11 @@ class OutputWriter:
                     daily_data.get("Suspend", 0),
                     daily_data.get("N/A", 0),
                     daily_data.get("完了数", 0),
-                    daily_data.get("消化数", 0),
-                    daily_data.get("計画数", 0)
-                ])
+                    daily_data.get("消化数", 0)
+                ]
+                if use_plan_row:
+                    row.append(daily_data.get("計画数", 0))
+                writer.writerow(row)
             writer.writerow([])  # 空行
         
         # BY NAME
@@ -126,10 +132,13 @@ class OutputWriter:
         
         # BY ENVIRONMENT
         if "by_env" in data:
-            writer.writerow(["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
+            headers = ["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数"]
+            if use_plan_row:
+                headers.append("計画数")
+            writer.writerow(headers)
             for env_name, env_data in sorted(data["by_env"].items()):
                 for date, env_stats in sorted(env_data.items()):
-                    writer.writerow([
+                    row = [
                         env_name,
                         date,
                         env_stats.get("Pass", 0),
@@ -139,13 +148,16 @@ class OutputWriter:
                         env_stats.get("Suspend", 0),
                         env_stats.get("N/A", 0),
                         env_stats.get("完了数", 0),
-                        env_stats.get("消化数", 0),
-                        env_stats.get("計画数", 0)
-                    ])
+                        env_stats.get("消化数", 0)
+                    ]
+                    if use_plan_row:
+                        row.append(env_stats.get("計画数", 0))
+                    writer.writerow(row)
     
-    def _write_multiple_files_csv(self, data, csvfile):
+    def _write_multiple_files_csv(self, data, csvfile, settings=None):
         """複数ファイルのCSV出力"""
         writer = csv.writer(csvfile)
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         
         # SUMMARY TOTAL RESULTS
         if "summary" in data and "total_results" in data["summary"]:
@@ -235,10 +247,13 @@ class OutputWriter:
         
         # BY ENVIRONMENT
         if "by_env" in data:
-            writer.writerow(["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"])
+            headers = ["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数"]
+            if use_plan_row:
+                headers.append("計画数")
+            writer.writerow(headers)
             for env_name, env_data in sorted(data["by_env"].items()):
                 for date, env_stats in sorted(env_data.items()):
-                    writer.writerow([
+                    row = [
                         env_name,
                         date,
                         env_stats.get("Pass", 0),
@@ -248,11 +263,13 @@ class OutputWriter:
                         env_stats.get("Suspend", 0),
                         env_stats.get("N/A", 0),
                         env_stats.get("完了数", 0),
-                        env_stats.get("消化数", 0),
-                        env_stats.get("計画数", 0)
-                    ])
+                        env_stats.get("消化数", 0)
+                    ]
+                    if use_plan_row:
+                        row.append(env_stats.get("計画数", 0))
+                    writer.writerow(row)
     
-    def write_excel(self, data, output_file, is_multiple_files=False, filters=None):
+    def write_excel(self, data, output_file, is_multiple_files=False, filters=None, settings=None):
         """Excel形式でファイルに出力"""
         try:
             # 出力ディレクトリの確認・作成
@@ -274,9 +291,9 @@ class OutputWriter:
             wb.remove(wb.active)
             
             if is_multiple_files:
-                self._write_multiple_files_excel(data, wb, filters)
+                self._write_multiple_files_excel(data, wb, filters, settings)
             else:
-                self._write_single_file_excel(data, wb, filters)
+                self._write_single_file_excel(data, wb, filters, settings)
             
             # ファイル保存
             wb.save(output_file)
@@ -302,7 +319,7 @@ class OutputWriter:
                 self.verbose_logger.log(f"ERROR: {error_msg}")
             return False, error_msg
     
-    def _write_single_file_excel(self, data, wb, filters=None):
+    def _write_single_file_excel(self, data, wb, filters=None, settings=None):
         """単一ファイルのExcel出力"""
         # TOTAL RESULTS シート
         ws_total = wb.create_sheet("TOTAL RESULTS")
@@ -315,7 +332,7 @@ class OutputWriter:
         # DAILY BREAKDOWN シート
         if "daily" in data:
             ws_daily = wb.create_sheet("DAILY BREAKDOWN")
-            self._write_daily_breakdown_sheet(ws_daily, data["daily"])
+            self._write_daily_breakdown_sheet(ws_daily, data["daily"], settings)
         
         # BY NAME シート
         if "by_name" in data:
@@ -325,13 +342,13 @@ class OutputWriter:
         # BY ENVIRONMENT シート
         if "by_env" in data:
             ws_env = wb.create_sheet("BY ENVIRONMENT")
-            self._write_by_environment_sheet(ws_env, data["by_env"])
+            self._write_by_environment_sheet(ws_env, data["by_env"], settings)
         
         # METADATA シート
         ws_meta = wb.create_sheet("METADATA")
         self._write_metadata_sheet(ws_meta, data, filters, is_multiple=False)
     
-    def _write_multiple_files_excel(self, data, wb, filters=None):
+    def _write_multiple_files_excel(self, data, wb, filters=None, settings=None):
         """複数ファイルのExcel出力"""
         # SUMMARY TOTAL RESULTS シート
         ws_summary = wb.create_sheet("SUMMARY TOTAL RESULTS")
@@ -351,7 +368,7 @@ class OutputWriter:
         # DAILY BREAKDOWN シート
         if "files" in data:
             ws_daily = wb.create_sheet("DAILY BREAKDOWN")
-            self._write_combined_daily_sheet(ws_daily, data["files"])
+            self._write_combined_daily_sheet(ws_daily, data["files"], settings)
         
         # BY NAME シート
         if "files" in data:
@@ -361,7 +378,7 @@ class OutputWriter:
         # BY ENVIRONMENT シート
         if "files" in data:
             ws_env = wb.create_sheet("BY ENVIRONMENT")
-            self._write_combined_by_environment_sheet(ws_env, data["files"])
+            self._write_combined_by_environment_sheet(ws_env, data["files"], settings)
         
         # METADATA シート
         ws_meta = wb.create_sheet("METADATA")
@@ -426,12 +443,15 @@ class OutputWriter:
         
         self._write_sheet_with_formatting(ws, [headers] + data)
     
-    def _write_daily_breakdown_sheet(self, ws, daily_data):
+    def _write_daily_breakdown_sheet(self, ws, daily_data, settings=None):
         """DAILY BREAKDOWN シートの書き込み"""
-        headers = ["Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"]
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
+        headers = ["Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数"]
+        if use_plan_row:
+            headers.append("計画数")
         data = []
         for date, daily_stats in sorted(daily_data.items()):
-            data.append([
+            row = [
                 date,
                 daily_stats.get("Pass", 0),
                 daily_stats.get("Fixed", 0),
@@ -440,9 +460,11 @@ class OutputWriter:
                 daily_stats.get("Suspend", 0),
                 daily_stats.get("N/A", 0),
                 daily_stats.get("完了数", 0),
-                daily_stats.get("消化数", 0),
-                daily_stats.get("計画数", 0)
-            ])
+                daily_stats.get("消化数", 0)
+            ]
+            if use_plan_row:
+                row.append(daily_stats.get("計画数", 0))
+            data.append(row)
         
         self._write_sheet_with_formatting(ws, [headers] + data)
     
@@ -465,13 +487,16 @@ class OutputWriter:
             
             self._write_sheet_with_formatting(ws, [headers] + data)
     
-    def _write_by_environment_sheet(self, ws, by_env_data):
+    def _write_by_environment_sheet(self, ws, by_env_data, settings=None):
         """BY ENVIRONMENT シートの書き込み"""
-        headers = ["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数", "計画数"]
+        use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
+        headers = ["Environment", "Date", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "完了数", "消化数"]
+        if use_plan_row:
+            headers.append("計画数")
         data = []
         for env_name, env_data in sorted(by_env_data.items()):
             for date, env_stats in sorted(env_data.items()):
-                data.append([
+                row = [
                     env_name,
                     date,
                     env_stats.get("Pass", 0),
@@ -481,9 +506,11 @@ class OutputWriter:
                     env_stats.get("Suspend", 0),
                     env_stats.get("N/A", 0),
                     env_stats.get("完了数", 0),
-                    env_stats.get("消化数", 0),
-                    env_stats.get("計画数", 0)
-                ])
+                    env_stats.get("消化数", 0)
+                ]
+                if use_plan_row:
+                    row.append(env_stats.get("計画数", 0))
+                data.append(row)
         self._write_sheet_with_formatting(ws, [headers] + data)
 
     def _write_individual_files_sheet(self, ws, files_data):
@@ -514,7 +541,7 @@ class OutputWriter:
         
         self._write_sheet_with_formatting(ws, [headers] + data)
     
-    def _write_combined_daily_sheet(self, ws, files_data):
+    def _write_combined_daily_sheet(self, ws, files_data, settings=None):
         """統合DAILY BREAKDOWN シートの書き込み"""
         # 全ファイルの日別データを統合
         combined_daily = {}
@@ -530,7 +557,7 @@ class OutputWriter:
                         if key in combined_daily[date]:
                             combined_daily[date][key] += value
         
-        self._write_daily_breakdown_sheet(ws, combined_daily)
+        self._write_daily_breakdown_sheet(ws, combined_daily, settings)
     
     def _write_combined_by_name_sheet(self, ws, files_data):
         """統合BY NAME シートの書き込み"""
@@ -548,7 +575,7 @@ class OutputWriter:
         
         self._write_by_name_sheet(ws, combined_by_name)
     
-    def _write_combined_by_environment_sheet(self, ws, files_data):
+    def _write_combined_by_environment_sheet(self, ws, files_data, settings=None):
         """統合BY ENVIRONMENT シートの書き込み"""
         # 全ファイルの環境別データを統合
         combined_by_env = {}
@@ -567,7 +594,7 @@ class OutputWriter:
                             if key in combined_by_env[date][env_name]:
                                 combined_by_env[date][env_name][key] += value
         
-        self._write_by_environment_sheet(ws, combined_by_env)
+        self._write_by_environment_sheet(ws, combined_by_env, settings)
     
     def _write_metadata_sheet(self, ws, data, filters=None, is_multiple=False):
         """METADATA シートの書き込み"""

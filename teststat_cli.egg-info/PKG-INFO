@@ -342,8 +342,8 @@ python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tes
 ```json
 {
   "read_definition": {
-    "sheet_search_keys": ["テスト項目"],
-    "sheet_search_ignores": [],
+    "target_sheets": ["テスト項目"],
+    "ignore_sheets": [],
     "header": {"search_col": "A", "search_key": "#"},
     "tobe_row": {"keys": ["期待", "実施対象"]},
     "result_row": {"keys": ["結果"], "ignores": ["期待結果"]},
@@ -376,7 +376,8 @@ python test_stat_cli.py -o results.xlsx --date-range 2024-01-15 2024-01-20 --tes
 ### 設定項目の説明
 
 #### read_definition
-- `sheet_search_keys`: 対象シートを検索するキーワード
+- `target_sheets`: 対象シートを検索するキーワード
+- `ignore_sheets`: 除外するシートを検索するキーワード
 - `header`: ヘッダー行の検索設定
 - `result_row`: 結果列の検索設定
 - `person_row`: 担当者列の検索設定

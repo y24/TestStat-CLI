@@ -35,7 +35,7 @@ def validate_config(config_data):
     
     # read_definition の必須項目チェック
     read_def = config_data["read_definition"]
-    required_read_keys = ["sheet_search_keys", "header", "result_row", "person_row", "date_row"]
+    required_read_keys = ["target_sheets", "header", "result_row", "person_row", "date_row"]
     for key in required_read_keys:
         if key not in read_def:
             return False, f"read_definition に必要な項目 '{key}' がありません"

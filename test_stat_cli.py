@@ -63,7 +63,7 @@ def main():
     
     # ファイルリストの作成
     file_list = []
-    file_identifiers = {}
+    file_labels = {}
     file_overrides = {}
     project_info = None
 
@@ -80,14 +80,14 @@ def main():
                 if is_valid_search:
                     file_list.extend(found_files)
                     for f in found_files:
-                        file_identifiers[f] = file_info["identifier"]
+                        file_labels[f] = file_info["label"]
                         
                         # 個別設定の保持
                         overrides = {}
-                        if "sheet_search_keys" in file_info:
-                            overrides["sheet_search_keys"] = file_info["sheet_search_keys"]
-                        if "sheet_search_ignores" in file_info:
-                            overrides["sheet_search_ignores"] = file_info["sheet_search_ignores"]
+                        if "target_sheets" in file_info:
+                            overrides["target_sheets"] = file_info["target_sheets"]
+                        if "ignore_sheets" in file_info:
+                            overrides["ignore_sheets"] = file_info["ignore_sheets"]
                         
                         if overrides:
                             file_overrides[f] = overrides
@@ -129,14 +129,14 @@ def main():
             file_settings = settings
             if filepath in file_overrides:
                 file_settings = copy.deepcopy(settings)
-                if "sheet_search_keys" in file_overrides[filepath]:
-                    file_settings["read_definition"]["sheet_search_keys"] = file_overrides[filepath]["sheet_search_keys"]
-                if "sheet_search_ignores" in file_overrides[filepath]:
-                    file_settings["read_definition"]["sheet_search_ignores"] = file_overrides[filepath]["sheet_search_ignores"]
+                if "target_sheets" in file_overrides[filepath]:
+                    file_settings["read_definition"]["target_sheets"] = file_overrides[filepath]["target_sheets"]
+                if "ignore_sheets" in file_overrides[filepath]:
+                    file_settings["read_definition"]["ignore_sheets"] = file_overrides[filepath]["ignore_sheets"]
 
             result = ReadData.aggregate_results(filepath, file_settings, verbose_logger)
-            if filepath in file_identifiers:
-                result["identifier"] = file_identifiers[filepath]
+            if filepath in file_labels:
+                result["label"] = file_labels[filepath]
             results.append((filepath, result))
         except Exception as e:
             results.append((filepath, {"error": {"type": "processing_error", "message": f"ファイル処理中にエラーが発生しました: {filepath}", "details": str(e)}}))

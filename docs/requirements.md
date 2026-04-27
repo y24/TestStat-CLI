@@ -210,11 +210,11 @@ python test_stat.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
     "project_name": "プロジェクト名",
     "files": [
       {
-        "identifier": "識別子1",
+        "label": "ラベル1",
         "path": "ファイルパス1"
       },
       {
-        "identifier": "識別子2",
+        "label": "ラベル2",
         "path": "ファイルパス2"
       }
     ],
@@ -228,9 +228,9 @@ python test_stat.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
 project:
   project_name: "プロジェクト名"
   files:
-    - identifier: "識別子1"
+    - label: "ラベル1"
       path: "ファイルパス1"
-    - identifier: "識別子2"
+    - label: "ラベル2"
       path: "ファイルパス2"
   last_loaded: "2025-05-27 20:42:40"
 ```
@@ -247,15 +247,15 @@ input_sample/taihi/sample3_.xlsx
 ### 4.3.4 設定項目詳細
 
 - **project_name**: プロジェクトの名前（任意の文字列）
-- **files**: ファイルリスト（各要素に`identifier`と`path`を持つ）
-    - `identifier`: ユーザーが識別する任意の文字列
+- **files**: ファイルリスト（各要素に`label`と`path`を持つ）
+    - `label`: 管理しやすくするためにユーザーが付ける任意の文字列
     - `path`: 処理するファイルのパス
 - **last_loaded**: 最後にそのプロジェクトの集計を行った日時（"YYYY-MM-DD HH:MM:SS"）
 
 ### 4.3.5 エラーハンドリング
 
 - 拡張子が`.json`/`.yaml`/`.yml`/`.txt`以外の場合はエラー
-- 必須フィールド（project, project_name, files, identifier, path）がない場合はエラー（JSON/YAMLのみ）
+- 必須フィールド（project, project_name, files, label, path）がない場合はエラー（JSON/YAMLのみ）
 - ファイルが存在しない場合や.xlsx以外の場合はエラー
 
 ### 3.2 オプション一覧（抜粋）

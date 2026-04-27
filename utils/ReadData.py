@@ -15,14 +15,14 @@ def aggregate_results(filepath:str, settings, verbose_logger=None):
     workbook = Excel.open_excel_workbook(filepath)
     sheet_names = Excel.get_sheetnames_by_keywords(
         workbook, 
-        keywords=settings["read_definition"]["sheet_search_keys"], 
-        ignores=settings["read_definition"]["sheet_search_ignores"]
+        keywords=settings["read_definition"]["target_sheets"], 
+        ignores=settings["read_definition"]["ignore_sheets"]
     )
 
     if verbose_logger: verbose_logger.log_excel_info(workbook, sheet_names)
 
     if not sheet_names:
-        msg = f"シートが見つかりませんでした。（キーワード: {settings['read_definition']['sheet_search_keys']}）"
+        msg = f"シートが見つかりませんでした。（キーワード: {settings['read_definition']['target_sheets']}）"
         if verbose_logger: verbose_logger.log_error_details("sheet_not_found", msg)
         return {"error": {"type": "sheet_not_found", "message": msg}}
 

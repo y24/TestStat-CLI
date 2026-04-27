@@ -1,7 +1,7 @@
 {
     "read_definition": {
-        "sheet_search_keys": ["テスト項目"],
-        "sheet_search_ignores": [],
+        "target_sheets": ["テスト項目"],
+        "ignore_sheets": [],
         "header": {"search_col": "A", "search_key": "#"},
         "tobe_row": {"keys": ["期待", "実施対象"]},
         "result_row": {"keys": ["結果"], "ignores": ["期待結果"]},

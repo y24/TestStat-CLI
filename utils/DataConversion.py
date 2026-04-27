@@ -4,7 +4,7 @@ import os
 
 def convert_results_to_2d_list(data, settings):
     # ヘッダーの作成
-    base_header = ["ファイル名", "識別子", "環境名", "日付", "シート名"]
+    base_header = ["ファイル名", "ラベル", "環境名", "日付", "シート名"]
     completed_label = settings["test_status"]["labels"]["completed"]
     executed_label = settings["test_status"]["labels"]["executed"]
     planned_label = settings["test_status"]["labels"]["planned"]
@@ -23,8 +23,8 @@ def convert_results_to_2d_list(data, settings):
         file_path = entry.get("file", "")
         # フルパスからファイル名のみを抽出
         file_name = os.path.basename(file_path)
-        # identifierを取得（プロジェクトリストファイルから設定された値）
-        identifier = entry.get("identifier", "")
+        # labelを取得（プロジェクトリストファイルから設定された値）
+        label = entry.get("label", "")
         by_env_data = entry.get("by_env", {})
         daily_data = entry.get("daily", {})
         if not Utility.is_empty_recursive(by_env_data):
@@ -33,20 +33,20 @@ def convert_results_to_2d_list(data, settings):
                 for date, values in env_data.items():
                     # シート名を取得（環境名から推測またはデフォルト値）
                     sheet_name = _extract_sheet_name_from_env(env, entry)
-                    out_arr.append([file_name, identifier, env, date, sheet_name] + [values.get(v, 0) for v in out_results])
+                    out_arr.append([file_name, label, env, date, sheet_name] + [values.get(v, 0) for v in out_results])
         elif not Utility.is_empty_recursive(daily_data):
             # 環境別データがないが日付別データがある場合は、環境名は空で出力
             for date, values in entry.get("daily", {}).items():
                 # シート名を取得（デフォルト値または最初のシート名）
                 sheet_name = _extract_default_sheet_name(entry)
-                out_arr.append([file_name, identifier, "", date, sheet_name] + [values.get(v, 0) for v in out_results])
+                out_arr.append([file_name, label, "", date, sheet_name] + [values.get(v, 0) for v in out_results])
         else:
             # 環境別データも日付別データもない場合は、環境名と日付を空で合計データを出力
             total_data = entry.get("total", {})
             stats_data = entry.get("stats", {})
             # シート名を取得（デフォルト値または最初のシート名）
             sheet_name = _extract_default_sheet_name(entry)
-            row_data = [file_name, identifier, "", "", sheet_name] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)]
+            row_data = [file_name, label, "", "", sheet_name] + [total_data.get(v, 0) for v in results] + [stats_data.get("executed", 0), stats_data.get("completed", 0)]
             if use_plan_row:
                 row_data.append(stats_data.get("planned", 0))
             out_arr.append(row_data)

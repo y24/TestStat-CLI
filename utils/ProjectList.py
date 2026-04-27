@@ -83,20 +83,20 @@ def read_yaml_project_list(list_file_path):
         if not isinstance(file_info, dict):
             raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]が辞書ではありません")
         
-        if "path" not in file_info or "identifier" not in file_info:
-            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'または'identifier'キーが見つかりません")
+        if "path" not in file_info or "label" not in file_info:
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'または'label'キーが見つかりません")
         
         file_path = os.path.normpath(file_info["path"])
         item = {
             "path": file_path,
-            "identifier": file_info["identifier"]
+            "label": file_info["label"]
         }
         
         # オプション設定の追加
-        if "sheet_search_keys" in file_info:
-            item["sheet_search_keys"] = file_info["sheet_search_keys"]
-        if "sheet_search_ignores" in file_info:
-            item["sheet_search_ignores"] = file_info["sheet_search_ignores"]
+        if "target_sheets" in file_info:
+            item["target_sheets"] = file_info["target_sheets"]
+        if "ignore_sheets" in file_info:
+            item["ignore_sheets"] = file_info["ignore_sheets"]
             
         file_info_list.append(item)
     

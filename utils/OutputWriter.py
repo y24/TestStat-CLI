@@ -188,11 +188,12 @@ class OutputWriter:
         
         # INDIVIDUAL FILES
         if "files" in data:
-            writer.writerow(["File", "Total Cases", "Available Cases", "Excluded Cases", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
+            writer.writerow(["File", "Total Cases", "Available Cases", "Excluded Cases", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)", "Start Date", "Latest Update"])
             for file_data in data["files"]:
                 if "total" in file_data and "stats" in file_data:
                     total = file_data["total"]
                     stats = file_data["stats"]
+                    run_info = file_data.get("run", {})
                     writer.writerow([
                         file_data.get("file", ""),
                         stats.get("all", 0),
@@ -208,7 +209,9 @@ class OutputWriter:
                         total.get("完了数", 0),
                         total.get("消化数", 0),
                         total.get("完了率(%)", 0),
-                        total.get("消化率(%)", 0)
+                        total.get("消化率(%)", 0),
+                        run_info.get("start_date") or "-",
+                        run_info.get("last_update") or "-"
                     ])
             writer.writerow([])  # 空行
         

@@ -267,37 +267,3 @@ class OutputWriter:
                     writer.writerow(row)
     
     
-    def generate_output_filename(self, base_filename, filters=None):
-        """フィルタ条件を含むファイル名を生成"""
-        if not filters:
-            return base_filename
-        
-        filename_parts = []
-        
-        # 基本ファイル名
-        name, ext = os.path.splitext(base_filename)
-        filename_parts.append(name)
-        
-        # 日付範囲
-        if "date_range" in filters:
-            date_range = filters["date_range"]
-            if date_range.get("start") and date_range.get("end"):
-                filename_parts.append(f"{date_range['start']}_to_{date_range['end']}")
-            elif date_range.get("start"):
-                filename_parts.append(f"{date_range['start']}_onwards")
-            elif date_range.get("end"):
-                filename_parts.append(f"up_to_{date_range['end']}")
-        
-        # 担当者
-        if "tester" in filters:
-            filename_parts.append(filters["tester"]["value"])
-        
-        # 結果タイプ
-        if "result_type" in filters:
-            filename_parts.append("_".join(filters["result_type"]))
-        
-        # 環境
-        if "environment" in filters:
-            filename_parts.append(filters["environment"]["value"])
-        
-        return "_".join(filename_parts) + ext 

@@ -209,129 +209,7 @@ def check_file_access(filepath):
     
     return True, "ファイルアクセス可能"
 
-def validate_date_format(date_str):
-    """日付形式の妥当性をチェック"""
-    if not date_str:
-        return True, None
-    try:
-        datetime.strptime(date_str, "%Y-%m-%d")
-        return True, None
-    except ValueError:
-        return False, f"無効な日付形式です: {date_str} (YYYY-MM-DD形式で指定してください)"
 
-def validate_date_range(start_date, end_date):
-    """日付範囲の妥当性をチェック"""
-    if start_date and end_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            if start > end:
-                return False, f"開始日（{start_date}）が終了日（{end_date}）より後になっています"
-        except ValueError:
-            return False, "日付形式が無効です"
-    return True, None
-
-def validate_result_types(result_types, settings):
-    """結果タイプの妥当性をチェック"""
-    if not result_types:
-        return True, None
-    
-    valid_types = settings["test_status"]["results"]
-    invalid_types = [rt for rt in result_types if rt not in valid_types]
-    
-    if invalid_types:
-        return False, f"無効な結果タイプです: {', '.join(invalid_types)} (有効: {', '.join(valid_types)})"
-    
-    return True, None
-
-def create_filter_conditions(args, settings):
-    """フィルタリング条件を作成"""
-    filters = {}
-    
-    # 日付範囲フィルタ
-    if args.date_range:
-        start_date = args.date_range[0] if args.date_range else None
-        end_date = args.date_range[1] if len(args.date_range) > 1 else None
-        
-        # 日付形式の妥当性チェック
-        if start_date:
-            is_valid, error = validate_date_format(start_date)
-            if not is_valid:
-                raise ValueError(error)
-        if end_date:
-            is_valid, error = validate_date_format(end_date)
-            if not is_valid:
-                raise ValueError(error)
-        
-        # 日付範囲の妥当性チェック
-        is_valid, error = validate_date_range(start_date, end_date)
-        if not is_valid:
-            raise ValueError(error)
-        
-        filters["date_range"] = {
-            "start": start_date,
-            "end": end_date
-        }
-    
-    # 担当者フィルタ
-    if args.tester:
-        filters["tester"] = {
-            "value": args.tester.strip(),
-            "exact_match": args.exact_match
-        }
-    
-    # 結果タイプフィルタ
-    if args.result_type:
-        is_valid, error = validate_result_types(args.result_type, settings)
-        if not is_valid:
-            raise ValueError(error)
-        filters["result_type"] = args.result_type
-    
-    # 環境フィルタ
-    if args.environment:
-        filters["environment"] = {
-            "value": args.environment.strip(),
-            "exact_match": args.exact_match
-        }
-    
-    return filters
-
-def format_filter_display(filters):
-    """フィルタリング条件を表示用の文字列に変換する"""
-    if not filters:
-        return ""
-    
-    filter_lines = []
-    
-    # 日付範囲フィルタ
-    if "date_range" in filters:
-        start = filters["date_range"]["start"]
-        end = filters["date_range"]["end"]
-        if start and end:
-            filter_lines.append(f"Date Range: {start} to {end}")
-        elif start:
-            filter_lines.append(f"Date Range: {start} onwards")
-        elif end:
-            filter_lines.append(f"Date Range: up to {end}")
-    
-    # 担当者フィルタ
-    if "tester" in filters:
-        match_type = "exact match" if filters["tester"]["exact_match"] else "partial match"
-        filter_lines.append(f"Tester: {filters['tester']['value']} ({match_type})")
-    
-    # 結果タイプフィルタ
-    if "result_type" in filters:
-        if len(filters["result_type"]) == 1:
-            filter_lines.append(f"Result Type: {filters['result_type'][0]}")
-        else:
-            filter_lines.append(f"Result Type: {', '.join(filters['result_type'])}")
-    
-    # 環境フィルタ
-    if "environment" in filters:
-        match_type = "exact match" if filters["environment"]["exact_match"] else "partial match"
-        filter_lines.append(f"Environment: {filters['environment']['value']} ({match_type})")
-    
-    return filter_lines
 
 def find_excel_files(target_path):
     """Excelファイルを検索"""
@@ -348,7 +226,7 @@ def find_excel_files(target_path):
     
     return True, file_list
 
-def format_output(result, filepath, show_title=True, settings=None, filters=None):
+def format_output(result, filepath, show_title=True, settings=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title:
         # ロゴを表示
@@ -372,27 +250,13 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
             print(f"詳細: {result['error']['details']}")
         return
     
-    # フィルタ条件の表示
-    if filters:
-        filter_conditions = format_filter_display(filters)
-        if filter_conditions:
-            print("Filter Conditions:")
-            for condition in filter_conditions:
-                print(f"- {condition}")
-            print()
     
     # 基本情報
     print(f"File: {filepath}")
     
-    # フィルタ適用後の統計情報
-    if filters and "filtered_stats" in result:
-        print(f"Filtered Cases: {result['filtered_stats']['filtered_count']} (from {result['stats']['all']} total cases)")
-        print(f"Available Cases: {result['stats']['available']}")
-        print(f"Excluded Cases: {result['stats']['excluded']}")
-    else:
-        print(f"Total Cases: {result['stats']['all']}")
-        print(f"Available Cases: {result['stats']['available']}")
-        print(f"Excluded Cases: {result['stats']['excluded']}")
+    print(f"Total Cases: {result['stats']['all']}")
+    print(f"Available Cases: {result['stats']['available']}")
+    print(f"Excluded Cases: {result['stats']['excluded']}")
     print()
     
     # 設定から結果タイプの順序を取得
@@ -400,9 +264,7 @@ def format_output(result, filepath, show_title=True, settings=None, filters=None
     
     # 総合結果テーブル
     if 'total' in result:
-        # フィルタ適用後の場合は "(Filtered)" を追加
-        table_title = "TOTAL RESULTS (Filtered):" if filters else "TOTAL RESULTS:"
-        print(table_title)
+        print("TOTAL RESULTS:")
         total_headers = result_order + ["未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         total_row = []
         for rt in result_order:
@@ -696,15 +558,6 @@ def parse_args():
     # TSVクリップボード出力オプション
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     
-    # フィルタリングオプション
-    parser.add_argument("--date-range", nargs="*", metavar=("START_DATE", "END_DATE"), 
-                       help="日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能）")
-    parser.add_argument("--tester", help="担当者フィルタ（部分一致）")
-    parser.add_argument("--exact-match", action="store_true", 
-                       help="担当者・環境フィルタで完全一致を使用")
-    parser.add_argument("--result-type", nargs="+", 
-                       help="結果タイプフィルタ（複数指定可能）")
-    parser.add_argument("--environment", help="環境フィルタ（部分一致）")
     
     # 詳細出力オプション
     parser.add_argument("--detailed", action="store_true", 
@@ -827,19 +680,13 @@ def main():
             continue
         
         try:
-            # フィルタリング条件を作成
-            filters = create_filter_conditions(args, settings)
-            result = ReadData.aggregate_results(filepath, settings, verbose_logger, filters)
+            result = ReadData.aggregate_results(filepath, settings, verbose_logger)
             
             # identifierを結果に追加
             if filepath in file_identifiers:
                 result["identifier"] = file_identifiers[filepath]
             
             results.append((filepath, result))
-        except ValueError as e:
-            # フィルタリング条件のバリデーションエラー
-            print(f"ERROR: {e}")
-            sys.exit(1)
         except Exception as e:
             error_result = {
                 "error": {
@@ -857,9 +704,6 @@ def main():
         print("ERROR: 処理可能なファイルが見つかりませんでした")
         sys.exit(1)
 
-    # フィルタリング条件を作成
-    filters = create_filter_conditions(args, settings)
-    
     # 出力データの準備
     if len(file_list) > 1:
         # 複数ファイル処理
@@ -923,12 +767,6 @@ def main():
             file_data = result.copy()
             file_data["file"] = filepath
             
-            # フィルタ情報を追加
-            if filters:
-                file_data["filters"] = filters
-                if "filtered_stats" in file_data:
-                    file_data["filtered_cases"] = file_data["filtered_stats"]["filtered_count"]
-                    file_data["total_cases"] = file_data["filtered_stats"]["original_count"]
             
             summary_data["files"].append(file_data)
         
@@ -939,12 +777,6 @@ def main():
         filepath, result = results[0]
         result["file"] = filepath
         
-        # フィルタ情報を追加
-        if filters:
-            result["filters"] = filters
-            if "filtered_stats" in result:
-                result["filtered_cases"] = result["filtered_stats"]["filtered_count"]
-                result["total_cases"] = result["filtered_stats"]["original_count"]
         
         output_data = result
         is_multiple_files = False
@@ -953,18 +785,7 @@ def main():
     if args.output_file:
         output_writer = OutputWriter(verbose_logger)
         
-        # ファイル名の自動生成（フィルタ条件を含む）
-        if filters:
-            base_name, ext = os.path.splitext(args.output_file)
-            generated_filename = output_writer.generate_output_filename(args.output_file, filters)
-            if generated_filename != args.output_file:
-                if verbose_logger:
-                    verbose_logger.log(f"フィルタ条件に基づいてファイル名を生成しました: {generated_filename}")
-                output_file = generated_filename
-            else:
-                output_file = args.output_file
-        else:
-            output_file = args.output_file
+        output_file = args.output_file
         
         # 出力形式の決定
         if args.output_format == "csv":
@@ -1066,10 +887,10 @@ def main():
                 print()
                 for filepath, result in results:
                     print("=" * 50)
-                    format_output(result, filepath, show_title=False, settings=settings, filters=filters)
+                    format_output(result, filepath, show_title=False, settings=settings)
         else:
             filepath, result = results[0]
-            format_output(result, filepath, settings=settings, filters=filters)
+            format_output(result, filepath, settings=settings)
     
     # プロジェクトリストファイルのlast_loaded値を更新
     if args.list:

@@ -134,39 +134,13 @@ def make_run_status(count_stats: dict, settings: dict) -> str:
         return "???"
 
 # Excelファイルからテスト結果データを読み取り、集計する関数
-def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None):
+def aggregate_results(filepath:str, settings, verbose_logger=None):
     start_time = time.time()
     
     # 詳細ログ開始
     if verbose_logger:
         verbose_logger.start_file_processing(filepath)
     
-    # フィルタリング条件の詳細ログ
-    if verbose_logger and filters:
-        verbose_logger.log("フィルタ条件適用開始")
-        if "date_range" in filters:
-            start = filters["date_range"]["start"]
-            end = filters["date_range"]["end"]
-            if start and end:
-                verbose_logger.log(f"- 日付範囲: {start} から {end}")
-            elif start:
-                verbose_logger.log(f"- 日付範囲: {start} onwards (開始日のみ)")
-            elif end:
-                verbose_logger.log(f"- 日付範囲: up to {end} (終了日のみ)")
-        
-        if "tester" in filters:
-            match_type = "完全一致" if filters["tester"]["exact_match"] else "部分一致"
-            verbose_logger.log(f"- 担当者: {filters['tester']['value']} ({match_type})")
-        
-        if "result_type" in filters:
-            if len(filters["result_type"]) == 1:
-                verbose_logger.log(f"- 結果タイプ: {filters['result_type'][0]} (単一)")
-            else:
-                verbose_logger.log(f"- 結果タイプ: {', '.join(filters['result_type'])} (複数)")
-        
-        if "environment" in filters:
-            match_type = "完全一致" if filters["environment"]["exact_match"] else "部分一致"
-            verbose_logger.log(f"- 環境: {filters['environment']['value']} ({match_type})")
     
     # 設定された検索キーワードに基づいて対象シートを特定
     workbook = Excel.load(filepath)
@@ -222,9 +196,6 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
             if verbose_logger:
                 verbose_logger.log(f"シート処理完了: {sheet_name} - データ行数: {len(sheet_data['data'])}")
 
-    # フィルタリング処理
-    if filters:
-        all_data, all_plan_data, data_by_env = apply_filters(all_data, all_plan_data, data_by_env, filters, verbose_logger)
 
     # 全シートの集計データを生成して返却
     result = _aggregate_final_results(
@@ -234,7 +205,6 @@ def aggregate_results(filepath:str, settings, verbose_logger=None, filters=None)
             counts_by_sheet=counts_by_sheet,  # シート別のテストケース件数情報
             settings=settings,            # 設定情報
             verbose_logger=verbose_logger, # 詳細ログ
-            filters=filters,             # フィルタリング条件
             sheet_name_mapping=sheet_name_mapping  # シート名マッピング
         )
     
@@ -431,7 +401,7 @@ def _process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=Non
         }
     }
 
-def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, filters=None, sheet_name_mapping=None):
+def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, sheet_name_mapping=None):
     # 全セット集計(日付別)
     data_daily_total, no_date_data = get_daily(
         data=all_data,
@@ -549,13 +519,6 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         "sheet_name_mapping": sheet_name_mapping or {}
     }
 
-    # フィルタ適用後の統計情報を追加
-    if filters:
-        filtered_count = len(all_data)
-        out_data["filtered_stats"] = {
-            "filtered_count": filtered_count,
-            "original_count": case_count_all
-        }
 
     # データチェック
     if case_count_all == 0:
@@ -671,132 +634,3 @@ def aggregate_multiple_files_results(file_results_list: list, settings: dict):
         "total": combined_total_results,
         "stats": combined_stats
     }
-
-def apply_filters(all_data, all_plan_data, data_by_env, filters, verbose_logger=None):
-    """フィルタリング条件を適用してデータを絞り込み"""
-    if not filters:
-        return all_data, all_plan_data, data_by_env
-    
-    original_count = len(all_data)
-    filtered_data = []
-    filtered_plan_data = []
-    filtered_env_data = {}
-    
-    # 詳細ログ
-    if verbose_logger:
-        verbose_logger.log(f"フィルタ適用前データ: {original_count}件")
-    
-    for i, row in enumerate(all_data):
-        # データ行の構造: (result, name, date, sheet_name)
-        if len(row) >= 4:
-            result, name, date, sheet_name = row[0], row[1], row[2], row[3]
-        else:
-            # 後方互換性のため、シート名がない場合は空文字を設定
-            result, name, date = row[0], row[1], row[2]
-            sheet_name = ""
-        
-        # 各フィルタ条件をチェック
-        include_row = True
-        
-        # 日付範囲フィルタ
-        if "date_range" in filters and include_row:
-            include_row = check_date_filter(date, filters["date_range"], verbose_logger)
-        
-        # 担当者フィルタ
-        if "tester" in filters and include_row:
-            include_row = check_tester_filter(name, filters["tester"], verbose_logger)
-        
-        # 結果タイプフィルタ
-        if "result_type" in filters and include_row:
-            include_row = check_result_type_filter(result, filters["result_type"], verbose_logger)
-        
-        # 環境フィルタ
-        if "environment" in filters and include_row:
-            include_row = check_environment_filter(name, filters["environment"], verbose_logger)
-        
-        # フィルタ条件を満たす場合は結果に含める
-        if include_row:
-            filtered_data.append((result, name, date, sheet_name))
-            if i < len(all_plan_data):
-                filtered_plan_data.append(all_plan_data[i])
-    
-    # 環境別データの再構築
-    for env_name, env_data in data_by_env.items():
-        filtered_env_data[env_name] = {}
-        for date, date_data in env_data.items():
-            filtered_env_data[env_name][date] = {}
-            for result_type, count in date_data.items():
-                # 結果タイプフィルタが指定されている場合は該当する結果タイプのみを含める
-                if "result_type" in filters:
-                    if result_type in filters["result_type"]:
-                        filtered_env_data[env_name][date][result_type] = count
-                else:
-                    filtered_env_data[env_name][date][result_type] = count
-    
-    # 詳細ログ
-    if verbose_logger:
-        filtered_count = len(filtered_data)
-        reduction_percent = ((original_count - filtered_count) / original_count * 100) if original_count > 0 else 0
-        verbose_logger.log(f"フィルタ適用後データ: {filtered_count}件 ({reduction_percent:.1f}%削減)")
-    
-    return filtered_data, filtered_plan_data, filtered_env_data
-
-def check_date_filter(date, date_range, verbose_logger=None):
-    """日付範囲フィルタをチェック"""
-    if not date:
-        return False
-    
-    try:
-        target_date = datetime.strptime(date, "%Y-%m-%d")
-        start_date = date_range["start"]
-        end_date = date_range["end"]
-        
-        if start_date:
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            if target_date < start:
-                return False
-        
-        if end_date:
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            if target_date > end:
-                return False
-        
-        return True
-    except ValueError:
-        # 日付形式が無効な場合は除外
-        return False
-
-def check_tester_filter(name, tester_filter, verbose_logger=None):
-    """担当者フィルタをチェック"""
-    if not name:
-        return False
-    
-    target_name = tester_filter["value"].strip().lower()
-    actual_name = name.strip().lower()
-    exact_match = tester_filter["exact_match"]
-    
-    if exact_match:
-        return actual_name == target_name
-    else:
-        return target_name in actual_name
-
-def check_result_type_filter(result, result_types, verbose_logger=None):
-    """結果タイプフィルタをチェック"""
-    if not result:
-        return False
-    
-    return result in result_types
-
-def check_environment_filter(name, environment_filter, verbose_logger=None):
-    """環境フィルタをチェック"""
-    if not name:
-        return False
-    
-    target_env = environment_filter["value"].strip().lower()
-    actual_name = name.strip().lower()
-    exact_match = environment_filter["exact_match"]
-    
-    if exact_match:
-        return actual_name == target_env
-    else:
-        return target_env in actual_name

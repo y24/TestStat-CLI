@@ -40,13 +40,12 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
     # 総合結果テーブル
     if 'total' in result:
         print("TOTAL RESULTS:")
-        total_headers = result_order + ["未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
-        total_row = []
+        total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        total_row = [result['total'].get('Total', 0)]
         for rt in result_order:
             total_row.append(result['total'].get(rt, 0))
         total_row.extend([
             result['total'].get('未実施', 0),
-            result['total'].get('Total', 0),
             result['total'].get('完了数', 0),
             result['total'].get('消化数', 0),
             result['total'].get('完了率(%)', 0),
@@ -137,11 +136,11 @@ def display_combined_total_results(results, settings=None):
     execution_rate = (total_results["消化数"] / total_available * 100) if total_available > 0 else 0
     
     print("SUMMARY TOTAL RESULTS:")
-    total_headers = result_order + ["未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"]
-    total_row = [total_results.get(rt, 0) for rt in result_order]
+    total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    total_row = [total_results.get("Total", 0)]
+    total_row.extend([total_results.get(rt, 0) for rt in result_order])
     total_row.extend([
         total_results.get("未実施", 0),
-        total_results.get("Total", 0),
         total_results.get("完了数", 0),
         total_results.get("消化数", 0),
         round(completion_rate, 2),

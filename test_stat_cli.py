@@ -107,7 +107,7 @@ def main():
     # 各ファイルの処理
     results = []
     for filepath in file_list:
-        is_accessible, message = FileScanner.check_file_access(filepath)
+        is_accessible, message = FileScanner.can_access_file(filepath)
         if not is_accessible:
             print(f"WARNING: {message}")
             continue
@@ -199,18 +199,18 @@ def main():
                 if project_info.get('last_loaded'): print(f"Last Loaded: {project_info['last_loaded']}")
                 print()
             
-            ConsoleFormatter.print_summary_total_results(results, settings)
-            ConsoleFormatter.print_summary_file_breakdown(results)
-            ConsoleFormatter.print_summary_errors(results)
-            ConsoleFormatter.print_summary_overall(results)
+            ConsoleFormatter.display_combined_total_results(results, settings)
+            ConsoleFormatter.display_file_breakdown_table(results)
+            ConsoleFormatter.display_error_summary(results)
+            ConsoleFormatter.display_overall_status(results)
             
             if args.detailed:
                 for f, r in results:
                     print("=" * 50)
-                    ConsoleFormatter.format_output(r, f, show_title=False, settings=settings)
+                    ConsoleFormatter.print_summary_results_table(r, f, show_title=False, settings=settings)
         else:
             f, r = results[0]
-            ConsoleFormatter.format_output(r, f, settings=settings, script_root_dir=script_dir)
+            ConsoleFormatter.print_summary_results_table(r, f, settings=settings, script_root_dir=script_dir)
 
     # プロジェクトリスト更新
     if args.list:

@@ -33,7 +33,7 @@ class ClipboardWriter:
                 self.verbose_logger.log("TSVデータ変換開始")
             
             # DataConversion.pyのconvert_to_2d_array関数を使用してTSVデータを生成
-            tsv_data = DataConversion.convert_to_2d_array(data, settings)
+            tsv_data = DataConversion.convert_results_to_2d_list(data, settings)
             
             if self.verbose_logger:
                 self.verbose_logger.log(f"変換データ行数: {len(tsv_data)}行")
@@ -100,7 +100,7 @@ class ClipboardWriter:
         # 改行文字で結合
         return '\n'.join(tsv_lines)
     
-    def write_to_console_as_fallback(self, data, settings):
+    def print_data_as_tsv_fallback(self, data, settings):
         """
         クリップボードコピーが失敗した場合のフォールバック機能
         コンソールにTSVデータを出力する

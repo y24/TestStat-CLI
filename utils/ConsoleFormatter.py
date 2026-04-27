@@ -12,7 +12,7 @@ def print_logo(script_root_dir):
     except FileNotFoundError:
         pass
 
-def format_output(result, filepath, show_title=True, settings=None, script_root_dir=None):
+def print_summary_results_table(result, filepath, show_title=True, settings=None, script_root_dir=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title and script_root_dir:
         print_logo(script_root_dir)
@@ -116,7 +116,7 @@ def format_output(result, filepath, show_title=True, settings=None, script_root_
             TablePrinter.print_table(env_headers, env_rows)
         print()
 
-def print_summary_total_results(results, settings=None):
+def display_combined_total_results(results, settings=None):
     """複数ファイルの総合結果を表示"""
     result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
     total_results = {rt: 0 for rt in result_order}
@@ -150,7 +150,7 @@ def print_summary_total_results(results, settings=None):
     TablePrinter.print_table(total_headers, [total_row])
     print()
 
-def print_summary_file_breakdown(results):
+def display_file_breakdown_table(results):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
     headers = ["File Name", "Available Cases", "Completed", "Completion Rate(%)", "Executed", "Execution Rate(%)"]
@@ -172,7 +172,7 @@ def print_summary_file_breakdown(results):
     TablePrinter.print_table(headers, rows)
     print()
 
-def print_summary_errors(results):
+def display_error_summary(results):
     """エラーが発生したファイルの一覧を表示"""
     error_files = [(os.path.basename(f), r["error"].get("message", ""), r["error"].get("details", "")) for f, r in results if "error" in r]
     if error_files:
@@ -184,7 +184,7 @@ def print_summary_errors(results):
             if details: print(f"    ({details})")
         print()
 
-def print_summary_overall(results):
+def display_overall_status(results):
     """全体ステータスを表示"""
     statuses = [r["run"]["status"] for f, r in results if "run" in r and r["run"]["status"]]
     if statuses:

@@ -2,7 +2,7 @@ from utils import Utility, Labels
 from collections import defaultdict
 import os
 
-def convert_to_2d_array(data, settings):
+def convert_results_to_2d_list(data, settings):
     # ヘッダーの作成
     base_header = ["ファイル名", "識別子", "環境名", "日付", "シート名"]
     completed_label = settings["test_status"]["labels"]["completed"]
@@ -81,7 +81,7 @@ def _extract_default_sheet_name(entry):
         return count_by_sheet[0].get("sheet_name", "")
     return ""
 
-def create_export_data(input_data: list, settings: dict) -> list:
+def format_data_for_export(input_data: list, settings: dict) -> list:
     """エクスポート用のデータを生成する
 
     Args:
@@ -186,13 +186,13 @@ def _extract_file_data(file_data: dict) -> dict:
         "executed": stats["executed"],
         "available": stats["available"],
         "incompleted": stats["incompleted"],
-        "comp_rate_text": Labels.make_count_and_rate_text(stats["completed"], stats["available"]),
-        "executed_rate_text": Labels.make_count_and_rate_text(stats["executed"], stats["available"]),
+        "comp_rate_text": Labels.format_count_with_percentage(stats["completed"], stats["available"]),
+        "executed_rate_text": Labels.format_count_with_percentage(stats["executed"], stats["available"]),
         "start_date": run_data["start_date"],
         "last_update": run_data["last_update"]
     }
 
-def aggregate_all_daily(data):
+def sum_daily_results_across_files(data):
     result = defaultdict(lambda: defaultdict(int))
     for record in data:
         # エラーまたはワーニングのあるデータは除外
@@ -204,7 +204,7 @@ def aggregate_all_daily(data):
                 result[date][k] += v
     return {date: dict(stats) for date, stats in result.items()}
 
-def aggregate_all_stats(data):
+def sum_stats_across_files(data):
     result = defaultdict(int)
     for record in data:
         # エラーまたはワーニングのあるデータは除外

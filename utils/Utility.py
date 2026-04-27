@@ -4,13 +4,13 @@ from datetime import datetime
 from collections import OrderedDict
 from collections import defaultdict
 
-def find_colnum_by_keyword(lst, keyword:str, ignore_words=None):
+def find_column_indices_by_keyword(lst, keyword:str, ignore_words=None):
     if ignore_words is None:
         ignore_words = []
     return [i + 1 for i, item in enumerate(lst) if item and keyword in str(item) and str(item) not in ignore_words]
 
 
-def find_colnum_by_keywords(lst, keywords:list[str], ignore_words=None):
+def find_column_indices_by_keywords(lst, keywords:list[str], ignore_words=None):
     if ignore_words is None:
         ignore_words = []
     return [i + 1 for i, item in enumerate(lst) if item and any(kw in str(item) for kw in keywords) and str(item) not in ignore_words]
@@ -20,7 +20,7 @@ def transpose_lists(*lists_):
     return [list(row) for row in zip(*lists_)]
 
 
-def check_lists_equal_length(*lists_):
+def are_lists_same_length(*lists_):
     """
     任意の数のリストを受け取り、それらの要素数がすべて同じかどうかを判定する
     
@@ -38,11 +38,11 @@ def check_lists_equal_length(*lists_):
     return all(len(lst) == first_length for lst in lists_)
 
 
-def get_ext_from_path(filepath:str):
+def get_file_extension(filepath:str):
     return os.path.splitext(filepath)[1][1:]
 
 
-def get_filename_from_path(filepath:str):
+def get_file_name(filepath:str):
     return os.path.basename(filepath)
 
 
@@ -128,7 +128,7 @@ def sort_by_master(master_list, input_list):
     """
     return sorted(input_list, key=lambda x: master_list.index(x) if x in master_list else float('inf'))
 
-def meke_rate_text(value1:int, value2:int):
+def format_rate_as_text(value1:int, value2:int):
     # パーセンテージ表示用の文字列を生成
     if value2:
         rate = (value1 / value2) * 100
@@ -164,7 +164,7 @@ def filter_objects(obj_list:list[dict], exclude_keys:list[str]):
     """
     return [obj for obj in obj_list if not any(key in obj for key in exclude_keys)]
 
-def initialize_dict(keys):
+def create_zero_initialized_dict(keys):
     """
     指定されたキーのリストを受け取り、すべての値を0にした辞書を作成
     
@@ -182,7 +182,7 @@ def find_key_by_name(data: dict, target_name: str) -> str:
             return key
     return None  # 見つからなかった場合
 
-def get_today_str():
+def get_current_date_string():
     return datetime.today().strftime("%Y-%m-%d")
 
 def simplify_date(date_str: str) -> str:

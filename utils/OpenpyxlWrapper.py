@@ -2,7 +2,7 @@ from openpyxl import load_workbook, Workbook
 from openpyxl.utils import column_index_from_string
 from datetime import datetime
 
-def load(file_path:str, auto_create:bool=False):
+def open_excel_workbook(file_path:str, auto_create:bool=False):
     # ブックを開く
     try:
         wb = load_workbook(file_path)
@@ -77,7 +77,7 @@ def _should_include_sheet(sheet_name: str, keywords: list, ignores: list) -> boo
     
     return has_keyword and not has_ignore
 
-def find_row(sheet, search_col:str, search_str:str):
+def find_row_index(sheet, search_col:str, search_str:str):
     try:
         # 列名
         col_num = column_index_from_string(search_col) - 1
@@ -96,13 +96,13 @@ def get_row_values(sheet, row_num:int):
     return [cell.value for cell in sheet[row_num]]
 
 
-def get_column_values(sheet, col_nums: list, header_row: int = 1, ignore_header=False):
+def get_column_values_list(sheet, col_nums: list, header_row: int = 1, ignore_header=False):
     if ignore_header:
         header_row += 1
     return [[sheet.cell(row=i, column=col_num).value for col_num in col_nums] for i in range(header_row, sheet.max_row + 1)]
 
 
-def get_columns_data(sheet, col_nums: list, header_row: int = 1, ignore_header=False):
+def get_column_values_formatted(sheet, col_nums: list, header_row: int = 1, ignore_header=False):
     if ignore_header:
         header_row += 1
     data = [[cell.value.strftime('%Y-%m-%d') if isinstance(cell.value, datetime) else cell.value 

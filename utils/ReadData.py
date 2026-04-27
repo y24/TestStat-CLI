@@ -12,7 +12,7 @@ def aggregate_results(filepath:str, settings, verbose_logger=None):
     start_time = time.time()
     if verbose_logger: verbose_logger.start_file_processing(filepath)
     
-    workbook = Excel.load(filepath)
+    workbook = Excel.open_excel_workbook(filepath)
     sheet_names = Excel.get_sheetnames_by_keywords(
         workbook, 
         keywords=settings["read_definition"]["sheet_search_keys"], 
@@ -52,15 +52,15 @@ def aggregate_results(filepath:str, settings, verbose_logger=None):
 
 def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, sheet_name_mapping=None):
     """全シートの集計データを統合"""
-    data_daily_total, no_date_data = DataAggregator.get_daily(
+    data_daily_total, no_date_data = DataAggregator.aggregate_daily_results(
         all_data, settings["test_status"]["results"],
         settings["test_status"]["labels"]["completed"], settings["test_status"]["completed_results"],
         settings["test_status"]["labels"]["executed"], settings["test_status"]["executed_results"],
         settings["test_status"]["labels"]["planned"], all_plan_data
     )
 
-    data_by_name = DataAggregator.get_daily_by_name(all_data)
-    data_total = DataAggregator.get_total_all_date(
+    data_by_name = DataAggregator.aggregate_daily_by_person(all_data)
+    data_total = DataAggregator.calculate_total_results(
         data_daily_total, no_date_data,
         [settings["test_status"]["labels"][k] for k in ["completed", "executed", "planned"]]
     )
@@ -85,7 +85,7 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
         verbose_logger.log_person_summary(data_by_name)
         verbose_logger.log_environment_summary(data_by_env)
 
-    run_status = DataAggregator.make_run_status(count_stats, settings)
+    run_status = DataAggregator.determine_run_status(count_stats, settings)
     start_date = min(data_daily_total.keys()) if data_daily_total else None
     last_update = max(data_daily_total.keys()) if data_daily_total and run_status in [settings["output_definition"]["state"][k]["name"] for k in ["completed", "in_progress"]] else None
 
@@ -116,5 +116,5 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
 
     return out_data
 
-def aggregate_multiple_files_results(file_results_list: list, settings: dict):
-    return DataAggregator.aggregate_multiple_files_results(file_results_list, settings)
+def aggregate_results_multiple_files(file_results_list: list, settings: dict):
+    return DataAggregator.merge_multiple_file_results(file_results_list, settings)

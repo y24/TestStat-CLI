@@ -1,6 +1,6 @@
 from utils import Utility
 
-def make_graph_tooltip(display_data: dict) -> str:
+def create_graph_tooltip_label(display_data: dict) -> str:
     """グラフのツールチップ用のラベルを生成する
 
     Args:
@@ -9,9 +9,9 @@ def make_graph_tooltip(display_data: dict) -> str:
     Returns:
         str: ツールチップ用のラベル
     """
-    return f"項目数: {display_data['available']} (Total: {display_data['all']} / 対象外: {display_data['excluded']})\nState: {display_data['state']}\n{make_results_text(display_data['total_data'], display_data['incompleted'])}"
+    return f"項目数: {display_data['available']} (Total: {display_data['all']} / 対象外: {display_data['excluded']})\nState: {display_data['state']}\n{format_results_summary_text(display_data['total_data'], display_data['incompleted'])}"
 
-def make_results_text(results: dict, incompleted: int) -> str:
+def format_results_summary_text(results: dict, incompleted: int) -> str:
     """テスト結果のテキストを生成する
 
     Args:
@@ -34,5 +34,5 @@ def make_results_text(results: dict, incompleted: int) -> str:
     else:
         return "有効なデータがありません。エラーのないファイルのみが集計されます。"
 
-def make_count_and_rate_text(top: int, bottom: int) -> str:
+def format_count_with_percentage(top: int, bottom: int) -> str:
     return f"{top}/{bottom} ({(top/bottom*100):.1f}%)" if bottom else "-"

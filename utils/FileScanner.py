@@ -1,7 +1,7 @@
 import os
 import glob
 
-def check_file_access(filepath):
+def can_access_file(filepath):
     """ファイルアクセス権限をチェック"""
     if not os.path.exists(filepath):
         return False, f"ファイルが見つかりません: {filepath}"

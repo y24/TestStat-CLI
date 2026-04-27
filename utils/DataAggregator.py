@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-def get_daily(data, results: list[str], completed_label:str, completed_results: list[str], executed_label:str, executed_results: list[str], plan_label:str, plan_data: list[str] = None):
+def aggregate_daily_results(data, results: list[str], completed_label:str, completed_results: list[str], executed_label:str, executed_results: list[str], plan_label:str, plan_data: list[str] = None):
     """日付ごとのデータ集計"""
     result_count = defaultdict(lambda: defaultdict(int))
 
@@ -44,7 +44,7 @@ def get_daily(data, results: list[str], completed_label:str, completed_results: 
             out_data[date] = counts
     return out_data, no_date_data
 
-def get_daily_by_name(data):
+def aggregate_daily_by_person(data):
     """データ集計（名前別）"""
     date_name_count = defaultdict(lambda: defaultdict(int))
     data = [row for row in data if len(row) > 2 and row[2] not in ("", None)]
@@ -63,7 +63,7 @@ def get_excluded_count(data, targets:list[str]) -> int:
     """対象外の数を取得"""
     return sum(1 for row in data if row and row[0] in targets)
 
-def get_total_all_date(data, no_date_data, excludes:list[str]):
+def calculate_total_results(data, no_date_data, excludes:list[str]):
     """全日付データ合計"""
     result = {}
     for values in data.values():
@@ -80,7 +80,7 @@ def sum_completed_results(data: dict, completed_results: list) -> int:
     """完了数を合計"""
     return sum(data.get(key, 0) for key in completed_results)
 
-def make_run_status(count_stats: dict, settings: dict) -> str:
+def determine_run_status(count_stats: dict, settings: dict) -> str:
     """実施状況を判別"""
     if count_stats["executed"] == 0:
         return settings["output_definition"]["state"]["not_started"]["name"]
@@ -90,7 +90,7 @@ def make_run_status(count_stats: dict, settings: dict) -> str:
         return settings["output_definition"]["state"]["in_progress"]["name"]
     return "???"
 
-def aggregate_multiple_files_results(file_results_list: list, settings: dict):
+def merge_multiple_file_results(file_results_list: list, settings: dict):
     """複数ファイルの集計結果を統合"""
     combined_total_results = {}
     combined_stats = {k: 0 for k in ["all", "excluded", "available", "executed", "completed", "incompleted", "planned"]}

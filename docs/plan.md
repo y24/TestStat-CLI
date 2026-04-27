@@ -21,7 +21,7 @@
   - [x] ファイル/フォルダ指定対応
   - [x] オプション（--config, --output-format, --json-output, --verbose, --help）実装
   - [x] フィルタリングオプション（--date-range, --tester, --result-type, --environment）実装
-  - [x] 出力オプション（--clipboard, --clipboard-only, --detailed）実装
+  - [x] 出力オプション（--clipboard, --detailed）実装
   - [x] プロジェクトリストファイルオプション（--list）実装
 - [x] 単一ファイル・フォルダ一括処理の分岐実装
 

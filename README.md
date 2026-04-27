@@ -62,7 +62,6 @@ tstat [オプション] [ファイルパス/フォルダパス]
 | `-j, --json-output` | `-j` | JSON形式で出力 | `false` |
 | `-v, --verbose` | `-v` | 詳細ログ出力（エラー発生時のトレース） | `false` |
 | `-p, --clipboard` | `-p` | 集計データをTSV形式でクリップボードにコピー | `false` |
-| `-P, --clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
 | `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
 | `--tester` | - | 担当者フィルタ（部分一致） | なし |
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
@@ -94,17 +93,11 @@ tstat path/to/your_file.xlsx -j
 # CSV形式でファイル出力
 tstat path/to/your_file.xlsx -o results.csv
 
-# 複数ファイル処理でCSV出力
-tstat path/to/your_file.xlsx -o summary.csv
-
 # 詳細ログ出力
 tstat path/to/your_file.xlsx -v
 
 # TSV形式でクリップボードにコピー
 tstat path/to/your_file.xlsx -p
-
-# クリップボードのみに出力
-tstat path/to/your_file.xlsx -P
 
 # 日付範囲フィルタ
 tstat --date-range 2024-01-15 2024-01-20 path/to/your_file.xlsx

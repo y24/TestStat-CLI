@@ -55,7 +55,6 @@ python test_stat.py [オプション] [ファイルパス/フォルダパス]
 | `--json-output` | `-j` | JSON形式で出力 | `false` |
 | `--verbose` | `-v` | 詳細ログ出力（ファイル処理・データ集計の進捗や内部情報を詳細に表示） | `false` |
 | `--clipboard` | `-p` | TSV形式でクリップボードにコピー | `false` |
-| `--clipboard-only` | `-P` | クリップボードのみに出力（コンソール出力を抑制） | `false` |
 | `--date-range` | - | 日付範囲フィルタ（YYYY-MM-DD形式、終了日は省略可能） | なし |
 | `--tester` | - | 担当者フィルタ（部分一致） | なし |
 | `--exact-match` | - | 担当者・環境フィルタで完全一致を使用 | `false` |
@@ -103,9 +102,6 @@ tstat -o summary.csv input_sample/
 
 # TSV形式でクリップボードにコピー
 tstat -p sample1.xlsx
-
-# クリップボードのみに出力
-tstat -P sample1.xlsx
 
 # 日付範囲フィルタ
 tstat --date-range 2024-01-15 2024-01-20 sample1.xlsx
@@ -163,9 +159,6 @@ python test_stat.py -o summary.csv input_sample/
 
 # TSV形式でクリップボードにコピー
 python test_stat.py -p sample1.xlsx
-
-# クリップボードのみに出力
-python test_stat.py -P sample1.xlsx
 
 # 日付範囲フィルタ
 python test_stat.py --date-range 2024-01-15 2024-01-20 sample1.xlsx
@@ -1886,5 +1879,5 @@ TestStatCLI/
 ### 10.3 主要機能実装
 - **詳細ログ出力（-v/--verbose）**: `utils/Logger.py`の`VerboseLogger`クラスで実装。ファイル処理・Excel読み取り・データ検証・集計・エラー/警告など各段階で詳細なログを出力。`utils/ReadData.py`の集計関数や`test_stat.py`のメイン処理に統合し、-v指定時のみ詳細ログが有効になる。
 - **フィルタリング機能**: `utils/ReadData.py`にフィルタリングロジックを追加。日付範囲・担当者・結果タイプ・環境によるフィルタリングを実装。`test_stat.py`のargparseにフィルタリングオプションを追加し、フィルタ条件に基づいてデータを絞り込み集計する。
-- **TSVクリップボード出力機能**: `utils/DataConversion.py`の`convert_to_2d_array`関数を使用してTSV形式に変換し、pyperclipライブラリでクリップボードにコピーする機能を実装。`test_stat.py`のargparseに`--clipboard`と`--clipboard-only`オプションを追加し、フィルタリング機能と組み合わせて使用可能。
+- **TSVクリップボード出力機能**: `utils/DataConversion.py`の`convert_to_2d_array`関数を使用してTSV形式に変換し、pyperclipライブラリでクリップボードにコピーする機能を実装。`test_stat.py`のargparseに`--clipboard`オプションを追加し、フィルタリング機能と組み合わせて使用可能。
 - **プロジェクトリストファイル対応**: JSON/YAML/TXT形式のプロジェクトリストファイルに対応。`test_stat.py`のargparseに`--list`オプションを追加し、複数のファイルを一括処理できる機能を実装。 

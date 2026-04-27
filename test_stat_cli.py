@@ -695,7 +695,6 @@ def parse_args():
     
     # TSVクリップボード出力オプション
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
-    parser.add_argument("-P", "--clipboard-only", action="store_true", help="クリップボードのみに出力（コンソール出力を抑制）")
     
     # フィルタリングオプション
     parser.add_argument("--date-range", nargs="*", metavar=("START_DATE", "END_DATE"), 
@@ -1000,7 +999,7 @@ def main():
     # TSVクリップボード出力処理
     clipboard_writer = ClipboardWriter(verbose_logger)
     
-    if args.clipboard or args.clipboard_only:
+    if args.clipboard:
         # クリップボード用のデータを準備
         clipboard_data = []
         if is_multiple_files:
@@ -1019,14 +1018,7 @@ def main():
         
         if not success:
             print("ERROR: クリップボードへのコピーに失敗しました")
-            if args.clipboard_only:
-                # クリップボードのみの場合はフォールバック出力
-                clipboard_writer.write_to_console_as_fallback(clipboard_data, settings)
             sys.exit(1)
-        elif args.clipboard_only:
-            # クリップボードのみの場合は処理終了
-            # print("TSVデータをクリップボードにコピーしました。Excelに貼り付けてご利用ください。")
-            sys.exit(0)
     
     # コンソール出力処理
     if args.output_format == "json" or args.json_output:

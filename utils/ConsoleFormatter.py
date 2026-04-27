@@ -153,10 +153,12 @@ def display_combined_total_results(results, settings=None):
 def display_file_breakdown_table(results):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
-    headers = ["File Name", "Available Cases", "Completed", "Completion Rate(%)", "Executed", "Execution Rate(%)"]
+    headers = ["File", "Available Cases", "Completed", "Completion Rate(%)", "Executed", "Execution Rate(%)"]
     rows = []
     for filepath, result in results:
-        display_name = TablePrinter.shorten_filename(os.path.basename(filepath), 30)
+        # labelが設定されている場合はそれを使用し、そうでなければファイル名を使用
+        base_name = result.get("label") if result.get("label") else os.path.basename(filepath)
+        display_name = TablePrinter.shorten_filename(base_name, 30)
         if "error" in result:
             rows.append([display_name, "ERROR", "-", "-", "-", "-"])
             continue

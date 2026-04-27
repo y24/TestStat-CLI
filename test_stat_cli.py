@@ -80,7 +80,7 @@ def main():
                 if is_valid_search:
                     file_list.extend(found_files)
                     for f in found_files:
-                        file_labels[f] = file_info["label"]
+                        file_labels[f] = file_info.get("label", "")
                         
                         # 個別設定の保持
                         overrides = {}

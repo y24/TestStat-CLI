@@ -87,10 +87,18 @@ def read_yaml_project_list(list_file_path):
             raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'または'identifier'キーが見つかりません")
         
         file_path = os.path.normpath(file_info["path"])
-        file_info_list.append({
+        item = {
             "path": file_path,
             "identifier": file_info["identifier"]
-        })
+        }
+        
+        # オプション設定の追加
+        if "sheet_search_keys" in file_info:
+            item["sheet_search_keys"] = file_info["sheet_search_keys"]
+        if "sheet_search_ignores" in file_info:
+            item["sheet_search_ignores"] = file_info["sheet_search_ignores"]
+            
+        file_info_list.append(item)
     
     if not file_info_list:
         raise ValueError(f"プロジェクトリストファイルに有効なファイルが含まれていません: {list_file_path}")

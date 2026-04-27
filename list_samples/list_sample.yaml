@@ -2,9 +2,11 @@ project:
   files:
   - identifier: TEST001
     path: input_sample/sample1.xlsx
+    sheet_search_keys: ["テスト項目"]
+    sheet_search_ignores: ["Sheet1"]
   - identifier: TEST002
     path: input_sample/sample2.xlsx
   - identifier: TEST003
     path: input_sample/sample3.xlsx
-  last_loaded: '2026-04-27 21:51:51'
+  last_loaded: '2026-04-27 22:06:44'
   project_name: サンプルプロジェクト

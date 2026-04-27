@@ -1,10 +1,10 @@
 project:
-  project_name: "サンプルプロジェクト"
   files:
-    - identifier: "TEST001"
-      path: "input_sample/sample1.xlsx"
-    - identifier: "TEST002"
-      path: "input_sample/sample2.xlsx"
-    - identifier: "TEST003"
-      path: "input_sample/sample3.xlsx"
-  last_loaded: "2025-01-27 15:30:00" 
+  - identifier: TEST001
+    path: input_sample/sample1.xlsx
+  - identifier: TEST002
+    path: input_sample/sample2.xlsx
+  - identifier: TEST003
+    path: input_sample/sample3.xlsx
+  last_loaded: '2026-04-27 21:28:18'
+  project_name: サンプルプロジェクト

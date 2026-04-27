@@ -24,31 +24,23 @@ def update_project_list_last_loaded(list_file_path):
         file_extension = os.path.splitext(list_file_path)[1].lower()
         
         # ファイルを読み込み
-        if file_extension == '.json':
-            with open(list_file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        elif file_extension in ['.yaml', '.yml']:
+        if file_extension in ['.yaml', '.yml']:
             if not YAML_AVAILABLE:
                 print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
                 return False
             with open(list_file_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
-        elif file_extension == '.txt':
-            # テキスト形式はlast_loadedの更新対象外（何もしないで成功とする）
-            return True
         else:
-            print(f"WARNING: サポートされていないファイル形式です: {file_extension}")
+            print(f"WARNING: サポートされていないファイル形式です: {file_extension} (対応形式: .yaml, .yml)")
             return False
         
         # last_loaded値を現在時刻に更新
-        if "project" in data:
+        if data and "project" in data:
             data["project"]["last_loaded"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             # ファイルに書き戻し
             with open(list_file_path, 'w', encoding='utf-8') as f:
-                if file_extension == '.json':
-                    json.dump(data, f, ensure_ascii=False, indent=2)
-                elif file_extension in ['.yaml', '.yml']:
+                if file_extension in ['.yaml', '.yml']:
                     yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
             
             return True
@@ -64,29 +56,21 @@ def read_project_list_file(list_file_path):
     """プロジェクトリストファイルからファイル情報を読み取る"""
     file_extension = os.path.splitext(list_file_path)[1].lower()
     
-    if file_extension in ['.json', '.yaml', '.yml']:
-        return read_structured_project_list(list_file_path, file_extension)
-    elif file_extension == '.txt':
-        return read_text_project_list(list_file_path)
+    if file_extension in ['.yaml', '.yml']:
+        return read_yaml_project_list(list_file_path)
     else:
-        raise ValueError(f"サポートされていないファイル形式です: {file_extension} (対応形式: .json, .yaml, .yml, .txt)")
+        raise ValueError(f"サポートされていないファイル形式です: {file_extension} (対応形式: .yaml, .yml)")
 
-def read_structured_project_list(list_file_path, file_extension):
-    """構造化されたプロジェクトリストファイル（JSON/YAML）を読み取る"""
+def read_yaml_project_list(list_file_path):
+    """プロジェクトリストファイル（YAML）を読み取る"""
     try:
+        if not YAML_AVAILABLE:
+            raise ImportError("YAMLファイルを処理するにはPyYAMLライブラリが必要です。pip install PyYAML でインストールしてください。")
+        
         with open(list_file_path, 'r', encoding='utf-8') as f:
-            if file_extension == '.json':
-                data = json.load(f)
-            elif file_extension in ['.yaml', '.yml']:
-                if not YAML_AVAILABLE:
-                    raise ImportError("YAMLファイルを処理するにはPyYAMLライブラリが必要です。pip install PyYAML でインストールしてください。")
-                data = yaml.safe_load(f)
-            else:
-                raise ValueError(f"サポートされていないファイル形式です: {file_extension}")
+            data = yaml.safe_load(f)
     except FileNotFoundError:
         raise FileNotFoundError(f"プロジェクトリストファイルが見つかりません: {list_file_path}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSONファイルの形式が不正です: {list_file_path}, 詳細: {e}")
     except yaml.YAMLError as e:
         raise ValueError(f"YAMLファイルの形式が不正です: {list_file_path}, 詳細: {e}")
     except Exception as e:
@@ -142,46 +126,6 @@ def read_structured_project_list(list_file_path, file_extension):
         "last_loaded": project_data.get("last_loaded", "")
     }
 
-def read_text_project_list(list_file_path):
-    """テキスト形式のプロジェクトリストファイルを読み取る（従来方式）"""
-    file_info_list = []
-    try:
-        with open(list_file_path, 'r', encoding='utf-8') as f:
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if not line or line.startswith('#'):  # 空行とコメント行をスキップ
-                    continue
-                
-                # ダブルクォーテーションで囲まれたパスを処理
-                if line.startswith('"') and line.endswith('"'):
-                    path = line[1:-1]  # ダブルクォーテーションを除去
-                else:
-                    path = line
-                
-                # パスの正規化
-                path = os.path.normpath(path)
-                
-                # テキスト形式では識別子はファイル名から生成
-                identifier = os.path.splitext(os.path.basename(path))[0]
-                
-                file_info_list.append({
-                    "path": path,
-                    "identifier": identifier
-                })
-                
-    except FileNotFoundError:
-        raise FileNotFoundError(f"プロジェクトリストファイルが見つかりません: {list_file_path}")
-    except Exception as e:
-        raise Exception(f"プロジェクトリストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
-    
-    if not file_info_list:
-        raise ValueError(f"プロジェクトリストファイルに有効なファイルが含まれていません: {list_file_path}")
-    
-    return {
-        "project_name": os.path.splitext(os.path.basename(list_file_path))[0],
-        "files": file_info_list,
-        "last_loaded": ""
-    }
 
 def read_paths_from_list_file(list_file_path):
     """リストファイルからパスを読み取る（従来の互換性のため残す）"""
@@ -747,7 +691,7 @@ def parse_args():
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
-    parser.add_argument("-l", "--list", help="パスリストファイルのパス（ファイル内の各行にパスを記述）")
+    parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     
     # TSVクリップボード出力オプション
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")

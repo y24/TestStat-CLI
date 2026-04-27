@@ -56,7 +56,7 @@ tstat [オプション] [ファイルパス/フォルダパス]
 |------------|--------|------|--------------|
 | `path` | - | 集計対象のファイルまたはフォルダのパス | 必須 |
 | `-c, --config` | `-c` | 設定ファイルのパス | `config.json` |
-| `-l, --list` | `-l` | プロジェクトリストファイルのパス（JSON/YAML/TXT形式） | なし |
+| `-l, --list` | `-l` | プロジェクトリストファイルのパス（YAML形式） | なし |
 | `-f, --output-format` | `-f` | 出力形式（table/json/csv/excel） | `table` |
 | `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `-j, --json-output` | `-j` | JSON形式で出力 | `false` |
@@ -82,14 +82,8 @@ tstat path/to/file1.xlsx path/to/file2.xlsx path/to/file3.xlsx
 # フォルダ内の全Excelファイルを集計
 tstat path/to/your_folder
 
-# プロジェクトリストファイル使用（JSON形式）
-tstat -l project_list.json
-
 # プロジェクトリストファイル使用（YAML形式）
 tstat -l project_list.yaml
-
-# プロジェクトリストファイル使用（テキスト形式）
-tstat -l list_sample.txt
 
 # カスタム設定ファイルを使用
 tstat path/to/your_file.xlsx -c custom_config.json
@@ -220,17 +214,8 @@ tstat.exe file1.xlsx file2.xlsx file3.xlsx
 tstat.exe "D:\Script\TestStat-CLI\input_sample\sample1.xlsx" "D:\Script\TestStat-CLI\input_sample\sample2_abcdegfg.xlsx"
 ```
 
-#### 2. プロジェクトリストファイルによる複数ファイル処理
-```bash
-# JSON形式のプロジェクトリストファイルを使用
-tstat.exe -l project_list.json
-
 # YAML形式のプロジェクトリストファイルを使用
 tstat.exe -l project_list.yaml
-
-# テキスト形式のプロジェクトリストファイルを使用
-tstat.exe -l file_list.txt
-```
 
 #### 複数ファイル処理の出力内容
 複数ファイルを処理した場合、以下の情報が表示されます：
@@ -540,8 +525,6 @@ TestStatCLI/
 ├── tstat.bat             # Windows実行スクリプト
 ├── tstat.sh              # Linux実行スクリプト
 ├── list_samples/         # サンプルファイル
-│   ├── list_sample.json  # jsonサンプル
-│   ├── list_sample.txt   # txtサンプル
 │   └── list_sample.yaml  # yamlサンプル
 ├── utils/                # ユーティリティ
 │   ├── __init__.py       # パッケージ初期化

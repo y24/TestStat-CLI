@@ -152,7 +152,7 @@ def display_combined_total_results(results, settings=None):
 def display_file_breakdown_table(results):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
-    headers = ["File", "Available Cases", "Completed", "Completion Rate(%)", "Executed", "Execution Rate(%)", "Start Date", "Latest Update"]
+    headers = ["File", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
     rows = []
     for filepath, result in results:
         # labelが設定されている場合はそれを使用し、そうでなければファイル名を使用

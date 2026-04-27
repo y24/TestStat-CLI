@@ -9,8 +9,8 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
-def update_project_list_last_loaded(list_file_path):
-    """プロジェクトリストファイルのlast_loaded値を現在時刻に更新する"""
+def update_project_list_last_loaded(list_file_path, timestamp=None):
+    """プロジェクトリストファイルのlast_loaded値を更新する"""
     try:
         if not YAML_AVAILABLE:
             print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
@@ -25,7 +25,7 @@ def update_project_list_last_loaded(list_file_path):
             data = yaml.safe_load(f)
         
         if data and "project" in data:
-            data["project"]["last_loaded"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data["project"]["last_loaded"] = timestamp if timestamp else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             with open(list_file_path, 'w', encoding='utf-8') as f:
                 yaml.dump(data, f, default_flow_style=False, allow_unicode=True)

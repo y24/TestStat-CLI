@@ -208,6 +208,9 @@ def main():
             print("ERROR: クリップボードへのコピーに失敗しました")
             sys.exit(1)
 
+    # 実行時刻の取得
+    current_load_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # コンソール出力
     if args.output_format == "json" or args.json_output:
         print(json.dumps(output_data, ensure_ascii=False, indent=2))
@@ -217,7 +220,7 @@ def main():
             print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
             if args.list and project_info:
                 print(f"Project: {project_info['project_name']}\nProcessed Files: {len(file_list)}")
-                if project_info.get('last_loaded'): print(f"Last Loaded: {project_info['last_loaded']}")
+                print(f"Last Loaded: {current_load_time}")
                 print()
             
             ConsoleFormatter.display_combined_total_results(results, settings)
@@ -235,7 +238,7 @@ def main():
 
     # プロジェクトリスト更新
     if args.list:
-        if ProjectList.update_project_list_last_loaded(args.list) and verbose_logger:
+        if ProjectList.update_project_list_last_loaded(args.list, current_load_time) and verbose_logger:
             verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
 
     verbose_logger.end_processing()

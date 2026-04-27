@@ -687,7 +687,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
     parser.add_argument("path", nargs='*', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）。複数指定可能")
     parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
-    parser.add_argument("-f", "--output-format", choices=["table", "json", "csv", "excel"], default="table", help="出力形式（table/json/csv/excel）")
+    parser.add_argument("-f", "--output-format", choices=["table", "json", "csv"], default="table", help="出力形式（table/json/csv）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
     parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
@@ -968,12 +968,10 @@ def main():
             output_file = args.output_file
         
         # 出力形式の決定
-        if args.output_format in ["csv", "excel"]:
-            output_format = args.output_format
+        if args.output_format == "csv":
+            output_format = "csv"
         elif args.output_file.endswith('.csv'):
             output_format = "csv"
-        elif args.output_file.endswith('.xlsx'):
-            output_format = "excel"
         else:
             # デフォルトはCSV
             output_format = "csv"
@@ -984,15 +982,10 @@ def main():
         if output_format == "csv" and not output_file.endswith('.csv'):
             print(f"ERROR: CSV出力には.csv拡張子が必要です: {output_file}")
             sys.exit(1)
-        elif output_format == "excel" and not output_file.endswith('.xlsx'):
-            print(f"ERROR: Excel出力には.xlsx拡張子が必要です: {output_file}")
-            sys.exit(1)
         
         # ファイル出力実行
         if output_format == "csv":
             success, error = output_writer.write_csv(output_data, output_file, is_multiple_files, settings)
-        elif output_format == "excel":
-            success, error = output_writer.write_excel(output_data, output_file, is_multiple_files, filters, settings)
         else:
             success, error = False, f"サポートされていない出力形式です: {output_format}"
         
@@ -1001,7 +994,7 @@ def main():
             sys.exit(1)
         
         # ファイル出力時はコンソール出力を抑制
-        if args.output_format in ["csv", "excel"]:
+        if args.output_format == "csv":
             sys.exit(0)
     
     # TSVクリップボード出力処理

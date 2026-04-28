@@ -18,16 +18,31 @@ def get_script_root_dir():
     """スクリプトのルートディレクトリのパスを返す"""
     return os.path.dirname(os.path.abspath(__file__))
 
+def get_version(script_dir):
+    """pyproject.tomlからバージョン情報を取得する"""
+    pyproject_path = os.path.join(script_dir, "pyproject.toml")
+    if os.path.exists(pyproject_path):
+        try:
+            with open(pyproject_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("version"):
+                        # 'version = "1.0.0"' の形式から "1.0.0" を抽出
+                        return line.split("=")[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return "unknown"
+
 def parse_args():
     # スクリプトのルートディレクトリを取得
     script_dir = get_script_root_dir()
     default_config_path = os.path.join(script_dir, "config.json")
+    version = get_version(script_dir)
     
     # ヘルプ表示時のみロゴを表示
     if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
         ConsoleFormatter.print_logo(script_dir)
     
-    parser = argparse.ArgumentParser(description="Excelテスト仕様書集計ツール")
+    parser = argparse.ArgumentParser(description=f"Excelテスト仕様書集計ツール (version {version})")
     parser.add_argument("path", nargs='*', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）。複数指定可能")
     parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv"], default="table", help="出力形式（table/json/csv）")
@@ -37,6 +52,7 @@ def parse_args():
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     parser.add_argument("--detailed", action="store_true", help="複数ファイル処理時にファイル別の詳細結果も表示")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version}", help="バージョン情報を表示して終了")
     
     return parser.parse_args()
 

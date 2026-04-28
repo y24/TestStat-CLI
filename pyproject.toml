@@ -33,7 +33,6 @@ dependencies = [
     "openpyxl>=3.0.0",
     "pyperclip>=1.8.0",
     "PyYAML>=6.0",
-    "pyinstaller>=5.0.0",
 ]
 keywords = ["excel", "testing", "cli", "statistics", "reporting", "xlsx"]
 

@@ -45,11 +45,24 @@ def process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=None
     data, env_data, all_plan_data, sheet_name_mapping = [], {}, [], {}
     
     for index, set_ in enumerate(sets):
+        set_name = Excel.get_cell_value(sheet=sheet, col=set_[0], row=1, replace_newline=True) or f"セット{index + 1}"
+        
+        read_def = settings.get("read_definition", {})
+        
+        target_envs = read_def.get("target_environments")
+        if target_envs:
+            if not any(env in set_name for env in target_envs):
+                continue
+                
+        ignore_envs = read_def.get("ignore_environments")
+        if ignore_envs:
+            if any(env in set_name for env in ignore_envs):
+                continue
+            
         set_data = Excel.get_column_values_formatted(sheet=sheet, col_nums=set_, header_row=header_rownum, ignore_header=True)
         processed_data = [[r[0], r[1] or "NO_NAME", r[2], sheet_name] if r[0] and r[2] and not r[1] else r + [sheet_name] for r in set_data]
         data.extend(processed_data)
 
-        set_name = Excel.get_cell_value(sheet=sheet, col=set_[0], row=1, replace_newline=True) or f"セット{index + 1}"
         plan_data = Excel.get_column_values_formatted(sheet=sheet, col_nums=[plan_rows[index]], header_row=header_rownum, ignore_header=True) if plan_rows else None
         if plan_data: all_plan_data.extend(plan_data)
 
@@ -88,5 +101,5 @@ def process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=None
     return {
         "data": data, "plan_data": all_plan_data, "env_data": env_data,
         "sheet_name_mapping": sheet_name_mapping,
-        "counts": {"sheet_name": sheet_name, "env_count": len(sets), "all": case_count, "all_plan": plan_count}
+        "counts": {"sheet_name": sheet_name, "env_count": len(env_data), "all": case_count, "all_plan": plan_count}
     }

@@ -62,10 +62,7 @@ def main():
         sys.exit(1)
     
     # ファイルリストの作成
-    file_list = []
-    file_labels = {}
-    file_overrides = {}
-    file_subtasks = {}
+    tasks = []
     project_info = None
 
     if args.list:
@@ -79,23 +76,25 @@ def main():
                 
                 is_valid_search, found_files = FileScanner.find_excel_files(target_path)
                 if is_valid_search:
-                    file_list.extend(found_files)
                     for f in found_files:
-                        file_labels[f] = file_info.get("label", "")
+                        task = {
+                            "filepath": f,
+                            "label": file_info.get("label", ""),
+                            "overrides": {},
+                            "subtask_id": file_info.get("subtask_id")
+                        }
                         
                         # 個別設定の保持
-                        overrides = {}
                         if "target_sheets" in file_info:
-                            overrides["target_sheets"] = file_info["target_sheets"]
+                            task["overrides"]["target_sheets"] = file_info["target_sheets"]
                         if "ignore_sheets" in file_info:
-                            overrides["ignore_sheets"] = file_info["ignore_sheets"]
-                        
-                        if overrides:
-                            file_overrides[f] = overrides
+                            task["overrides"]["ignore_sheets"] = file_info["ignore_sheets"]
+                        if "target_environments" in file_info:
+                            task["overrides"]["target_environments"] = file_info["target_environments"]
+                        if "ignore_environments" in file_info:
+                            task["overrides"]["ignore_environments"] = file_info["ignore_environments"]
                             
-                        # サブタスクIDの保持
-                        if "subtask_id" in file_info:
-                            file_subtasks[f] = file_info["subtask_id"]
+                        tasks.append(task)
                 else:
                     print(f"WARNING: {found_files}")
         except Exception as e:
@@ -111,19 +110,27 @@ def main():
                 continue
             is_valid_search, found_files = FileScanner.find_excel_files(target_path)
             if is_valid_search:
-                file_list.extend(found_files)
+                for f in found_files:
+                    tasks.append({
+                        "filepath": f,
+                        "label": "",
+                        "overrides": {},
+                        "subtask_id": None
+                    })
             else:
                 print(f"WARNING: {found_files}")
 
-    if not file_list:
+    if not tasks:
         print("ERROR: 処理可能なファイルが見つかりませんでした")
         sys.exit(1)
 
-    verbose_logger.log_file_search(args.list if args.list else f"{len(args.path)} paths", len(file_list))
+    verbose_logger.log_file_search(args.list if args.list else f"{len(args.path)} paths", len(tasks))
     
     # 各ファイルの処理
     results = []
-    for filepath in file_list:
+    file_subtasks = {}  # API連携用
+    for task in tasks:
+        filepath = task["filepath"]
         is_accessible, message = FileScanner.can_access_file(filepath)
         if not is_accessible:
             print(f"WARNING: {message}")
@@ -132,17 +139,29 @@ def main():
         try:
             # 個別設定の適用
             file_settings = settings
-            if filepath in file_overrides:
+            if task["overrides"]:
                 file_settings = copy.deepcopy(settings)
-                if "target_sheets" in file_overrides[filepath]:
-                    file_settings["read_definition"]["target_sheets"] = file_overrides[filepath]["target_sheets"]
-                if "ignore_sheets" in file_overrides[filepath]:
-                    file_settings["read_definition"]["ignore_sheets"] = file_overrides[filepath]["ignore_sheets"]
+                if "target_sheets" in task["overrides"]:
+                    file_settings["read_definition"]["target_sheets"] = task["overrides"]["target_sheets"]
+                if "ignore_sheets" in task["overrides"]:
+                    file_settings["read_definition"]["ignore_sheets"] = task["overrides"]["ignore_sheets"]
+                if "target_environments" in task["overrides"]:
+                    file_settings["read_definition"]["target_environments"] = task["overrides"]["target_environments"]
+                if "ignore_environments" in task["overrides"]:
+                    file_settings["read_definition"]["ignore_environments"] = task["overrides"]["ignore_environments"]
 
             result = ReadData.aggregate_results(filepath, file_settings, verbose_logger)
-            if filepath in file_labels:
-                result["label"] = file_labels[filepath]
+            if task["label"]:
+                result["label"] = task["label"]
+            if "target_environments" in task["overrides"]:
+                result["target_environments"] = task["overrides"]["target_environments"]
             results.append((filepath, result))
+            
+            # API連携用にsubtask_idを保持 (labelが設定されている場合はlabelをキーに、そうでない場合はfilepathをキーに)
+            if task["subtask_id"]:
+                key = task["label"] if task["label"] else filepath
+                file_subtasks[key] = task["subtask_id"]
+                
         except Exception as e:
             results.append((filepath, {"error": {"type": "processing_error", "message": f"ファイル処理中にエラーが発生しました: {filepath}", "details": str(e)}}))
             if args.verbose:
@@ -153,11 +172,11 @@ def main():
         sys.exit(1)
 
     # 出力データの準備
-    is_multiple_files = len(file_list) > 1
+    is_multiple_files = len(tasks) > 1
     if is_multiple_files:
         output_data = {
             "summary": {
-                "processed_files": len(file_list),
+                "processed_files": len(tasks),
                 "total_stats": {m: sum(r[1]["stats"][m] for r in results if "stats" in r[1]) for m in ["all", "available", "executed", "completed", "incompleted", "planned"]},
                 "overall_status": "",
                 "earliest_start_date": min([r[1]["run"]["start_date"] for r in results if "run" in r[1] and r[1]["run"]["start_date"]] or [""]),
@@ -224,7 +243,7 @@ def main():
             ConsoleFormatter.print_logo(script_dir)
             print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
             if args.list and project_info:
-                print(f"Project: {project_info['project_name']}\nProcessed Files: {len(file_list)}")
+                print(f"Project: {project_info['project_name']}\nProcessed Files: {len(tasks)}")
                 print(f"Execution Time: {current_load_time}")
                 print()
             
@@ -253,8 +272,9 @@ def main():
         print("=" * 50)
         
         for f, r in results:
-            if f in file_subtasks and "error" not in r and "total" in r:
-                subtask_id = file_subtasks[f]
+            key = r.get("label", f)
+            if key in file_subtasks and "error" not in r and "total" in r:
+                subtask_id = file_subtasks[key]
                 # ユーザーの要望により「完了率」をリクエストする。完了率が存在しない場合は0とする
                 progress_percent = r["total"].get("完了率(%)", 0)
                 

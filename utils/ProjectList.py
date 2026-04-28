@@ -99,6 +99,10 @@ def read_yaml_project_list(list_file_path):
             item["ignore_sheets"] = file_info["ignore_sheets"]
         if "subtask_id" in file_info:
             item["subtask_id"] = file_info["subtask_id"]
+        if "target_environments" in file_info:
+            item["target_environments"] = file_info["target_environments"]
+        if "ignore_environments" in file_info:
+            item["ignore_environments"] = file_info["ignore_environments"]
             
         file_info_list.append(item)
     

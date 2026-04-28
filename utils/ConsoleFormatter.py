@@ -152,14 +152,16 @@ def display_combined_total_results(results, settings=None):
 def display_file_breakdown_table(results):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
-    headers = ["File", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
+    headers = ["File", "Env", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
     rows = []
     for filepath, result in results:
         # labelが設定されている場合はそれを使用し、そうでなければファイル名を使用
         base_name = result.get("label") if result.get("label") else os.path.basename(filepath)
         display_name = TablePrinter.shorten_filename(base_name, 30)
+        env_val = ", ".join(result.get("target_environments", [])) if result.get("target_environments") else "-"
+        
         if "error" in result:
-            rows.append([display_name, "ERROR", "-", "-", "-", "-", "-", "-"])
+            rows.append([display_name, env_val, "ERROR", "-", "-", "-", "-", "-", "-"])
             continue
         
         available = result.get("stats", {}).get("available", 0)
@@ -173,7 +175,7 @@ def display_file_breakdown_table(results):
         start_date = run_info.get("start_date") or "-"
         last_update = run_info.get("last_update") or "-"
         
-        rows.append([display_name, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
+        rows.append([display_name, env_val, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
     TablePrinter.print_table(headers, rows)
     print()
 

@@ -7,6 +7,19 @@ project:
       - テスト項目
     ignore_sheets:
       - Sheet1
+    target_environments:
+      - 環境a
+    ignore_environments:
+      - 環境a_ignore
+  - label: TEST001
+    path: input_sample/sample1.xlsx
+    subtask_id: 112
+    target_sheets:
+      - テスト項目
+    ignore_sheets:
+      - Sheet1
+    target_environments:
+      - 環境b
   - label: TEST002
     path: input_sample/sample2.xlsx
     subtask_id: 87

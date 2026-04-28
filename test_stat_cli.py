@@ -268,22 +268,43 @@ def main():
         print("API Integration")
         print("=" * 50)
         
+        # 同じファイル・同じサブタスクIDで合算
+        api_payloads = {}
         for f, r in results:
             if "subtask_id" in r and "error" not in r and "total" in r:
                 subtask_id = r["subtask_id"]
-                # ユーザーの要望により「完了率」をリクエストする。完了率が存在しない場合は0とする
-                progress_percent = r["total"].get("完了率(%)", 0)
+                key = (f, subtask_id)
                 
-                kwargs = {}
+                completed = r["total"].get("完了数", 0)
+                available = r.get("stats", {}).get("available", 0)
                 start_date = r.get("run", {}).get("start_date")
-                if start_date:
-                    kwargs["actual_start_date"] = start_date
                 
-                success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
-                if not success:
-                    print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+                if key not in api_payloads:
+                    api_payloads[key] = {
+                        "completed": completed,
+                        "available": available,
+                        "start_dates": [start_date] if start_date else []
+                    }
                 else:
-                    print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+                    api_payloads[key]["completed"] += completed
+                    api_payloads[key]["available"] += available
+                    if start_date:
+                        api_payloads[key]["start_dates"].append(start_date)
+                        
+        for (f, subtask_id), data in api_payloads.items():
+            completed = data["completed"]
+            available = data["available"]
+            progress_percent = (completed / available * 100) if available > 0 else 0
+            
+            kwargs = {}
+            if data["start_dates"]:
+                kwargs["actual_start_date"] = min(data["start_dates"])
+                
+            success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
+            if not success:
+                print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+            else:
+                print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
 
     verbose_logger.end_processing()
     print()

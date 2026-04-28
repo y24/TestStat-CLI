@@ -43,6 +43,7 @@ def parse_args():
 def main():
     args = parse_args()
     script_dir = get_script_root_dir()
+    is_json_mode = args.json_output or args.output_format == "json"
     
     # VerboseLoggerの初期化
     verbose_logger = Logger.VerboseLogger(args.verbose)
@@ -53,12 +54,12 @@ def main():
         with open(args.config, encoding="utf-8") as f:
             settings = json.load(f)
     except Exception as e:
-        print(f"ERROR: 設定ファイルの読み込みに失敗しました: {args.config}\n詳細: {e}")
+        print(f"ERROR: 設定ファイルの読み込みに失敗しました: {args.config}\n詳細: {e}", file=sys.stderr)
         sys.exit(1)
     
     is_valid, message = FileScanner.validate_config(settings)
     if not is_valid:
-        print(f"ERROR: {message}")
+        print(f"ERROR: {message}", file=sys.stderr)
         sys.exit(1)
     
     # ファイルリストの作成
@@ -99,11 +100,11 @@ def main():
                 else:
                     execution_warnings.append(str(found_files))
         except Exception as e:
-            print(f"ERROR: {e}")
+            print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
     else:
         if not args.path:
-            print("ERROR: パスまたはプロジェクトリストファイルを指定してください")
+            print("ERROR: パスまたはプロジェクトリストファイルを指定してください", file=sys.stderr)
             sys.exit(1)
         for target_path in args.path:
             if not os.path.exists(target_path):
@@ -122,13 +123,16 @@ def main():
                 execution_warnings.append(str(found_files))
 
     if not tasks:
-        if execution_warnings:
-            print("\n" + "=" * 50)
-            print("Warnings")
-            print("=" * 50)
-            for w in execution_warnings:
-                print(f"WARNING: {w}")
-        print("ERROR: 処理可能なファイルが見つかりませんでした")
+        if is_json_mode:
+            print(json.dumps({"error": "処理可能なファイルが見つかりませんでした", "warnings": execution_warnings}, ensure_ascii=False, indent=2))
+        else:
+            if execution_warnings:
+                print("\n" + "=" * 50)
+                print("Warnings")
+                print("=" * 50)
+                for w in execution_warnings:
+                    print(f"WARNING: {w}")
+            print("ERROR: 処理可能なファイルが見つかりませんでした", file=sys.stderr)
         sys.exit(1)
 
     verbose_logger.log_file_search(args.list if args.list else f"{len(args.path)} paths", len(tasks))
@@ -171,13 +175,16 @@ def main():
                 print(f"詳細エラー情報: {traceback.format_exc()}")
     
     if not results:
-        if execution_warnings:
-            print("\n" + "=" * 50)
-            print("Warnings")
-            print("=" * 50)
-            for w in execution_warnings:
-                print(f"WARNING: {w}")
-        print("ERROR: 処理可能なファイルが見つかりませんでした")
+        if is_json_mode:
+            print(json.dumps({"error": "処理可能なファイルが見つかりませんでした", "warnings": execution_warnings}, ensure_ascii=False, indent=2))
+        else:
+            if execution_warnings:
+                print("\n" + "=" * 50)
+                print("Warnings")
+                print("=" * 50)
+                for w in execution_warnings:
+                    print(f"WARNING: {w}")
+            print("ERROR: 処理可能なファイルが見つかりませんでした", file=sys.stderr)
         sys.exit(1)
 
     # 出力データの準備
@@ -225,7 +232,7 @@ def main():
         
         success, error = output_writer.write_csv(output_data, output_file, is_multiple_files, settings)
         if not success:
-            print(f"ERROR: {error}")
+            print(f"ERROR: {error}", file=sys.stderr)
             sys.exit(1)
         if args.output_format == "csv": sys.exit(0)
 
@@ -238,35 +245,36 @@ def main():
             r_copy["file"] = f
             clipboard_data.append(r_copy)
         if not clipboard_writer.write_to_clipboard(clipboard_data, settings):
-            print("ERROR: クリップボードへのコピーに失敗しました")
+            print("ERROR: クリップボードへのコピーに失敗しました", file=sys.stderr)
             sys.exit(1)
 
     # 実行時刻の取得
     current_load_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # コンソール出力
-    if args.output_format == "json" or args.json_output:
-        print(json.dumps(output_data, ensure_ascii=False, indent=2))
-    else:
-        if is_multiple_files:
-            ConsoleFormatter.print_logo(script_dir)
-            print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
-            if args.list and project_info:
-                print(f"Project: {project_info['project_name']}\nProcessed Files: {len(tasks)}")
-                print(f"Execution Time: {current_load_time}")
-                print()
-            
-            ConsoleFormatter.display_combined_total_results(results, settings)
-            ConsoleFormatter.display_file_breakdown_table(results, settings)
-            ConsoleFormatter.display_error_summary(results)
-            
-            if args.detailed:
-                for f, r in results:
-                    print("=" * 50)
-                    ConsoleFormatter.print_summary_results_table(r, f, show_title=False, settings=settings)
+    if not is_json_mode:
+        if args.output_format == "json":
+            print(json.dumps(output_data, ensure_ascii=False, indent=2))
         else:
-            f, r = results[0]
-            ConsoleFormatter.print_summary_results_table(r, f, settings=settings, script_root_dir=script_dir)
+            if is_multiple_files:
+                ConsoleFormatter.print_logo(script_dir)
+                print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
+                if args.list and project_info:
+                    print(f"Project: {project_info['project_name']}\nProcessed Files: {len(tasks)}")
+                    print(f"Execution Time: {current_load_time}")
+                    print()
+                
+                ConsoleFormatter.display_combined_total_results(results, settings)
+                ConsoleFormatter.display_file_breakdown_table(results, settings)
+                ConsoleFormatter.display_error_summary(results)
+                
+                if args.detailed:
+                    for f, r in results:
+                        print("=" * 50)
+                        ConsoleFormatter.print_summary_results_table(r, f, show_title=False, settings=settings)
+            else:
+                f, r = results[0]
+                ConsoleFormatter.print_summary_results_table(r, f, settings=settings, script_root_dir=script_dir)
 
 
     # API連携: WBSサブタスクの進捗更新 (ファイルごと)
@@ -277,10 +285,12 @@ def main():
     if api_enabled and base_url and has_subtasks:
         from utils.ApiIntegration import update_subtask_progress
         
-        print("\n" + "=" * 50)
-        print("API Integration")
-        print("=" * 50)
+        if not is_json_mode:
+            print("\n" + "=" * 50)
+            print("API Integration")
+            print("=" * 50)
         
+        api_updates = []
         # 同じファイル・同じサブタスクIDで合算
         api_payloads = {}
         for f, r in results:
@@ -314,20 +324,39 @@ def main():
                 kwargs["actual_start_date"] = min(data["start_dates"])
                 
             success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
-            if not success:
-                print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+            if is_json_mode:
+                api_updates.append({
+                    "file": f,
+                    "subtask_id": subtask_id,
+                    "progress": int(progress_percent),
+                    "success": success,
+                    "message": msg
+                })
             else:
-                print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+                if not success:
+                    print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+                else:
+                    print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+        
+        if is_json_mode:
+            output_data["api_updates"] = api_updates
 
     if execution_warnings:
-        print("\n" + "=" * 50)
-        print("Warnings")
-        print("=" * 50)
-        for w in execution_warnings:
-            print(f"WARNING: {w}")
+        if is_json_mode:
+            output_data["warnings"] = execution_warnings
+        else:
+            print("\n" + "=" * 50)
+            print("Warnings")
+            print("=" * 50)
+            for w in execution_warnings:
+                print(f"WARNING: {w}")
 
     verbose_logger.end_processing()
-    print()
+    
+    if is_json_mode:
+        print(json.dumps(output_data, ensure_ascii=False, indent=2))
+    else:
+        print()
 
 if __name__ == "__main__":
     main()

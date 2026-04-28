@@ -258,7 +258,12 @@ def main():
                 # ユーザーの要望により「完了率」をリクエストする。完了率が存在しない場合は0とする
                 progress_percent = r["total"].get("完了率(%)", 0)
                 
-                success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger)
+                kwargs = {}
+                start_date = r.get("run", {}).get("start_date")
+                if start_date:
+                    kwargs["actual_start_date"] = start_date
+                
+                success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
                 if not success:
                     print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
                 else:

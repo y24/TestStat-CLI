@@ -149,11 +149,17 @@ def display_combined_total_results(results, settings=None):
     TablePrinter.print_table(total_headers, [total_row])
     print()
 
-def display_file_breakdown_table(results):
+def display_file_breakdown_table(results, settings=None):
     """ファイルごとの簡単な内訳を表示"""
     print("FILE BREAKDOWN:")
-    headers = ["File", "Env", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
-    rows = []
+    
+    result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
+    headers1 = ["File", "Env", "Total"] + result_order + ["未実施"]
+    rows1 = []
+    
+    headers2 = ["File", "Env", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
+    rows2 = []
+    
     for filepath, result in results:
         # labelが設定されている場合はそれを使用し、そうでなければファイル名を使用
         base_name = result.get("label") if result.get("label") else os.path.basename(filepath)
@@ -161,12 +167,21 @@ def display_file_breakdown_table(results):
         env_val = ", ".join(result.get("target_environments", [])) if result.get("target_environments") else "-"
         
         if "error" in result:
-            rows.append([display_name, env_val, "ERROR", "-", "-", "-", "-", "-", "-"])
+            rows1.append([display_name, env_val, "ERROR"] + ["-"] * (len(result_order) + 1))
+            rows2.append([display_name, env_val, "ERROR", "-", "-", "-", "-", "-", "-"])
             continue
         
         available = result.get("stats", {}).get("available", 0)
-        completed = result.get("total", {}).get("完了数", 0)
-        executed = result.get("total", {}).get("消化数", 0)
+        total = result.get("total", {})
+        
+        row1 = [display_name, env_val, available]
+        for rt in result_order:
+            row1.append(total.get(rt, 0))
+        row1.append(total.get("未実施", 0))
+        rows1.append(row1)
+        
+        completed = total.get("完了数", 0)
+        executed = total.get("消化数", 0)
         
         comp_rate = round((completed / available * 100), 2) if available > 0 else 0
         exec_rate = round((executed / available * 100), 2) if available > 0 else 0
@@ -175,8 +190,12 @@ def display_file_breakdown_table(results):
         start_date = run_info.get("start_date") or "-"
         last_update = run_info.get("last_update") or "-"
         
-        rows.append([display_name, env_val, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
-    TablePrinter.print_table(headers, rows)
+        rows2.append([display_name, env_val, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
+        
+    TablePrinter.print_table(headers1, rows1)
+    print()
+    print("PROGRESS SUMMARY:")
+    TablePrinter.print_table(headers2, rows2)
     print()
 
 def display_error_summary(results):

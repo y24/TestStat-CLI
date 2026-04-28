@@ -244,7 +244,7 @@ def main():
                 print()
             
             ConsoleFormatter.display_combined_total_results(results, settings)
-            ConsoleFormatter.display_file_breakdown_table(results)
+            ConsoleFormatter.display_file_breakdown_table(results, settings)
             ConsoleFormatter.display_error_summary(results)
             ConsoleFormatter.display_overall_status(results)
             

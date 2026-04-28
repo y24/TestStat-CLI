@@ -64,6 +64,7 @@ def main():
     # ファイルリストの作成
     tasks = []
     project_info = None
+    execution_warnings = []
 
     if args.list:
         try:
@@ -71,7 +72,7 @@ def main():
             for file_info in project_info["files"]:
                 target_path = file_info["path"]
                 if not os.path.exists(target_path):
-                    print(f"WARNING: 指定されたパスが存在しません: {target_path}")
+                    execution_warnings.append(f"指定されたパスが存在しません: {target_path}")
                     continue
                 
                 is_valid_search, found_files = FileScanner.find_excel_files(target_path)
@@ -96,7 +97,7 @@ def main():
                             
                         tasks.append(task)
                 else:
-                    print(f"WARNING: {found_files}")
+                    execution_warnings.append(str(found_files))
         except Exception as e:
             print(f"ERROR: {e}")
             sys.exit(1)
@@ -106,7 +107,7 @@ def main():
             sys.exit(1)
         for target_path in args.path:
             if not os.path.exists(target_path):
-                print(f"WARNING: 指定されたパスが存在しません: {target_path}")
+                execution_warnings.append(f"指定されたパスが存在しません: {target_path}")
                 continue
             is_valid_search, found_files = FileScanner.find_excel_files(target_path)
             if is_valid_search:
@@ -118,9 +119,15 @@ def main():
                         "subtask_id": None
                     })
             else:
-                print(f"WARNING: {found_files}")
+                execution_warnings.append(str(found_files))
 
     if not tasks:
+        if execution_warnings:
+            print("\n" + "=" * 50)
+            print("Warnings")
+            print("=" * 50)
+            for w in execution_warnings:
+                print(f"WARNING: {w}")
         print("ERROR: 処理可能なファイルが見つかりませんでした")
         sys.exit(1)
 
@@ -132,7 +139,7 @@ def main():
         filepath = task["filepath"]
         is_accessible, message = FileScanner.can_access_file(filepath)
         if not is_accessible:
-            print(f"WARNING: {message}")
+            execution_warnings.append(message)
             continue
         
         try:
@@ -164,6 +171,12 @@ def main():
                 print(f"詳細エラー情報: {traceback.format_exc()}")
     
     if not results:
+        if execution_warnings:
+            print("\n" + "=" * 50)
+            print("Warnings")
+            print("=" * 50)
+            for w in execution_warnings:
+                print(f"WARNING: {w}")
         print("ERROR: 処理可能なファイルが見つかりませんでした")
         sys.exit(1)
 
@@ -305,6 +318,13 @@ def main():
                 print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
             else:
                 print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+
+    if execution_warnings:
+        print("\n" + "=" * 50)
+        print("Warnings")
+        print("=" * 50)
+        for w in execution_warnings:
+            print(f"WARNING: {w}")
 
     verbose_logger.end_processing()
     print()

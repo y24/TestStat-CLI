@@ -97,6 +97,8 @@ def read_yaml_project_list(list_file_path):
             item["target_sheets"] = file_info["target_sheets"]
         if "ignore_sheets" in file_info:
             item["ignore_sheets"] = file_info["ignore_sheets"]
+        if "subtask_id" in file_info:
+            item["subtask_id"] = file_info["subtask_id"]
             
         file_info_list.append(item)
     
@@ -106,7 +108,8 @@ def read_yaml_project_list(list_file_path):
     return {
         "project_name": project_data["project_name"],
         "files": file_info_list,
-        "last_loaded": project_data.get("last_loaded", "")
+        "last_loaded": project_data.get("last_loaded", ""),
+        "subtask_id": project_data.get("subtask_id", None)
     }
 
 def read_paths_from_list_file(list_file_path):

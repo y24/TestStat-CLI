@@ -1,19 +1,70 @@
 {
     "read_definition": {
-        "target_sheets": ["テスト項目"],
+        "target_sheets": [
+            "テスト項目"
+        ],
         "ignore_sheets": [],
-        "header": {"search_col": "A", "search_key": "#"},
-        "tobe_row": {"keys": ["期待", "実施対象"]},
-        "result_row": {"keys": ["結果"], "ignores": ["期待結果"]},
-        "person_row": {"keys": ["担当者"]},
-        "date_row": {"keys": ["日付", "実施日"]},
-        "plan_row": {"keys": ["計画"]},
-        "excluded": ["対象外"]
+        "header": {
+            "search_col": "A",
+            "search_key": "#"
+        },
+        "tobe_row": {
+            "keys": [
+                "期待",
+                "実施対象"
+            ]
+        },
+        "result_row": {
+            "keys": [
+                "結果"
+            ],
+            "ignores": [
+                "期待結果"
+            ]
+        },
+        "person_row": {
+            "keys": [
+                "担当者"
+            ]
+        },
+        "date_row": {
+            "keys": [
+                "日付",
+                "実施日"
+            ]
+        },
+        "plan_row": {
+            "keys": [
+                "計画"
+            ]
+        },
+        "excluded": [
+            "対象外"
+        ]
     },
     "test_status": {
-        "results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
-        "completed_results": ["Pass", "Fixed", "Suspend", "N/A"],
-        "executed_results": ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"],
+        "results": [
+            "Pass",
+            "Fixed",
+            "Fail",
+            "Blocked",
+            "Suspend",
+            "N/A"
+        ],
+        "completed_results": [
+            "Pass",
+            "Fixed",
+            "Suspend",
+            "N/A"
+        ],
+        "executed_results": [
+            "Pass",
+            "Fixed",
+            "Fail",
+            "Blocked",
+            "Suspend",
+            "N/A"
+        ],
         "labels": {
             "completed": "完了数",
             "executed": "消化数",
@@ -23,10 +74,19 @@
     },
     "output_definition": {
         "state": {
-            "completed": {"name": "完了"},
-            "in_progress": {"name": "進行中"},
-            "not_started": {"name": "未着手"}
+            "completed": {
+                "name": "完了"
+            },
+            "in_progress": {
+                "name": "進行中"
+            },
+            "not_started": {
+                "name": "未着手"
+            }
         },
         "use_plan_row": false
+    },
+    "api": {
+        "base_url": "http://localhost:5173/api"
     }
 }

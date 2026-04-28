@@ -4,11 +4,13 @@ project:
     - Sheet1
     label: TEST001
     path: input_sample/sample1.xlsx
+    subtask_id: 111
     target_sheets:
     - テスト項目
   - label: TEST002
     path: input_sample/sample2.xlsx
+    subtask_id: 87
   - label: TEST003
     path: input_sample/sample3.xlsx
-  last_loaded: '2026-04-27 22:44:52'
+  last_loaded: '2026-04-29 02:51:45'
   project_name: サンプルプロジェクト

@@ -65,6 +65,7 @@ def main():
     file_list = []
     file_labels = {}
     file_overrides = {}
+    file_subtasks = {}
     project_info = None
 
     if args.list:
@@ -91,6 +92,10 @@ def main():
                         
                         if overrides:
                             file_overrides[f] = overrides
+                            
+                        # サブタスクIDの保持
+                        if "subtask_id" in file_info:
+                            file_subtasks[f] = file_info["subtask_id"]
                 else:
                     print(f"WARNING: {found_files}")
         except Exception as e:
@@ -240,6 +245,28 @@ def main():
     if args.list:
         if ProjectList.update_project_list_last_loaded(args.list, current_load_time) and verbose_logger:
             verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
+
+    # API連携: WBSサブタスクの進捗更新 (ファイルごと)
+    api_config = settings.get("api", {})
+    base_url = api_config.get("base_url")
+    if base_url and file_subtasks:
+        from utils.ApiIntegration import update_subtask_progress
+        
+        print("\n" + "=" * 50)
+        print("API Integration")
+        print("=" * 50)
+        
+        for f, r in results:
+            if f in file_subtasks and "error" not in r and "total" in r:
+                subtask_id = file_subtasks[f]
+                # ユーザーの要望により「完了率」をリクエストする。完了率が存在しない場合は0とする
+                progress_percent = r["total"].get("完了率(%)", 0)
+                
+                success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger)
+                if not success:
+                    print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+                else:
+                    print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
 
     verbose_logger.end_processing()
 

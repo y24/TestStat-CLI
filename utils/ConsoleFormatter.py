@@ -203,4 +203,3 @@ def display_overall_status(results):
     print(f"OVERALL STATUS: {overall_status}")
     if start_dates: print(f"Earliest Start Date: {min(start_dates)}")
     if last_updates: print(f"Latest Update: {max(last_updates)}")
-    print()

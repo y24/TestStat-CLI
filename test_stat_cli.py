@@ -265,6 +265,7 @@ def main():
                     print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
 
     verbose_logger.end_processing()
+    print()
 
 if __name__ == "__main__":
     main()

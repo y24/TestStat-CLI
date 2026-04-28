@@ -246,7 +246,6 @@ def main():
             ConsoleFormatter.display_combined_total_results(results, settings)
             ConsoleFormatter.display_file_breakdown_table(results, settings)
             ConsoleFormatter.display_error_summary(results)
-            ConsoleFormatter.display_overall_status(results)
             
             if args.detailed:
                 for f, r in results:
@@ -259,9 +258,10 @@ def main():
 
     # API連携: WBSサブタスクの進捗更新 (ファイルごと)
     api_config = settings.get("wbs_api", {})
+    api_enabled = api_config.get("enabled", True)
     base_url = api_config.get("base_url")
     has_subtasks = any("subtask_id" in r for f, r in results if isinstance(r, dict))
-    if base_url and has_subtasks:
+    if api_enabled and base_url and has_subtasks:
         from utils.ApiIntegration import update_subtask_progress
         
         print("\n" + "=" * 50)

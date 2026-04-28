@@ -160,6 +160,13 @@ def display_file_breakdown_table(results, settings=None):
     headers2 = ["File", "Env", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
     rows2 = []
     
+    total_available = 0
+    total_completed = 0
+    total_executed = 0
+    
+    all_start_dates = []
+    all_latest_updates = []
+    
     for filepath, result in results:
         # labelが設定されている場合はそれを使用し、そうでなければファイル名を使用
         base_name = result.get("label") if result.get("label") else os.path.basename(filepath)
@@ -183,6 +190,10 @@ def display_file_breakdown_table(results, settings=None):
         completed = total.get("完了数", 0)
         executed = total.get("消化数", 0)
         
+        total_available += available
+        total_completed += completed
+        total_executed += executed
+        
         comp_rate = round((completed / available * 100), 2) if available > 0 else 0
         exec_rate = round((executed / available * 100), 2) if available > 0 else 0
         
@@ -190,12 +201,26 @@ def display_file_breakdown_table(results, settings=None):
         start_date = run_info.get("start_date") or "-"
         last_update = run_info.get("last_update") or "-"
         
+        if start_date != "-":
+            all_start_dates.append(start_date)
+        if last_update != "-":
+            all_latest_updates.append(last_update)
+        
         rows2.append([display_name, env_val, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
         
     TablePrinter.print_table(headers1, rows1)
     print()
     print("PROGRESS SUMMARY:")
-    TablePrinter.print_table(headers2, rows2)
+    
+    total_comp_rate = round((total_completed / total_available * 100), 2) if total_available > 0 else 0
+    total_exec_rate = round((total_executed / total_available * 100), 2) if total_available > 0 else 0
+    
+    min_start_date = min(all_start_dates) if all_start_dates else "-"
+    max_last_update = max(all_latest_updates) if all_latest_updates else "-"
+    
+    rows2.append(["Total", "-", total_available, total_completed, total_comp_rate, total_executed, total_exec_rate, min_start_date, max_last_update])
+    
+    TablePrinter.print_table(headers2, rows2, has_total_row=True)
     print()
 
 def display_error_summary(results):
@@ -210,17 +235,4 @@ def display_error_summary(results):
             if details: print(f"    ({details})")
         print()
 
-def display_overall_status(results):
-    """全体ステータスを表示"""
-    statuses = [r["run"]["status"] for f, r in results if "run" in r and r["run"]["status"]]
-    if statuses:
-        overall_status = "Completed" if all(s == "完了" for s in statuses) else ("In Progress" if any(s == "進行中" for s in statuses) else statuses[0])
-    else:
-        overall_status = "Unknown"
-    
-    start_dates = [r["run"]["start_date"] for f, r in results if "run" in r and r["run"]["start_date"]]
-    last_updates = [r["run"]["last_update"] for f, r in results if "run" in r and r["run"]["last_update"]]
-    
-    print(f"OVERALL STATUS: {overall_status}")
-    if start_dates: print(f"Earliest Start Date: {min(start_dates)}")
-    if last_updates: print(f"Latest Update: {max(last_updates)}")
+

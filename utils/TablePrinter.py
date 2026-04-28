@@ -17,7 +17,7 @@ def pad_display(text, width):
     pad = width - get_display_width(text)
     return text + ' ' * pad
 
-def print_table(headers, rows):
+def print_table(headers, rows, has_total_row=False):
     """全角対応テーブル出力"""
     if not rows:
         return
@@ -37,7 +37,9 @@ def print_table(headers, rows):
     print(top_border)
     print(header_line)
     print(separator)
-    for row in rows:
+    for i, row in enumerate(rows):
+        if has_total_row and i == len(rows) - 1 and len(rows) > 1:
+            print(separator)
         data_line = "│ " + " │ ".join(pad_display(cell, w) for cell, w in zip(row, col_widths)) + " │"
         print(data_line)
     print(bottom_border)

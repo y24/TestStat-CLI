@@ -13,7 +13,7 @@ project:
       - 環境a_ignore
   - label: TEST001
     path: input_sample/sample1.xlsx
-    subtask_id: 112
+    subtask_id: 111
     target_sheets:
       - テスト項目
     ignore_sheets:

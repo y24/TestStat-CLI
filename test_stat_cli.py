@@ -128,7 +128,6 @@ def main():
     
     # 各ファイルの処理
     results = []
-    file_subtasks = {}  # API連携用
     for task in tasks:
         filepath = task["filepath"]
         is_accessible, message = FileScanner.can_access_file(filepath)
@@ -155,12 +154,9 @@ def main():
                 result["label"] = task["label"]
             if "target_environments" in task["overrides"]:
                 result["target_environments"] = task["overrides"]["target_environments"]
+            if task.get("subtask_id"):
+                result["subtask_id"] = task["subtask_id"]
             results.append((filepath, result))
-            
-            # API連携用にsubtask_idを保持 (labelが設定されている場合はlabelをキーに、そうでない場合はfilepathをキーに)
-            if task["subtask_id"]:
-                key = task["label"] if task["label"] else filepath
-                file_subtasks[key] = task["subtask_id"]
                 
         except Exception as e:
             results.append((filepath, {"error": {"type": "processing_error", "message": f"ファイル処理中にエラーが発生しました: {filepath}", "details": str(e)}}))
@@ -264,7 +260,8 @@ def main():
     # API連携: WBSサブタスクの進捗更新 (ファイルごと)
     api_config = settings.get("wbs_api", {})
     base_url = api_config.get("base_url")
-    if base_url and file_subtasks:
+    has_subtasks = any("subtask_id" in r for f, r in results if isinstance(r, dict))
+    if base_url and has_subtasks:
         from utils.ApiIntegration import update_subtask_progress
         
         print("\n" + "=" * 50)
@@ -272,9 +269,8 @@ def main():
         print("=" * 50)
         
         for f, r in results:
-            key = r.get("label", f)
-            if key in file_subtasks and "error" not in r and "total" in r:
-                subtask_id = file_subtasks[key]
+            if "subtask_id" in r and "error" not in r and "total" in r:
+                subtask_id = r["subtask_id"]
                 # ユーザーの要望により「完了率」をリクエストする。完了率が存在しない場合は0とする
                 progress_percent = r["total"].get("完了率(%)", 0)
                 

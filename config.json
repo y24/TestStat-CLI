@@ -86,7 +86,7 @@
         },
         "use_plan_row": false
     },
-    "api": {
+    "wbs_api": {
         "base_url": "http://localhost:5173/api"
     }
 }

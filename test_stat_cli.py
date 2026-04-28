@@ -247,7 +247,7 @@ def main():
             verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
 
     # API連携: WBSサブタスクの進捗更新 (ファイルごと)
-    api_config = settings.get("api", {})
+    api_config = settings.get("wbs_api", {})
     base_url = api_config.get("base_url")
     if base_url and file_subtasks:
         from utils.ApiIntegration import update_subtask_progress

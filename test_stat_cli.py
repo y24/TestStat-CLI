@@ -225,7 +225,7 @@ def main():
             print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
             if args.list and project_info:
                 print(f"Project: {project_info['project_name']}\nProcessed Files: {len(file_list)}")
-                print(f"Last Loaded: {current_load_time}")
+                print(f"Execution Time: {current_load_time}")
                 print()
             
             ConsoleFormatter.display_combined_total_results(results, settings)
@@ -241,10 +241,6 @@ def main():
             f, r = results[0]
             ConsoleFormatter.print_summary_results_table(r, f, settings=settings, script_root_dir=script_dir)
 
-    # プロジェクトリスト更新
-    if args.list:
-        if ProjectList.update_project_list_last_loaded(args.list, current_load_time) and verbose_logger:
-            verbose_logger.log(f"プロジェクトリストファイルのlast_loaded値を更新しました: {args.list}")
 
     # API連携: WBSサブタスクの進捗更新 (ファイルごと)
     api_config = settings.get("wbs_api", {})

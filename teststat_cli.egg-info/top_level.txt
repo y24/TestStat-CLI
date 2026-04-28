@@ -1,2 +1,0 @@
-test_stat_cli
-utils

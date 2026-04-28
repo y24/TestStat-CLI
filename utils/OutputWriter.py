@@ -156,12 +156,12 @@ class OutputWriter:
         writer = csv.writer(csvfile)
         use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         
-        # SUMMARY TOTAL RESULTS
+        # TOTAL RESULTS
         if "summary" in data and "total_results" in data["summary"]:
             writer.writerow(["Category", "Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A", "未実施", "Total", "完了数", "消化数", "完了率(%)", "消化率(%)"])
             total = data["summary"]["total_results"]
             writer.writerow([
-                "SUMMARY TOTAL RESULTS",
+                "TOTAL RESULTS",
                 total.get("Pass", 0),
                 total.get("Fixed", 0),
                 total.get("Fail", 0),

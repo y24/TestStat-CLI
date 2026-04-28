@@ -135,7 +135,7 @@ def display_combined_total_results(results, settings=None):
     completion_rate = (total_results["完了数"] / total_available * 100) if total_available > 0 else 0
     execution_rate = (total_results["消化数"] / total_available * 100) if total_available > 0 else 0
     
-    print("SUMMARY TOTAL RESULTS:")
+    print("TOTAL RESULTS:")
     total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
     total_row = [total_results.get("Total", 0)]
     total_row.extend([total_results.get(rt, 0) for rt in result_order])

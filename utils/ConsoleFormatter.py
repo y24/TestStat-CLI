@@ -1,16 +1,51 @@
 import os
+import sys
 from . import TablePrinter
+
+_LOGO_GRADIENT_START = (95, 210, 202)
+_LOGO_GRADIENT_END = (112, 232, 118)
+_RESET = "\033[0m"
 
 def print_logo(script_root_dir):
     """ロゴを表示"""
     try:
         logo_path = os.path.join(script_root_dir, "assets", "logo.txt")
         with open(logo_path, "r", encoding="utf-8") as f:
-            logo = f.read()
+            logo = f.read().rstrip()
+            if _use_logo_color():
+                logo = _format_logo_gradient(logo)
             print(logo)
             print()
     except FileNotFoundError:
         pass
+
+def _use_logo_color():
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+def _format_logo_gradient(logo):
+    lines = logo.splitlines()
+    width = max((len(line) for line in lines), default=0)
+    return "\n".join(_format_logo_line_gradient(line, width) for line in lines)
+
+def _format_logo_line_gradient(line, width):
+    if not line:
+        return line
+    denominator = max(width - 1, 1)
+    parts = []
+    for index, char in enumerate(line):
+        if char == " ":
+            parts.append(char)
+            continue
+        ratio = index / denominator
+        red = _interpolate(_LOGO_GRADIENT_START[0], _LOGO_GRADIENT_END[0], ratio)
+        green = _interpolate(_LOGO_GRADIENT_START[1], _LOGO_GRADIENT_END[1], ratio)
+        blue = _interpolate(_LOGO_GRADIENT_START[2], _LOGO_GRADIENT_END[2], ratio)
+        parts.append(f"\033[38;2;{red};{green};{blue}m{char}")
+    parts.append(_RESET)
+    return "".join(parts)
+
+def _interpolate(start, end, ratio):
+    return round(start + (end - start) * ratio)
 
 def print_summary_results_table(result, filepath, show_title=True, settings=None, script_root_dir=None):
     """集計結果を美しいテーブル形式で出力"""
@@ -234,5 +269,4 @@ def display_error_summary(results):
             if message: print(f"    {message}")
             if details: print(f"    ({details})")
         print()
-
 

@@ -16,7 +16,8 @@ def aggregate_results(filepath:str, settings, verbose_logger=None):
     sheet_names = Excel.get_sheetnames_by_keywords(
         workbook, 
         keywords=settings["read_definition"]["target_sheets"], 
-        ignores=settings["read_definition"]["ignore_sheets"]
+        ignores=settings["read_definition"]["ignore_sheets"],
+        include_hidden_sheets=settings["read_definition"].get("include_hidden_sheets", False)
     )
 
     if verbose_logger: verbose_logger.log_excel_info(workbook, sheet_names)

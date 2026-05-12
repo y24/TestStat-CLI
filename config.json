@@ -4,6 +4,7 @@
             "テスト項目"
         ],
         "ignore_sheets": [],
+        "include_hidden_sheets": false,
         "header": {
             "search_col": "A",
             "search_key": "#"

@@ -97,6 +97,8 @@ def read_yaml_project_list(list_file_path):
             item["target_sheets"] = file_info["target_sheets"]
         if "ignore_sheets" in file_info:
             item["ignore_sheets"] = file_info["ignore_sheets"]
+        if "include_hidden_sheets" in file_info:
+            item["include_hidden_sheets"] = file_info["include_hidden_sheets"]
         if "subtask_id" in file_info:
             item["subtask_id"] = file_info["subtask_id"]
         if "target_environments" in file_info:

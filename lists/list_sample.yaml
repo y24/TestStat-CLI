@@ -7,6 +7,7 @@ project:
       - テスト項目
     ignore_sheets:
       - Sheet1
+    include_hidden_sheets: false
     target_environments:
       - 環境a
   - label: TEST001

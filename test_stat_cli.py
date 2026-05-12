@@ -107,6 +107,8 @@ def main():
                             task["overrides"]["target_sheets"] = file_info["target_sheets"]
                         if "ignore_sheets" in file_info:
                             task["overrides"]["ignore_sheets"] = file_info["ignore_sheets"]
+                        if "include_hidden_sheets" in file_info:
+                            task["overrides"]["include_hidden_sheets"] = file_info["include_hidden_sheets"]
                         if "target_environments" in file_info:
                             task["overrides"]["target_environments"] = file_info["target_environments"]
                         if "ignore_environments" in file_info:
@@ -171,6 +173,8 @@ def main():
                     file_settings["read_definition"]["target_sheets"] = task["overrides"]["target_sheets"]
                 if "ignore_sheets" in task["overrides"]:
                     file_settings["read_definition"]["ignore_sheets"] = task["overrides"]["ignore_sheets"]
+                if "include_hidden_sheets" in task["overrides"]:
+                    file_settings["read_definition"]["include_hidden_sheets"] = task["overrides"]["include_hidden_sheets"]
                 if "target_environments" in task["overrides"]:
                     file_settings["read_definition"]["target_environments"] = task["overrides"]["target_environments"]
                 if "ignore_environments" in task["overrides"]:

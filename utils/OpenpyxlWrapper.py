@@ -31,20 +31,27 @@ def get_sheet_by_name(workbook, sheet_name:str):
 def get_sheetnames_by_keyword(workbook, keyword:str):
     return [sheet for sheet in workbook.sheetnames if keyword in sheet]
 
-def get_sheetnames_by_keywords(workbook, keywords: list, ignores: list = None) -> list:
+def get_sheetnames_by_keywords(workbook, keywords: list, ignores: list = None, include_hidden_sheets: bool = False) -> list:
     """キーワードに基づいてワークブックからシート名をフィルタリングする
 
     Args:
         workbook: 対象のワークブック
         keywords: 検索キーワードのリスト
         ignores: 除外キーワードのリスト（デフォルト: None）
+        include_hidden_sheets: 非表示シートを含めるかどうか（デフォルト: False）
 
     Returns:
         list: フィルタリングされたシート名のリスト
     """
+    sheet_names = [
+        sheet_name
+        for sheet_name in workbook.sheetnames
+        if include_hidden_sheets or _is_visible_sheet(workbook, sheet_name)
+    ]
+
     # キーワードが指定されていない場合は全シート名を返す
     if len(keywords) == 0:
-        return workbook.sheetnames
+        return sheet_names
 
     # 除外キーワードが未指定の場合は空リストを使用
     if ignores is None:
@@ -53,11 +60,15 @@ def get_sheetnames_by_keywords(workbook, keywords: list, ignores: list = None) -
     # シート名のフィルタリング
     filtered_sheets = [
         sheet_name 
-        for sheet_name in workbook.sheetnames 
+        for sheet_name in sheet_names 
         if _should_include_sheet(sheet_name, keywords, ignores)
     ]
 
     return filtered_sheets
+
+def _is_visible_sheet(workbook, sheet_name: str) -> bool:
+    """Excelで表示状態のシートかどうかを判定する"""
+    return workbook[sheet_name].sheet_state == "visible"
 
 def _should_include_sheet(sheet_name: str, keywords: list, ignores: list) -> bool:
     """シートを含めるべきかどうかを判定する

@@ -1,4 +1,5 @@
 import unicodedata
+from . import ConsoleStyle
 
 def get_display_width(text):
     """全角・半角を考慮した表示幅を返す"""
@@ -17,6 +18,47 @@ def pad_display(text, width):
     pad = width - get_display_width(text)
     return text + ' ' * pad
 
+def _is_full_percent(value):
+    try:
+        numeric_value = float(str(value).strip().rstrip("%"))
+    except ValueError:
+        return False
+    return numeric_value == 100
+
+def _cell_color(header, value=None):
+    header = str(header)
+    if header in ("Pass", "Fixed", "Completed"):
+        return "soft_green"
+    if header in ("完了率(%)", "消化率(%)", "Completed(%)", "Executed(%)") and _is_full_percent(value):
+        return "soft_green"
+    if header in ("Fail", "ERROR"):
+        return "soft_red"
+    if header in ("Blocked",):
+        return "soft_cyan"
+    if header in ("Suspend",):
+        return "soft_yellow"
+    if header in ("N/A",):
+        return "muted"
+    if header in (
+        "Total",
+        "未実施",
+        "完了数",
+        "消化数",
+        "完了率(%)",
+        "消化率(%)",
+        "Executed",
+        "Completed(%)",
+        "Executed(%)",
+    ):
+        return "white"
+    return None
+
+def _format_header_cell(text, width):
+    return ConsoleStyle.color(pad_display(text, width), "white", bold=True)
+
+def _format_data_cell(header, value, width, *, bold=False):
+    return ConsoleStyle.color(pad_display(value, width), _cell_color(header, value), bold=bold)
+
 def print_table(headers, rows, has_total_row=False):
     """全角対応テーブル出力"""
     if not rows:
@@ -29,20 +71,33 @@ def print_table(headers, rows, has_total_row=False):
         col_widths.append(max_width)
     
     # 罫線生成
-    header_line = "│ " + " │ ".join(pad_display(h, w) for h, w in zip(headers, col_widths)) + " │"
+    border_color = "muted"
+    header_line = (
+        ConsoleStyle.color("│ ", border_color)
+        + ConsoleStyle.color(" │ ", border_color).join(_format_header_cell(h, w) for h, w in zip(headers, col_widths))
+        + ConsoleStyle.color(" │", border_color)
+    )
     separator = "├" + "┼".join("─" * (w + 2) for w in col_widths) + "┤"
     top_border = "┌" + "┬".join("─" * (w + 2) for w in col_widths) + "┐"
     bottom_border = "└" + "┴".join("─" * (w + 2) for w in col_widths) + "┘"
     
-    print(top_border)
+    print(ConsoleStyle.color(top_border, border_color))
     print(header_line)
-    print(separator)
+    print(ConsoleStyle.color(separator, border_color))
     for i, row in enumerate(rows):
-        if has_total_row and i == len(rows) - 1 and len(rows) > 1:
-            print(separator)
-        data_line = "│ " + " │ ".join(pad_display(cell, w) for cell, w in zip(row, col_widths)) + " │"
+        is_total_row = has_total_row and i == len(rows) - 1 and len(rows) > 1
+        if is_total_row:
+            print(ConsoleStyle.color(separator, border_color))
+        data_line = (
+            ConsoleStyle.color("│ ", border_color)
+            + ConsoleStyle.color(" │ ", border_color).join(
+                _format_data_cell(header, cell, width, bold=is_total_row)
+                for header, cell, width in zip(headers, row, col_widths)
+            )
+            + ConsoleStyle.color(" │", border_color)
+        )
         print(data_line)
-    print(bottom_border)
+    print(ConsoleStyle.color(bottom_border, border_color))
 
 def shorten_filename(filename, max_width=30):
     """ファイル名が長い場合、先頭と末尾を残して中央を...で省略する（全角半角幅考慮）"""

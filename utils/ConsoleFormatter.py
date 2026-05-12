@@ -1,6 +1,6 @@
 import os
-import sys
 from . import TablePrinter
+from . import ConsoleStyle
 
 _LOGO_GRADIENT_START = (95, 210, 202)
 _LOGO_GRADIENT_END = (112, 232, 118)
@@ -20,7 +20,7 @@ def print_logo(script_root_dir):
         pass
 
 def _use_logo_color():
-    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+    return ConsoleStyle.use_color()
 
 def _format_logo_gradient(logo):
     lines = logo.splitlines()
@@ -47,26 +47,50 @@ def _format_logo_line_gradient(line, width):
 def _interpolate(start, end, ratio):
     return round(start + (end - start) * ratio)
 
+def print_report_title(title):
+    """レポート全体のタイトルを表示"""
+    print(ConsoleStyle.color(title, "logo_mint", bold=True))
+    print(ConsoleStyle.color("─" * max(TablePrinter.get_display_width(title), 16), "muted"))
+    print()
+
+def print_section(title):
+    """主要セクション見出しを表示"""
+    print(ConsoleStyle.section_title(title))
+    print(ConsoleStyle.color("─" * TablePrinter.get_display_width(title), "muted"))
+
+def print_subsection(title):
+    """小見出しを表示"""
+    print(ConsoleStyle.subsection_title(title))
+
+def print_key_value(label, value):
+    print(ConsoleStyle.metric(label, value))
+
+def print_error(message, details=None):
+    print(f"{ConsoleStyle.color('ERROR:', 'red', bold=True)} {message}")
+    if details:
+        print(f"{ConsoleStyle.label('詳細:')} {details}")
+
+def print_warning(message):
+    print(f"{ConsoleStyle.color('WARNING:', 'yellow', bold=True)} {message}")
+
+def print_info(message):
+    print(f"{ConsoleStyle.color('INFO:', 'cyan', bold=True)} {message}")
+
 def print_summary_results_table(result, filepath, show_title=True, settings=None, script_root_dir=None):
     """集計結果を美しいテーブル形式で出力"""
     if show_title and script_root_dir:
         print_logo(script_root_dir)
-        print("=" * 50)
-        print("Summary Results")
-        print("=" * 50)
-        print()
+        print_report_title("SUMMARY RESULTS")
     
     if "error" in result:
-        print(f"ERROR: {result['error']['message']}")
-        if "details" in result["error"]:
-            print(f"詳細: {result['error']['details']}")
+        print_error(result['error']['message'], result["error"].get("details"))
         return
     
     # 基本情報
-    print(f"File: {filepath}")
-    print(f"Total Cases: {result['stats']['all']}")
-    print(f"Available Cases: {result['stats']['available']}")
-    print(f"Excluded Cases: {result['stats']['excluded']}")
+    print_key_value("File", filepath)
+    print_key_value("Total Cases", result['stats']['all'])
+    print_key_value("Available Cases", result['stats']['available'])
+    print_key_value("Excluded Cases", result['stats']['excluded'])
     print()
     
     # 設定から結果タイプの順序を取得
@@ -74,7 +98,7 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
     
     # 総合結果テーブル
     if 'total' in result:
-        print("TOTAL RESULTS:")
+        print_section("TOTAL RESULTS")
         total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
         total_row = [result['total'].get('Total', 0)]
         for rt in result_order:
@@ -90,16 +114,16 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
         print()
     
     # 実施状況
-    print(f"STATUS: {result['run']['status']}")
+    print(f"{ConsoleStyle.label('STATUS:')} {ConsoleStyle.status(result['run']['status'])}")
     if result['run']['start_date']:
-        print(f"Start Date: {result['run']['start_date']}")
+        print_key_value("Start Date", result['run']['start_date'])
     if result['run']['last_update']:
-        print(f"Last Update: {result['run']['last_update']}")
+        print_key_value("Last Update", result['run']['last_update'])
     print()
     
     # 日別集計
     if result['daily']:
-        print("DAILY BREAKDOWN:")
+        print_section("DAILY BREAKDOWN")
         daily_headers = ["Date"] + result_order + ["完了数", "消化数"]
         use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         if use_plan_row:
@@ -119,7 +143,7 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
     
     # 担当者別集計
     if result['by_name']:
-        print("BY NAME:")
+        print_section("BY NAME")
         all_names = sorted({name for date_data in result['by_name'].values() for name in date_data.keys()})
         name_headers = ["Date"] + all_names
         name_rows = []
@@ -131,10 +155,11 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
     
     # 環境別集計
     if result['by_env']:
-        print("BY ENVIRONMENT:")
+        print_section("BY ENVIRONMENT")
         use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False) if settings else False
         for env_name in sorted(result['by_env'].keys()):
-            print(f"\n{env_name}:")
+            print()
+            print_subsection(env_name)
             env_headers = ["Date"] + result_order + ["完了数", "消化数"]
             if use_plan_row:
                 env_headers.append("計画数")
@@ -170,7 +195,7 @@ def display_combined_total_results(results, settings=None):
     completion_rate = (total_results["完了数"] / total_available * 100) if total_available > 0 else 0
     execution_rate = (total_results["消化数"] / total_available * 100) if total_available > 0 else 0
     
-    print("TOTAL RESULTS:")
+    print_section("TOTAL RESULTS")
     total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
     total_row = [total_results.get("Total", 0)]
     total_row.extend([total_results.get(rt, 0) for rt in result_order])
@@ -186,7 +211,7 @@ def display_combined_total_results(results, settings=None):
 
 def display_file_breakdown_table(results, settings=None):
     """ファイルごとの簡単な内訳を表示"""
-    print("FILE BREAKDOWN:")
+    print_section("FILE BREAKDOWN")
     
     result_order = settings["test_status"]["results"] if settings else ["Pass", "Fixed", "Fail", "Blocked", "Suspend", "N/A"]
     headers1 = ["File", "Env", "Total"] + result_order + ["未実施"]
@@ -245,7 +270,7 @@ def display_file_breakdown_table(results, settings=None):
         
     TablePrinter.print_table(headers1, rows1)
     print()
-    print("PROGRESS SUMMARY:")
+    print_section("PROGRESS SUMMARY")
     
     total_comp_rate = round((total_completed / total_available * 100), 2) if total_available > 0 else 0
     total_exec_rate = round((total_executed / total_available * 100), 2) if total_available > 0 else 0
@@ -262,11 +287,10 @@ def display_error_summary(results):
     """エラーが発生したファイルの一覧を表示"""
     error_files = [(os.path.basename(f), r["error"].get("message", ""), r["error"].get("details", "")) for f, r in results if "error" in r]
     if error_files:
-        print("ERROR SUMMARY:")
-        print(f"Files with errors: {len(error_files)}")
+        print_section("ERROR SUMMARY")
+        print_key_value("Files with errors", len(error_files))
         for filename, message, details in error_files:
-            print(f"  - {filename}")
+            print(f"  - {ConsoleStyle.color(filename, 'red', bold=True)}")
             if message: print(f"    {message}")
-            if details: print(f"    ({details})")
+            if details: print(f"    {ConsoleStyle.label('(' + details + ')')}")
         print()
-

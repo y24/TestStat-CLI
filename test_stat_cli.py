@@ -145,11 +145,10 @@ def main():
             print(json.dumps({"error": "処理可能なファイルが見つかりませんでした", "warnings": execution_warnings}, ensure_ascii=False, indent=2))
         else:
             if execution_warnings:
-                print("\n" + "=" * 50)
-                print("Warnings")
-                print("=" * 50)
+                print()
+                ConsoleFormatter.print_section("Warnings")
                 for w in execution_warnings:
-                    print(f"WARNING: {w}")
+                    ConsoleFormatter.print_warning(w)
             print("ERROR: 処理可能なファイルが見つかりませんでした", file=sys.stderr)
         sys.exit(1)
 
@@ -199,11 +198,10 @@ def main():
             print(json.dumps({"error": "処理可能なファイルが見つかりませんでした", "warnings": execution_warnings}, ensure_ascii=False, indent=2))
         else:
             if execution_warnings:
-                print("\n" + "=" * 50)
-                print("Warnings")
-                print("=" * 50)
+                print()
+                ConsoleFormatter.print_section("Warnings")
                 for w in execution_warnings:
-                    print(f"WARNING: {w}")
+                    ConsoleFormatter.print_warning(w)
             print("ERROR: 処理可能なファイルが見つかりませんでした", file=sys.stderr)
         sys.exit(1)
 
@@ -278,10 +276,11 @@ def main():
         else:
             if is_multiple_files:
                 ConsoleFormatter.print_logo(script_dir)
-                print("=" * 50 + "\nSummary Results\n" + "=" * 50 + "\n")
+                ConsoleFormatter.print_report_title("SUMMARY RESULTS")
                 if args.list and project_info:
-                    print(f"Project: {project_info['project_name']}\nProcessed Files: {len(tasks)}")
-                    print(f"Execution Time: {current_load_time}")
+                    ConsoleFormatter.print_key_value("Project", project_info['project_name'])
+                    ConsoleFormatter.print_key_value("Processed Files", len(tasks))
+                    ConsoleFormatter.print_key_value("Execution Time", current_load_time)
                     print()
                 
                 ConsoleFormatter.display_combined_total_results(results, settings)
@@ -290,7 +289,7 @@ def main():
                 
                 if args.detailed:
                     for f, r in results:
-                        print("=" * 50)
+                        ConsoleFormatter.print_section(os.path.basename(f))
                         ConsoleFormatter.print_summary_results_table(r, f, show_title=False, settings=settings)
             else:
                 f, r = results[0]
@@ -306,9 +305,8 @@ def main():
         from utils.ApiIntegration import update_subtask_progress
         
         if not is_json_mode:
-            print("\n" + "=" * 50)
-            print("API Integration")
-            print("=" * 50)
+            print()
+            ConsoleFormatter.print_section("API Integration")
         
         api_updates = []
         # 同じファイル・同じサブタスクIDで合算
@@ -354,9 +352,9 @@ def main():
                 })
             else:
                 if not success:
-                    print(f"WARNING: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+                    ConsoleFormatter.print_warning(f"ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
                 else:
-                    print(f"INFO: ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+                    ConsoleFormatter.print_info(f"ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
         
         if is_json_mode:
             output_data["api_updates"] = api_updates
@@ -365,11 +363,10 @@ def main():
         if is_json_mode:
             output_data["warnings"] = execution_warnings
         else:
-            print("\n" + "=" * 50)
-            print("Warnings")
-            print("=" * 50)
+            print()
+            ConsoleFormatter.print_section("Warnings")
             for w in execution_warnings:
-                print(f"WARNING: {w}")
+                ConsoleFormatter.print_warning(w)
 
     verbose_logger.end_processing()
     

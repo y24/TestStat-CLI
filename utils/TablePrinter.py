@@ -28,7 +28,7 @@ def _is_full_percent(value):
 def _cell_color(header, value=None):
     header = str(header)
     if header in ("Pass", "Fixed", "Completed"):
-        return "soft_green"
+        return "white"
     if header in ("完了率(%)", "消化率(%)", "Completed(%)", "Executed(%)") and _is_full_percent(value):
         return "soft_green"
     if header in ("Fail", "ERROR"):

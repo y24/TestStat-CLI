@@ -99,16 +99,18 @@ def print_summary_results_table(result, filepath, show_title=True, settings=None
     # 総合結果テーブル
     if 'total' in result:
         print_section("TOTAL RESULTS")
-        total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+        total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数"]
+        completed = result['total'].get('完了数', 0)
+        executed = result['total'].get('消化数', 0)
+        completion_rate = result['total'].get('完了率(%)', 0)
+        execution_rate = result['total'].get('消化率(%)', 0)
         total_row = [result['total'].get('Total', 0)]
         for rt in result_order:
             total_row.append(result['total'].get(rt, 0))
         total_row.extend([
             result['total'].get('未実施', 0),
-            result['total'].get('完了数', 0),
-            result['total'].get('消化数', 0),
-            result['total'].get('完了率(%)', 0),
-            result['total'].get('消化率(%)', 0)
+            f"{completed} ({completion_rate}%)",
+            f"{executed} ({execution_rate}%)"
         ])
         TablePrinter.print_table(total_headers, [total_row])
         print()
@@ -196,15 +198,13 @@ def display_combined_total_results(results, settings=None):
     execution_rate = (total_results["消化数"] / total_available * 100) if total_available > 0 else 0
     
     print_section("TOTAL RESULTS")
-    total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    total_headers = ["Total"] + result_order + ["未実施", "完了数", "消化数"]
     total_row = [total_results.get("Total", 0)]
     total_row.extend([total_results.get(rt, 0) for rt in result_order])
     total_row.extend([
         total_results.get("未実施", 0),
-        total_results.get("完了数", 0),
-        total_results.get("消化数", 0),
-        round(completion_rate, 2),
-        round(execution_rate, 2)
+        f'{total_results.get("完了数", 0)} ({round(completion_rate, 2)}%)',
+        f'{total_results.get("消化数", 0)} ({round(execution_rate, 2)}%)'
     ])
     TablePrinter.print_table(total_headers, [total_row])
     print()
@@ -217,7 +217,7 @@ def display_file_breakdown_table(results, settings=None):
     headers1 = ["File", "Env", "Total"] + result_order + ["未実施"]
     rows1 = []
     
-    headers2 = ["File", "Env", "Total", "Completed", "Completed(%)", "Executed", "Executed(%)", "Start Date", "Latest Update"]
+    headers2 = ["File", "Env", "Total", "Completed", "Executed", "Start Date", "Latest Update"]
     rows2 = []
     
     total_available = 0
@@ -235,7 +235,7 @@ def display_file_breakdown_table(results, settings=None):
         
         if "error" in result:
             rows1.append([display_name, env_val, "ERROR"] + ["-"] * (len(result_order) + 1))
-            rows2.append([display_name, env_val, "ERROR", "-", "-", "-", "-", "-", "-"])
+            rows2.append([display_name, env_val, "ERROR", "-", "-", "-", "-"])
             continue
         
         available = result.get("stats", {}).get("available", 0)
@@ -266,7 +266,7 @@ def display_file_breakdown_table(results, settings=None):
         if last_update != "-":
             all_latest_updates.append(last_update)
         
-        rows2.append([display_name, env_val, available, completed, comp_rate, executed, exec_rate, start_date, last_update])
+        rows2.append([display_name, env_val, available, f"{completed} ({comp_rate}%)", f"{executed} ({exec_rate}%)", start_date, last_update])
         
     TablePrinter.print_table(headers1, rows1)
     print()
@@ -278,7 +278,7 @@ def display_file_breakdown_table(results, settings=None):
     min_start_date = min(all_start_dates) if all_start_dates else "-"
     max_last_update = max(all_latest_updates) if all_latest_updates else "-"
     
-    rows2.append(["Total", "-", total_available, total_completed, total_comp_rate, total_executed, total_exec_rate, min_start_date, max_last_update])
+    rows2.append(["Total", "-", total_available, f"{total_completed} ({total_comp_rate}%)", f"{total_executed} ({total_exec_rate}%)", min_start_date, max_last_update])
     
     TablePrinter.print_table(headers2, rows2, has_total_row=True)
     print()

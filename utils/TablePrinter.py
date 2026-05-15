@@ -19,8 +19,11 @@ def pad_display(text, width):
     return text + ' ' * pad
 
 def _is_full_percent(value):
+    value_text = str(value).strip()
+    if "(" in value_text and "%)" in value_text:
+        value_text = value_text.rsplit("(", 1)[1].split("%", 1)[0]
     try:
-        numeric_value = float(str(value).strip().rstrip("%"))
+        numeric_value = float(value_text.rstrip("%"))
     except ValueError:
         return False
     return numeric_value == 100
@@ -29,7 +32,7 @@ def _cell_color(header, value=None):
     header = str(header)
     if header in ("Pass", "Fixed", "Completed"):
         return "white"
-    if header in ("完了率(%)", "消化率(%)", "Completed(%)", "Executed(%)") and _is_full_percent(value):
+    if header in ("完了率(%)", "消化率(%)", "完了数", "消化数", "Completed", "Executed") and _is_full_percent(value):
         return "soft_green"
     if header in ("Fail", "ERROR"):
         return "soft_red"
@@ -46,9 +49,11 @@ def _cell_color(header, value=None):
         "消化数",
         "完了率(%)",
         "消化率(%)",
+        "完了数",
+        "消化数",
         "Executed",
-        "Completed(%)",
-        "Executed(%)",
+        "Completed",
+        "Executed",
     ):
         return "white"
     return None

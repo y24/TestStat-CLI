@@ -32,6 +32,110 @@ def get_version(script_dir):
             pass
     return "unknown"
 
+def _get_result_order(settings):
+    return settings["test_status"]["results"]
+
+def _build_total_results(total, settings):
+    result_order = _get_result_order(settings)
+    keys = ["Total"] + result_order + ["未実施", "完了数", "消化数", "完了率(%)", "消化率(%)"]
+    return {key: total.get(key, 0) for key in keys}
+
+def _build_daily_breakdown(daily, settings):
+    result_order = _get_result_order(settings)
+    use_plan_row = settings.get("output_definition", {}).get("use_plan_row", False)
+    keys = result_order + ["完了数", "消化数"]
+    if use_plan_row:
+        keys.append("計画数")
+    return {
+        date: {key: daily_data.get(key, 0) for key in keys}
+        for date, daily_data in sorted(daily.items())
+    }
+
+def _build_file_breakdown(results, settings):
+    result_order = _get_result_order(settings)
+    files = []
+
+    for filepath, result in results:
+        file_data = {
+            "file": filepath,
+            "label": result.get("label", ""),
+            "environment": ", ".join(result.get("target_environments", [])) if result.get("target_environments") else "-"
+        }
+
+        if "error" in result:
+            file_data["error"] = result["error"]
+            files.append(file_data)
+            continue
+
+        available = result.get("stats", {}).get("available", 0)
+        total = result.get("total", {})
+        completed = total.get("完了数", 0)
+        executed = total.get("消化数", 0)
+        run_info = result.get("run", {})
+
+        file_data.update({
+            "total": available,
+            "results": {rt: total.get(rt, 0) for rt in result_order},
+            "未実施": total.get("未実施", 0),
+            "completed": completed,
+            "completed_rate": round((completed / available * 100), 2) if available > 0 else 0,
+            "executed": executed,
+            "executed_rate": round((executed / available * 100), 2) if available > 0 else 0,
+            "start_date": run_info.get("start_date"),
+            "latest_update": run_info.get("last_update")
+        })
+        files.append(file_data)
+
+    return files
+
+def _build_summary_json_output(output_data, results, settings, is_multiple_files, current_load_time, project_info=None):
+    if is_multiple_files:
+        summary = output_data.get("summary", {})
+        json_data = {
+            "summary_results": {
+                "project": project_info.get("project_name") if project_info else None,
+                "processed_files": summary.get("processed_files", len(results)),
+                "execution_time": current_load_time,
+                "total_cases": summary.get("total_stats", {}).get("all", 0),
+                "available_cases": summary.get("total_stats", {}).get("available", 0),
+                "excluded_cases": summary.get("total_stats", {}).get("excluded", 0),
+                "executed": summary.get("total_stats", {}).get("executed", 0),
+                "completed": summary.get("total_stats", {}).get("completed", 0),
+                "incompleted": summary.get("total_stats", {}).get("incompleted", 0),
+                "planned": summary.get("total_stats", {}).get("planned", 0),
+                "earliest_start_date": summary.get("earliest_start_date") or None,
+                "latest_update": summary.get("latest_update") or None
+            },
+            "total_results": _build_total_results(summary.get("total_results", {}), settings),
+            "file_breakdown": _build_file_breakdown(results, settings)
+        }
+    else:
+        filepath, result = results[0]
+        if "error" in result:
+            json_data = {"file": filepath, "error": result["error"]}
+        else:
+            stats = result.get("stats", {})
+            run_info = result.get("run", {})
+            json_data = {
+                "summary_results": {
+                    "file": filepath,
+                    "total_cases": stats.get("all", 0),
+                    "available_cases": stats.get("available", 0),
+                    "excluded_cases": stats.get("excluded", 0),
+                    "status": run_info.get("status"),
+                    "start_date": run_info.get("start_date"),
+                    "last_update": run_info.get("last_update")
+                },
+                "total_results": _build_total_results(result.get("total", {}), settings),
+                "daily_breakdown": _build_daily_breakdown(result.get("daily", {}), settings)
+            }
+
+    for optional_key in ["api_updates", "warnings"]:
+        if optional_key in output_data:
+            json_data[optional_key] = output_data[optional_key]
+
+    return json_data
+
 def parse_args():
     # スクリプトのルートディレクトリを取得
     script_dir = get_script_root_dir()
@@ -47,6 +151,7 @@ def parse_args():
     parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv"], default="table", help="出力形式（table/json/csv）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
+    parser.add_argument("-j", "--json", action="store_true", help="JSON形式でサマリ出力")
     parser.add_argument("-J", "--json-detailed", action="store_true", help="JSON形式で詳細出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
@@ -59,7 +164,9 @@ def parse_args():
 def main():
     args = parse_args()
     script_dir = get_script_root_dir()
-    is_json_mode = args.json_detailed or args.output_format == "json"
+    is_json_summary_mode = args.json
+    is_json_detailed_mode = args.json_detailed or (args.output_format == "json" and not args.json)
+    is_json_mode = is_json_summary_mode or is_json_detailed_mode
     
     # VerboseLoggerの初期化
     verbose_logger = Logger.VerboseLogger(args.verbose)
@@ -211,7 +318,7 @@ def main():
         output_data = {
             "summary": {
                 "processed_files": len(tasks),
-                "total_stats": {m: sum(r[1]["stats"][m] for r in results if "stats" in r[1]) for m in ["all", "available", "executed", "completed", "incompleted", "planned"]},
+                "total_stats": {m: sum(r[1]["stats"][m] for r in results if "stats" in r[1]) for m in ["all", "excluded", "available", "executed", "completed", "incompleted", "planned"]},
                 "overall_status": "",
                 "earliest_start_date": min([r[1]["run"]["start_date"] for r in results if "run" in r[1] and r[1]["run"]["start_date"]] or [""]),
                 "latest_update": max([r[1]["run"]["last_update"] for r in results if "run" in r[1] and r[1]["run"]["last_update"]] or [""])
@@ -230,9 +337,8 @@ def main():
             file_data["file"] = f
             output_data["files"].append(file_data)
         
-        if total_res["消化数"] > 0:
-            total_res["完了率(%)"] = round(total_res["完了数"] / total_res["消化数"] * 100, 2)
         if output_data["summary"]["total_stats"]["available"] > 0:
+            total_res["完了率(%)"] = round(total_res["完了数"] / output_data["summary"]["total_stats"]["available"] * 100, 2)
             total_res["消化率(%)"] = round(total_res["消化数"] / output_data["summary"]["total_stats"]["available"] * 100, 2)
         output_data["summary"]["total_results"] = total_res
         output_data = output_data # Keep it for clarity
@@ -371,7 +477,12 @@ def main():
     verbose_logger.end_processing()
     
     if is_json_mode:
-        print(json.dumps(output_data, ensure_ascii=False, indent=2))
+        json_output_data = output_data
+        if is_json_summary_mode:
+            json_output_data = _build_summary_json_output(
+                output_data, results, settings, is_multiple_files, current_load_time, project_info
+            )
+        print(json.dumps(json_output_data, ensure_ascii=False, indent=2))
     else:
         print()
 

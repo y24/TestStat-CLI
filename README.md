@@ -59,6 +59,7 @@ tstat [オプション] [ファイルパス/フォルダパス]
 | `-l, --list` | `-l` | プロジェクトリストファイルのパス（YAML形式） | なし |
 | `-f, --output-format` | `-f` | 出力形式（table/json/csv） | `table` |
 | `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
+| `-j, --json` | `-j` | JSON形式でサマリ出力 | `false` |
 | `-J, --json-detailed` | `-J` | JSON形式で詳細出力 | `false` |
 | `-v, --verbose` | `-v` | 詳細ログ出力（エラー発生時のトレース） | `false` |
 | `-p, --clipboard` | `-p` | 集計データをTSV形式でクリップボードにコピー | `false` |
@@ -82,7 +83,10 @@ tstat -l project_list.yaml
 # カスタム設定ファイルを使用
 tstat path/to/your_file.xlsx -c custom_config.json
 
-# JSON形式で出力
+# JSON形式でサマリ出力
+tstat path/to/your_file.xlsx -j
+
+# JSON形式で詳細出力
 tstat path/to/your_file.xlsx -J
 
 # CSV形式でファイル出力
@@ -145,7 +149,53 @@ PROGRESS SUMMARY
 
 対応ターミナルでは、見出し、テーブルヘッダ、ステータス、警告、主要な結果列に色が付きます。色を無効にしたい場合は `NO_COLOR` 環境変数を設定してください。
 
-### JSON形式出力（`-J, --json-detailed` オプション）
+### サマリJSON形式出力（`--json` オプション）
+
+通常のコンソール出力に近い粒度で、`SUMMARY RESULTS`、`TOTAL RESULTS`、単一ファイルの場合は `DAILY BREAKDOWN`、複数ファイルの場合は `FILE BREAKDOWN` 相当の情報のみを出力します。
+
+単一ファイルを処理した場合のJSON出力例です。
+
+```json
+{
+  "summary_results": {
+    "file": "input_sample/sample1.xlsx",
+    "total_cases": 36,
+    "available_cases": 36,
+    "excluded_cases": 0,
+    "status": "進行中",
+    "start_date": "2025-02-09",
+    "last_update": "2025-02-15"
+  },
+  "total_results": {
+    "Total": 36,
+    "Pass": 32,
+    "Fixed": 1,
+    "Fail": 1,
+    "Blocked": 1,
+    "Suspend": 0,
+    "N/A": 0,
+    "未実施": 1,
+    "完了数": 33,
+    "消化数": 35,
+    "完了率(%)": 91.67,
+    "消化率(%)": 97.22
+  },
+  "daily_breakdown": {
+    "2025-02-09": {
+      "Pass": 1,
+      "Fixed": 0,
+      "Fail": 0,
+      "Blocked": 0,
+      "Suspend": 0,
+      "N/A": 0,
+      "完了数": 1,
+      "消化数": 1
+    }
+  }
+}
+```
+
+### 詳細JSON形式出力（`-J, --json-detailed` オプション）
 
 複数ファイルを処理した場合のJSON出力例です。
 

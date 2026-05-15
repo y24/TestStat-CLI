@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv"], default="table", help="出力形式（table/json/csv）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
-    parser.add_argument("-j", "--json-output", action="store_true", help="JSON形式で出力")
+    parser.add_argument("-J", "--json-detailed", action="store_true", help="JSON形式で詳細出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
@@ -59,7 +59,7 @@ def parse_args():
 def main():
     args = parse_args()
     script_dir = get_script_root_dir()
-    is_json_mode = args.json_output or args.output_format == "json"
+    is_json_mode = args.json_detailed or args.output_format == "json"
     
     # VerboseLoggerの初期化
     verbose_logger = Logger.VerboseLogger(args.verbose)

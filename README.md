@@ -59,7 +59,7 @@ tstat [オプション] [ファイルパス/フォルダパス]
 | `-l, --list` | `-l` | プロジェクトリストファイルのパス（YAML形式） | なし |
 | `-f, --output-format` | `-f` | 出力形式（table/json/csv） | `table` |
 | `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
-| `-j, --json-output` | `-j` | JSON形式で出力 | `false` |
+| `-J, --json-detailed` | `-J` | JSON形式で詳細出力 | `false` |
 | `-v, --verbose` | `-v` | 詳細ログ出力（エラー発生時のトレース） | `false` |
 | `-p, --clipboard` | `-p` | 集計データをTSV形式でクリップボードにコピー | `false` |
 | `--detailed` | - | 複数ファイル処理時にファイル別の詳細結果も表示 | `false` |
@@ -83,7 +83,7 @@ tstat -l project_list.yaml
 tstat path/to/your_file.xlsx -c custom_config.json
 
 # JSON形式で出力
-tstat path/to/your_file.xlsx -j
+tstat path/to/your_file.xlsx -J
 
 # CSV形式でファイル出力
 tstat path/to/your_file.xlsx -o results.csv
@@ -145,7 +145,7 @@ PROGRESS SUMMARY
 
 対応ターミナルでは、見出し、テーブルヘッダ、ステータス、警告、主要な結果列に色が付きます。色を無効にしたい場合は `NO_COLOR` 環境変数を設定してください。
 
-### JSON形式出力（`-j, --json-output` オプション）
+### JSON形式出力（`-J, --json-detailed` オプション）
 
 複数ファイルを処理した場合のJSON出力例です。
 

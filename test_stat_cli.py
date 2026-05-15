@@ -103,6 +103,23 @@ def _build_daily_breakdown(daily, settings):
         for date, daily_data in sorted(daily.items())
     }
 
+def _json_file_name(path):
+    return os.path.basename(path.replace("\\", "/"))
+
+def _replace_json_file_paths_with_names(value):
+    """JSON出力内のfileフィールドだけをファイル名に変換する"""
+    if isinstance(value, dict):
+        converted = {}
+        for key, item in value.items():
+            if key == "file" and isinstance(item, str):
+                converted[key] = _json_file_name(item)
+            else:
+                converted[key] = _replace_json_file_paths_with_names(item)
+        return converted
+    if isinstance(value, list):
+        return [_replace_json_file_paths_with_names(item) for item in value]
+    return value
+
 def _build_file_breakdown(results, settings):
     result_order = _get_result_order(settings)
     files = []
@@ -540,6 +557,7 @@ def main():
             json_output_data = _build_summary_json_output(
                 output_data, results, settings, is_multiple_files, current_load_time, project_info
             )
+        json_output_data = _replace_json_file_paths_with_names(json_output_data)
         print(json.dumps(json_output_data, ensure_ascii=False, indent=2))
     else:
         print()

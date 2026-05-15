@@ -1,4 +1,5 @@
 utils/__pycache__/*
+assets/__pycache__/*
 input_sample/*
 build/*
 dist/*

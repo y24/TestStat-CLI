@@ -45,7 +45,8 @@ tstat = "test_stat_cli:main"
 # Documentation = ""
 
 [tool.setuptools]
-packages = ["utils"]
+packages = ["utils", "assets"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.txt", "*.yaml", "*.yml"]
+"assets" = ["*.txt", "roo/commands/*.md", "roo/skills/*/SKILL.md"]

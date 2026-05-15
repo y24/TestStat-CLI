@@ -9,5 +9,6 @@ include assets/*
 include list_samples/*
 include input_sample/*
 recursive-include utils *.py
+recursive-include assets *.md
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]

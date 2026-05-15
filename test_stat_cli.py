@@ -3,6 +3,7 @@ import copy
 import sys
 import argparse
 import os
+import pkgutil
 import traceback
 from datetime import datetime
 
@@ -31,6 +32,57 @@ def get_version(script_dir):
         except Exception:
             pass
     return "unknown"
+
+ROO_TEMPLATE_FILES = (
+    ("roo/commands/tstat.md", os.path.join(".roo", "commands", "tstat.md")),
+    ("roo/skills/teststat-cli/SKILL.md", os.path.join(".roo", "skills", "teststat-cli", "SKILL.md")),
+)
+
+def _read_asset_text(resource_path):
+    local_path = os.path.join(get_script_root_dir(), "assets", *resource_path.split("/"))
+    if os.path.exists(local_path):
+        with open(local_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    data = pkgutil.get_data("assets", resource_path)
+    if data is None:
+        raise FileNotFoundError(f"パッケージ内テンプレートが見つかりません: {resource_path}")
+    return data.decode("utf-8")
+
+def install_roo_files(base_dir=None, force=False):
+    """RooCode用のスラッシュコマンドとスキルを指定ディレクトリへ配置する"""
+    base_dir = os.path.abspath(base_dir or os.getcwd())
+    installed = []
+    skipped = []
+
+    for resource_path, relative_dest in ROO_TEMPLATE_FILES:
+        dest_path = os.path.join(base_dir, relative_dest)
+        if os.path.exists(dest_path) and not force:
+            skipped.append(dest_path)
+            continue
+
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        content = _read_asset_text(resource_path)
+        with open(dest_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+        installed.append(dest_path)
+
+    return installed, skipped
+
+def handle_install_roo(force=False):
+    try:
+        installed, skipped = install_roo_files(force=force)
+    except Exception as e:
+        print(f"ERROR: RooCode用ファイルの配置に失敗しました: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    for path in installed:
+        print(f"installed: {path}")
+    for path in skipped:
+        print(f"skipped: {path} (既存ファイル。上書きする場合は --force を指定)")
+
+    if not installed and skipped:
+        print("RooCode用ファイルはすでに配置済みです。")
 
 def _get_result_order(settings):
     return settings["test_status"]["results"]
@@ -157,12 +209,18 @@ def parse_args():
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     parser.add_argument("--detailed", action="store_true", help="複数ファイル処理時にファイル別の詳細結果も表示")
+    parser.add_argument("--install-roo", action="store_true", help="RooCode用のスラッシュコマンドとスキルをカレントディレクトリへ配置して終了")
+    parser.add_argument("--force", action="store_true", help="--install-roo実行時に既存ファイルを上書き")
     parser.add_argument("--version", action="version", version=f"%(prog)s {version}", help="バージョン情報を表示して終了")
     
     return parser.parse_args()
 
 def main():
     args = parse_args()
+    if args.install_roo:
+        handle_install_roo(force=args.force)
+        return
+
     script_dir = get_script_root_dir()
     is_json_summary_mode = args.json
     is_json_detailed_mode = args.json_detailed or (args.output_format == "json" and not args.json)

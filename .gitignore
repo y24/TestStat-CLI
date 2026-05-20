@@ -9,3 +9,6 @@ __pycache__/*
 *.egg-info/
 .venv/
 .pytest_cache/
+config.json
+lists/*
+!lists/list_sample.yaml

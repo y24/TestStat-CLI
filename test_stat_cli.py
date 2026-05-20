@@ -3,6 +3,7 @@ import copy
 import sys
 import argparse
 import os
+import shutil
 import pkgutil
 import traceback
 from datetime import datetime
@@ -18,6 +19,25 @@ from utils import ConsoleFormatter
 def get_script_root_dir():
     """スクリプトのルートディレクトリのパスを返す"""
     return os.path.dirname(os.path.abspath(__file__))
+
+CONFIG_FILE_NAME = "config.json"
+CONFIG_SAMPLE_FILE_NAME = "config_sample.json"
+
+def get_default_config_path(script_dir):
+    return os.path.join(script_dir, CONFIG_FILE_NAME)
+
+def ensure_default_config_exists(script_dir):
+    """デフォルト設定ファイルがなければサンプルから作成する"""
+    config_path = get_default_config_path(script_dir)
+    if os.path.exists(config_path):
+        return config_path
+
+    sample_path = os.path.join(script_dir, CONFIG_SAMPLE_FILE_NAME)
+    if not os.path.exists(sample_path):
+        raise FileNotFoundError(f"サンプル設定ファイルが見つかりません: {sample_path}")
+
+    shutil.copyfile(sample_path, config_path)
+    return config_path
 
 def get_version(script_dir):
     """pyproject.tomlからバージョン情報を取得する"""
@@ -208,7 +228,6 @@ def _build_summary_json_output(output_data, results, settings, is_multiple_files
 def parse_args():
     # スクリプトのルートディレクトリを取得
     script_dir = get_script_root_dir()
-    default_config_path = os.path.join(script_dir, "config.json")
     version = get_version(script_dir)
     
     # ヘルプ表示時のみロゴを表示
@@ -217,7 +236,7 @@ def parse_args():
     
     parser = argparse.ArgumentParser(description=f"Excelテスト仕様書集計ツール (version {version})")
     parser.add_argument("path", nargs='*', help="集計対象のファイルまたはフォルダのパス（.xlsx または ディレクトリ）。複数指定可能")
-    parser.add_argument("-c", "--config", default=default_config_path, help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
+    parser.add_argument("-c", "--config", help="設定ファイルのパス（デフォルト: ルートフォルダのconfig.json）")
     parser.add_argument("-f", "--output-format", choices=["table", "json", "csv"], default="table", help="出力形式（table/json/csv）")
     parser.add_argument("-o", "--output-file", help="出力ファイルパス")
     parser.add_argument("-j", "--json", action="store_true", help="JSON形式でサマリ出力")
@@ -239,6 +258,13 @@ def main():
         return
 
     script_dir = get_script_root_dir()
+    if args.config is None:
+        try:
+            args.config = ensure_default_config_exists(script_dir)
+        except Exception as e:
+            print(f"ERROR: デフォルト設定ファイルの作成に失敗しました\n詳細: {e}", file=sys.stderr)
+            sys.exit(1)
+
     is_json_summary_mode = args.json
     is_json_detailed_mode = args.json_detailed or (args.output_format == "json" and not args.json)
     is_json_mode = is_json_summary_mode or is_json_detailed_mode

@@ -1,6 +1,5 @@
 import os
 import yaml
-from datetime import datetime
 
 # YAMLライブラリのインポート確認
 try:
@@ -8,35 +7,6 @@ try:
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
-
-def update_project_list_last_loaded(list_file_path, timestamp=None):
-    """プロジェクトリストファイルのlast_loaded値を更新する"""
-    try:
-        if not YAML_AVAILABLE:
-            print(f"WARNING: YAMLファイルの更新に失敗しました。PyYAMLライブラリが必要です: {list_file_path}")
-            return False
-
-        file_extension = os.path.splitext(list_file_path)[1].lower()
-        if file_extension not in ['.yaml', '.yml']:
-            print(f"WARNING: サポートされていないファイル形式です: {file_extension} (対応形式: .yaml, .yml)")
-            return False
-        
-        with open(list_file_path, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
-        
-        if data and "project" in data:
-            data["project"]["last_loaded"] = timestamp if timestamp else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            with open(list_file_path, 'w', encoding='utf-8') as f:
-                yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
-            return True
-        else:
-            print(f"WARNING: プロジェクトリストファイルの形式が不正です: {list_file_path}")
-            return False
-            
-    except Exception as e:
-        print(f"WARNING: プロジェクトリストファイルの更新に失敗しました: {list_file_path}, 詳細: {e}")
-        return False
 
 def read_project_list_file(list_file_path):
     """プロジェクトリストファイルからファイル情報を読み取る"""
@@ -114,7 +84,6 @@ def read_yaml_project_list(list_file_path):
     return {
         "project_name": project_data["project_name"],
         "files": file_info_list,
-        "last_loaded": project_data.get("last_loaded", ""),
         "subtask_id": project_data.get("subtask_id", None)
     }
 

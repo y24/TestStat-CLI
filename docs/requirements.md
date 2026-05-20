@@ -217,8 +217,7 @@ python test_stat.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
         "label": "ラベル2",
         "path": "ファイルパス2"
       }
-    ],
-    "last_loaded": "2025-05-27 20:42:40"
+    ]
   }
 }
 ```
@@ -232,7 +231,6 @@ project:
       path: "ファイルパス1"
     - label: "ラベル2"
       path: "ファイルパス2"
-  last_loaded: "2025-05-27 20:42:40"
 ```
 
 ### 4.3.3 テキスト形式（従来方式）
@@ -250,7 +248,6 @@ input_sample/taihi/sample3_.xlsx
 - **files**: ファイルリスト（各要素に`label`と`path`を持つ）
     - `label`: 管理しやすくするためにユーザーが付ける任意の文字列
     - `path`: 処理するファイルのパス
-- **last_loaded**: 最後にそのプロジェクトの集計を行った日時（"YYYY-MM-DD HH:MM:SS"）
 
 ### 4.3.5 エラーハンドリング
 

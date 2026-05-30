@@ -29,9 +29,8 @@ Excelテスト仕様書からテスト結果を集計するCLIツールです。
 ### セットアップ
 
 ```bash
-# リポジトリのクローン
-git clone <repository-url>
-cd TestStat-CLI
+# ディレクトリに移動
+cd teststat-cli
 
 # パッケージとしてインストール
 pip install .
@@ -41,6 +40,12 @@ pip install -e .
 ```
 
 インストール後、`tstat`コマンドがグローバルに利用可能になります。
+
+### アンインストール
+
+```bash
+pip uninstall teststat-cli
+```
 
 ## 使い方
 

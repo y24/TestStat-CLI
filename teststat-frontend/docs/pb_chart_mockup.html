@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TestStat PB図 モック</title>
+<!-- 注意: これは設計イメージ用の静的モックです。実装は React + ECharts を想定。
+     データはサンプル（ハードコード）。実際は GET /api/v1/projects/{testing_id}/pb-chart（計画×実績の統合系列）から取得します。
+     計画線・計画棒は本プロジェクトで新設する計画テーブル由来、実績線・実績棒は既存の実績(daily_progress)由来です。 -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --border: #e3e6ea;
+    --text: #1f2933;
+    --muted: #7b8794;
+    --accent: #2f6fed;
+    --accent-soft: #eaf1ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+  }
+  /* 左ペイン */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h1 {
+    font-size: 15px;
+    margin: 0;
+    padding: 18px 18px 12px;
+    color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .sidebar .section-label {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 18px;
+  }
+  .proj-list { list-style: none; margin: 0; padding: 0; flex: 1; overflow-y: auto; }
+  .proj-list li {
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    color: #3e4c59;
+  }
+  .proj-list li:hover { background: #f0f3f7; }
+  .proj-list li.active {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .proj-list li .tid { display:block; font-size:11px; color: var(--muted); font-weight: 400; }
+  /* 右ペイン */
+  .main { flex: 1; display: flex; flex-direction: column; padding: 20px 24px; overflow: hidden; }
+  .main-head { display: flex; align-items: baseline; gap: 12px; }
+  .main-head h2 { margin: 0; font-size: 20px; }
+  .main-head .tid { font-size: 13px; color: var(--muted); }
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 14px 0 6px;
+    font-size: 13px;
+    color: #3e4c59;
+  }
+  .controls label { cursor: pointer; user-select: none; }
+  .controls select { font-size: 13px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; }
+  .controls .period { color: var(--muted); }
+  .layers { display: flex; gap: 14px; align-items: center; }
+  .layers input { vertical-align: middle; margin-right: 4px; }
+  .chart-wrap { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-top: 8px; min-height: 0; }
+  #chart { width: 100%; height: 100%; }
+  .foot { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h1>テスト状況</h1>
+    <div class="section-label">プロジェクト</div>
+    <ul class="proj-list">
+      <li class="active">サンプルプロジェクト<span class="tid">testing_id: 1001</span></li>
+      <li>認証基盤移行<span class="tid">testing_id: 1002</span></li>
+      <li>帳票改修<span class="tid">testing_id: 1003</span></li>
+      <li>四半期稼働検証<span class="tid">testing_id: 1004</span></li>
+    </ul>
+  </aside>
+
+  <section class="main">
+    <div class="main-head">
+      <h2>サンプルプロジェクト</h2>
+      <span class="tid">testing_id: 1001</span>
+    </div>
+
+    <div class="controls">
+      <span>表示対象:
+        <select id="target">
+          <option value="all">全テスト（合算）</option>
+          <option value="TEST001">TEST001（シナリオ）</option>
+          <option value="TEST002">TEST002（帳票）</option>
+          <option value="TEST003">TEST003（インストール）</option>
+        </select>
+      </span>
+      <span class="period">表示期間: 2026/05/01 ～ 2026/05/20</span>
+      <span class="layers">
+        表示:
+        <label><input type="checkbox" id="ck-plan" checked />計画線</label>
+        <label><input type="checkbox" id="ck-actual" checked />実績線</label>
+        <label><input type="checkbox" id="ck-daily" checked />日別消化</label>
+        <label><input type="checkbox" id="ck-past" />過去計画</label>
+      </span>
+    </div>
+
+    <div class="chart-wrap"><div id="chart"></div></div>
+
+    <div class="foot">最終更新: 2026/05/20 18:42（updated_at）</div>
+    <div class="note">
+      ※ 設計イメージ用モック。系列は GET /api/v1/progress/{testing_id}/daily と /progress/{testing_id}（available_cases）から算出する想定。
+      バグ実績・右軸はバックエンド改修後に追加する将来拡張のため未描画。
+    </div>
+  </section>
+
+<script>
+// ===== サンプルデータ（実装では /daily を label でフィルタ＆日付集約して作る）=====
+const A = 800; // available_cases（バーンダウンの母数）
+const dates = [];
+for (let d = 1; d <= 20; d++) dates.push(`2026-05-${String(d).padStart(2,'0')}`);
+
+// 日別の計画消化・実績消化（その日の増分）。実データでは daily.planned / daily.executed の合計。
+const dailyPlanned  = [0,60,60,60,60,0,0,60,60,60,60,60,0,0,55,55,50,-15,40,40];
+const dailyExecuted = [0,35,48,52,40,0,0,30,58,62,55,49,0,0,40,60,52,10,38,45];
+
+// 累計 → 未実施ライン（A − 累計）
+function cumRemaining(daily) {
+  let acc = 0;
+  return daily.map(v => { acc += v; return A - acc; });
+}
+const planRemaining   = cumRemaining(dailyPlanned);
+const actualRemaining = cumRemaining(dailyExecuted);
+
+// 過去の計画バージョン（v1）の例。多バージョン保持により薄線で重ねられる。
+const dailyPlannedV1  = [0,55,55,55,55,0,0,55,55,55,55,0,0,0,50,50,50,50,40,40];
+const planRemainingV1 = cumRemaining(dailyPlannedV1);
+
+const today = '2026-05-20'; // クライアントの現在日付（レンジ内のときだけ縦線）
+
+const chart = echarts.init(document.getElementById('chart'));
+
+function buildOption(show) {
+  const series = [];
+
+  if (show.daily) {
+    series.push({
+      name: '日別消化計画',
+      type: 'bar',
+      data: dailyPlanned,
+      barGap: '-100%',          // 実績棒に重ねる
+      barCategoryGap: '40%',
+      itemStyle: { color: 'rgba(47,111,237,0.18)' },
+      z: 1,
+    });
+    series.push({
+      name: '日別消化実績',
+      type: 'bar',
+      data: dailyExecuted,
+      barWidth: '30%',
+      itemStyle: { color: 'rgba(47,111,237,0.55)' },
+      z: 2,
+    });
+  }
+  if (show.past) {
+    series.push({
+      name: '過去計画 v1（残）',
+      type: 'line',
+      data: planRemainingV1,
+      smooth: false,
+      symbol: 'none',
+      lineStyle: { type: 'dashed', width: 1, color: 'rgba(138,148,166,0.45)' },
+      z: 4,
+    });
+  }
+  if (show.plan) {
+    series.push({
+      name: '計画未実施（残）',
+      type: 'line',
+      data: planRemaining,
+      smooth: false,
+      symbol: 'none',
+      lineStyle: { type: 'dashed', width: 2, color: '#8a94a6' },
+      z: 5,
+    });
+  }
+  if (show.actual) {
+    series.push({
+      name: '実績未実施（残）',
+      type: 'line',
+      data: actualRemaining,
+      smooth: false,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: { width: 2.5, color: '#2f6fed' },
+      itemStyle: { color: '#2f6fed' },
+      z: 6,
+      markLine: {
+        symbol: 'none',
+        silent: true,
+        lineStyle: { type: 'solid', width: 1.5, color: '#e0457b' },
+        label: { formatter: '今日', position: 'insideEndTop', color: '#e0457b' },
+        data: [{ xAxis: today }],
+      },
+    });
+  }
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+    },
+    legend: { top: 0 },
+    grid: { left: 56, right: 24, top: 40, bottom: 56 },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLabel: { formatter: v => v.slice(5) }, // MM-DD
+      boundaryGap: true,
+    },
+    yAxis: {
+      type: 'value',
+      name: '件数（未実施 / 日別消化）',
+      nameTextStyle: { color: '#7b8794' },
+      // 左軸を未実施件数と日別消化件数で共用（開発計画 §7 軸方針）
+    },
+    dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 18 }],
+    series,
+  };
+}
+
+function render() {
+  chart.setOption(buildOption({
+    plan: document.getElementById('ck-plan').checked,
+    actual: document.getElementById('ck-actual').checked,
+    daily: document.getElementById('ck-daily').checked,
+    past: document.getElementById('ck-past').checked,
+  }), true);
+}
+
+['ck-plan','ck-actual','ck-daily','ck-past'].forEach(id =>
+  document.getElementById(id).addEventListener('change', render)
+);
+render();
+window.addEventListener('resize', () => chart.resize());
+</script>
+</body>
+</html>

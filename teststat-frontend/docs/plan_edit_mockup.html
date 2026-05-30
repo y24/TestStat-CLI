@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TestStat 計画編集 / プロジェクト編集 モック</title>
+<!-- 設計イメージ用の静的モック。計画・プロジェクトは本プロジェクトで新設するバックエンド
+     (POST /api/v1/projects, POST /api/v1/projects/{testing_id}/plans) に対応します。
+     testing_id は外部チケット管理システムのチケットID。実績は testing_id+label で紐付け。 -->
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --border:#e3e6ea; --text:#1f2933; --muted:#7b8794; --accent:#2f6fed; --accent-soft:#eaf1ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+  .crumb { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  h2 { margin: 4px 0 16px; font-size: 20px; }
+  h3 { font-size: 15px; margin: 28px 0 10px; color:#3e4c59; border-left:3px solid var(--accent); padding-left:8px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px 18px; }
+  table { width:100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
+  th { color: var(--muted); font-weight:600; }
+  .btn { font-size:13px; padding:5px 12px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:5px; cursor:pointer; }
+  .btn.ghost { background:#fff; color:var(--accent); }
+  .btn.mini { padding:3px 9px; font-size:12px; }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; background:var(--accent-soft); color:var(--accent); }
+  .badge.gray { background:#eef1f4; color:var(--muted); }
+  form .row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+  form .field { display:flex; flex-direction:column; gap:4px; }
+  form label { font-size:12px; color:var(--muted); }
+  input, select { font-size:13px; padding:6px 8px; border:1px solid var(--border); border-radius:5px; }
+  input[type=number]{ width:120px; } input[type=date]{ width:160px; } input.reason{ width:360px; }
+  .seg { display:flex; gap:0; border:1px solid var(--border); border-radius:6px; overflow:hidden; width:max-content; }
+  .seg button { border:none; background:#fff; padding:6px 14px; font-size:13px; cursor:pointer; color:#3e4c59; }
+  .seg button.active { background:var(--accent); color:#fff; }
+  .hint { font-size:12px; color:var(--muted); margin:6px 0 0; }
+  .daily-table input { width:80px; }
+  .muted { color: var(--muted); }
+  .note { font-size:11px; color:var(--muted); margin-top:18px; }
+  textarea { width:100%; height:64px; font-family:monospace; font-size:12px; padding:8px; border:1px solid var(--border); border-radius:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ① プロジェクト編集（新規作成） -->
+  <div class="crumb">プロジェクト一覧 ＞ 新規作成</div>
+  <h2>プロジェクトを新規作成</h2>
+  <div class="card">
+    <form onsubmit="return false">
+      <div class="row">
+        <div class="field">
+          <label>testing_id（チケットID・必須）</label>
+          <input type="number" value="1001" />
+        </div>
+        <div class="field">
+          <label>表示名</label>
+          <input type="text" value="サンプルプロジェクト" style="width:280px" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>チケット参照（任意：キー/URL）</label>
+          <input type="text" placeholder="例: IFRS18-123 / https://..." style="width:360px" />
+        </div>
+      </div>
+      <p class="hint">入力した testing_id に実績があれば自動で紐付きます（無くても事前登録できます）。
+        現在の状態: <span class="badge">実績受信済み（最終更新 2026/05/20 18:42）</span></p>
+      <button class="btn">作成</button>
+    </form>
+  </div>
+
+  <!-- ② テスト計画一覧 -->
+  <div class="crumb" style="margin-top:34px;">サンプルプロジェクト ＞ テスト計画</div>
+  <h2>テスト計画 <span class="muted" style="font-size:14px;">(testing_id: 1001)</span></h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>テスト (label)</th><th>計画項目数</th><th>期間</th><th>有効な計画</th><th style="text-align:right">操作</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>TEST001</td><td>920</td><td>05/01 - 06/10</td><td><span class="badge">v2</span></td>
+            <td style="text-align:right"><button class="btn ghost mini">編集</button> <button class="btn ghost mini">履歴</button></td></tr>
+        <tr><td>TEST002</td><td>1,200</td><td>05/08 - 06/12</td><td><span class="badge">v1</span></td>
+            <td style="text-align:right"><button class="btn ghost mini">編集</button> <button class="btn ghost mini">履歴</button></td></tr>
+        <tr><td>TEST003</td><td>400</td><td>05/20 - 06/05</td><td><span class="badge gray">未作成</span></td>
+            <td style="text-align:right"><button class="btn ghost mini">計画を作成</button></td></tr>
+      </tbody>
+    </table>
+    <p class="hint">テスト(label) は実績データから候補提示します。手入力時は実績の label と表記を合わせてください（文字列一致で紐付くため）。</p>
+  </div>
+
+  <!-- ③ 新しい計画バージョンの作成 -->
+  <h3>TEST001 ＞ 新しい計画を作成（現行 v2 → v3）</h3>
+  <div class="card">
+    <form onsubmit="return false">
+      <div class="row">
+        <div class="field"><label>変更理由</label><input class="reason" type="text" value="仕様追加により120件増加" /></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>計画テスト項目数</label><input type="number" value="920" /></div>
+        <div class="field"><label>開始日</label><input type="date" value="2026-05-01" /></div>
+        <div class="field"><label>終了日</label><input type="date" value="2026-06-10" /></div>
+      </div>
+
+      <div class="field" style="margin-bottom:10px;">
+        <label>入力方法</label>
+        <div class="seg">
+          <button class="active" onclick="setMode('even')" id="m-even">均等配分</button>
+          <button onclick="setMode('daily')" id="m-daily">日別入力</button>
+          <button onclick="setMode('csv')" id="m-csv">CSVインポート</button>
+        </div>
+      </div>
+
+      <div id="pane-even">
+        <p class="hint">期間（営業日/全日）と項目数から日別計画を自動生成します。下のプレビューを編集することも可能。</p>
+      </div>
+      <div id="pane-daily" style="display:none;">
+        <p class="hint">日別の計画消化数を直接入力します。</p>
+      </div>
+      <div id="pane-csv" style="display:none;">
+        <p class="hint"><code>date,planned_count</code> 形式で貼り付け → 取り込み。</p>
+        <textarea>2026-05-01,60
+2026-05-02,60
+2026-05-03,60</textarea>
+        <div style="margin-top:8px;"><button class="btn ghost mini">取り込み</button></div>
+      </div>
+
+      <h3 style="border:none;padding-left:0;">日別計画プレビュー</h3>
+      <table class="daily-table">
+        <thead><tr><th>日付</th><th>計画消化数</th><th>累計</th><th>計画残</th></tr></thead>
+        <tbody id="daily-body"></tbody>
+      </table>
+      <p class="hint" id="sum-hint"></p>
+
+      <div style="margin-top:14px;">
+        <label style="font-size:13px;"><input type="checkbox" checked /> 作成と同時にこのバージョンを有効化する</label>
+      </div>
+      <div style="margin-top:12px;"><button class="btn">この計画を作成（v3）</button> <button class="btn ghost">キャンセル</button></div>
+    </form>
+  </div>
+
+  <div class="note">
+    ※ 設計イメージ用モック。送信先: <code>POST /api/v1/projects/{testing_id}/plans</code>（version はサーバ採番）。
+    計画は上書きせずバージョン追加。<code>activate</code> で有効版を切替。過去版は PB図に薄線で重ねられます。
+  </div>
+</div>
+
+<script>
+const total = 920;
+// 均等配分のサンプル（全日、5/1〜5/10の一部を表示）
+const sample = [
+  ['2026-05-01',60],['2026-05-02',60],['2026-05-03',60],['2026-05-04',60],
+  ['2026-05-05',60],['2026-05-06',60],['2026-05-07',60],['2026-05-08',60],
+];
+function renderDaily() {
+  let acc = 0;
+  document.getElementById('daily-body').innerHTML = sample.map(([d,c]) => {
+    acc += c;
+    return `<tr><td>${d}</td><td><input type="number" value="${c}"/></td><td>${acc}</td><td>${total-acc}</td></tr>`;
+  }).join('');
+  document.getElementById('sum-hint').textContent =
+    `計画合計 ${acc} 件（…続く） / 計画項目数 ${total} 件。合計は項目数を超えないことを推奨。`;
+}
+function setMode(m) {
+  ['even','daily','csv'].forEach(x => {
+    document.getElementById('m-'+x).classList.toggle('active', x===m);
+    document.getElementById('pane-'+x).style.display = (x===m)?'block':'none';
+  });
+}
+renderDaily();
+</script>
+</body>
+</html>

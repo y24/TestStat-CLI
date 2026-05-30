@@ -71,26 +71,26 @@ tstat [オプション] [ファイルパス/フォルダパス]
 | `--detailed` | - | 複数ファイル処理時にファイル別の詳細結果も表示 | `false` |
 | `-h, --help` | `-h` | ヘルプ表示 | - |
 
-### 補助ファイルのインストール
+### Skillsファイルのインストール
 
-AIエージェントからTestStat-CLIを実行しやすくするため、RooCode用のスラッシュコマンドとスキルをカレントディレクトリへ配置できます。
+AIエージェントからTestStat-CLIを実行しやすくするため、スラッシュコマンドとスキルをカレントディレクトリへ配置できます。
 
 ```bash
-tstat --install-roo
+tstat --install-skills
 ```
 
 配置されるファイル:
 
-- `.roo/commands/tstat.md`
-- `.roo/skills/teststat-cli/SKILL.md`
+- `.claude/commands/tstat.md`
+- `.agents/skills/teststat-cli/SKILL.md`
 
 既存ファイルがある場合は上書きせずスキップします。上書きする場合は `--force` を指定します。
 
 ```bash
-tstat --install-roo --force
+tstat --install-skills --force
 ```
 
-生成されるRooCode用ファイルでは、AIエージェントが解析しやすいように `tstat --json ...` を使う指示を含めています。
+生成されるAIエージェント用ファイルでは、エージェントが解析しやすいように `tstat --json ...` を使う指示を含めています。
 
 ### オプション使用例
 ```bash

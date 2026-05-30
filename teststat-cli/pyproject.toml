@@ -49,4 +49,4 @@ packages = ["utils", "assets"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.txt", "*.yaml", "*.yml"]
-"assets" = ["*.txt", "roo/commands/*.md", "roo/skills/*/SKILL.md"]
+"assets" = ["*.txt", "claude/commands/*.md", "agents/skills/*/SKILL.md"]

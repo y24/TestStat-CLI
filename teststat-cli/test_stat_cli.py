@@ -53,9 +53,9 @@ def get_version(script_dir):
             pass
     return "unknown"
 
-ROO_TEMPLATE_FILES = (
-    ("roo/commands/tstat.md", os.path.join(".roo", "commands", "tstat.md")),
-    ("roo/skills/teststat-cli/SKILL.md", os.path.join(".roo", "skills", "teststat-cli", "SKILL.md")),
+SKILL_TEMPLATE_FILES = (
+    ("claude/commands/tstat.md", os.path.join(".claude", "commands", "tstat.md")),
+    ("agents/skills/teststat-cli/SKILL.md", os.path.join(".agents", "skills", "teststat-cli", "SKILL.md")),
 )
 
 def _read_asset_text(resource_path):
@@ -69,13 +69,13 @@ def _read_asset_text(resource_path):
         raise FileNotFoundError(f"パッケージ内テンプレートが見つかりません: {resource_path}")
     return data.decode("utf-8")
 
-def install_roo_files(base_dir=None, force=False):
-    """RooCode用のスラッシュコマンドとスキルを指定ディレクトリへ配置する"""
+def install_skill_files(base_dir=None, force=False):
+    """AIエージェント用のスラッシュコマンドとスキルを指定ディレクトリへ配置する"""
     base_dir = os.path.abspath(base_dir or os.getcwd())
     installed = []
     skipped = []
 
-    for resource_path, relative_dest in ROO_TEMPLATE_FILES:
+    for resource_path, relative_dest in SKILL_TEMPLATE_FILES:
         dest_path = os.path.join(base_dir, relative_dest)
         if os.path.exists(dest_path) and not force:
             skipped.append(dest_path)
@@ -89,11 +89,11 @@ def install_roo_files(base_dir=None, force=False):
 
     return installed, skipped
 
-def handle_install_roo(force=False):
+def handle_install_skills(force=False):
     try:
-        installed, skipped = install_roo_files(force=force)
+        installed, skipped = install_skill_files(force=force)
     except Exception as e:
-        print(f"ERROR: RooCode用ファイルの配置に失敗しました: {e}", file=sys.stderr)
+        print(f"ERROR: AIエージェント用ファイルの配置に失敗しました: {e}", file=sys.stderr)
         sys.exit(1)
 
     for path in installed:
@@ -102,7 +102,7 @@ def handle_install_roo(force=False):
         print(f"skipped: {path} (既存ファイル。上書きする場合は --force を指定)")
 
     if not installed and skipped:
-        print("RooCode用ファイルはすでに配置済みです。")
+        print("AIエージェント用ファイルはすでに配置済みです。")
 
 def _get_result_order(settings):
     return settings["test_status"]["results"]
@@ -302,16 +302,16 @@ def parse_args():
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     parser.add_argument("--detailed", action="store_true", help="複数ファイル処理時にファイル別の詳細結果も表示")
-    parser.add_argument("--install-roo", action="store_true", help="RooCode用のスラッシュコマンドとスキルをカレントディレクトリへ配置して終了")
-    parser.add_argument("--force", action="store_true", help="--install-roo実行時に既存ファイルを上書き")
+    parser.add_argument("--install-skills", action="store_true", help="AIエージェント用のスラッシュコマンドとスキルをカレントディレクトリへ配置して終了")
+    parser.add_argument("--force", action="store_true", help="--install-skills実行時に既存ファイルを上書き")
     parser.add_argument("--version", action="version", version=f"%(prog)s {version}", help="バージョン情報を表示して終了")
     
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    if args.install_roo:
-        handle_install_roo(force=args.force)
+    if args.install_skills:
+        handle_install_skills(force=args.force)
         return
 
     script_dir = get_script_root_dir()

@@ -46,6 +46,10 @@ def read_yaml_project_list(list_file_path):
     
     if not isinstance(project_data["files"], list):
         raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'files'がリストではありません")
+
+    testing_id = project_data.get("testing_id", None)
+    if testing_id is not None and not isinstance(testing_id, int):
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'testing_id'は整数で指定してください")
     
     # ファイル情報の検証と抽出
     file_info_list = []
@@ -83,6 +87,7 @@ def read_yaml_project_list(list_file_path):
     
     return {
         "project_name": project_data["project_name"],
+        "testing_id": testing_id,
         "files": file_info_list,
         "subtask_id": project_data.get("subtask_id", None)
     }

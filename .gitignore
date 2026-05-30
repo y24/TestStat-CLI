@@ -6,6 +6,8 @@ dist/*
 dist_package/*
 *.zip
 __pycache__/*
+**/__pycache__/
+*.pyc
 *.egg-info/
 .venv/
 .pytest_cache/

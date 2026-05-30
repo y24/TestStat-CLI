@@ -91,5 +91,10 @@
     "wbs_api": {
         "enabled": false,
         "base_url": "http://localhost:5173/api"
+    },
+    "reporting_api": {
+        "enabled": true,
+        "base_url": "http://localhost:18000",
+        "sender": null
     }
 }

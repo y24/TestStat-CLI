@@ -632,6 +632,40 @@ def main():
         if is_json_mode:
             output_data["api_updates"] = api_updates
 
+    # API連携: TestStatバックエンドへの進捗データ送信
+    if args.list:
+        reporting_config = settings.get("reporting_api", {})
+        reporting_enabled = reporting_config.get("enabled", True)
+        if reporting_enabled:
+            testing_id = project_info.get("testing_id") if project_info else None
+            if testing_id is None:
+                execution_warnings.append("testing_id が未設定のため進捗データの送信をスキップします")
+            else:
+                from utils.ReportingClient import build_progress_payload, send_progress
+
+                payload = build_progress_payload(
+                    project_info,
+                    results,
+                    sender=reporting_config.get("sender"),
+                )
+                success, msg = send_progress(
+                    reporting_config.get("base_url"),
+                    payload,
+                    logger=verbose_logger,
+                )
+                if is_json_mode:
+                    output_data["reporting_api"] = {
+                        "testing_id": testing_id,
+                        "success": success,
+                        "message": msg
+                    }
+                elif success:
+                    print()
+                    ConsoleFormatter.print_section("Progress Reporting")
+                    ConsoleFormatter.print_info(f"testing_id={testing_id} の進捗データを送信しました。")
+                else:
+                    execution_warnings.append(f"進捗データの送信に失敗しました: {msg}")
+
     if execution_warnings:
         if is_json_mode:
             output_data["warnings"] = execution_warnings

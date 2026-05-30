@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teststat-server"
+version = "0.1.0"
+description = "Backend API for TestStat progress reporting"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools]
+packages = [
+    "app",
+    "app.models",
+    "app.schemas",
+    "app.crud",
+    "app.routers",
+]

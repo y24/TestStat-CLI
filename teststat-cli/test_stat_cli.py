@@ -3,7 +3,6 @@ import copy
 import sys
 import argparse
 import os
-import shutil
 import pkgutil
 import traceback
 from datetime import datetime
@@ -21,7 +20,7 @@ def get_script_root_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 CONFIG_FILE_NAME = "config.json"
-CONFIG_SAMPLE_FILE_NAME = "config_sample.json"
+DEFAULT_CONFIG_RESOURCE = "default_config.json"
 
 def get_default_config_path(script_dir):
     return os.path.join(script_dir, CONFIG_FILE_NAME)
@@ -32,11 +31,13 @@ def ensure_default_config_exists(script_dir):
     if os.path.exists(config_path):
         return config_path
 
-    sample_path = os.path.join(script_dir, CONFIG_SAMPLE_FILE_NAME)
-    if not os.path.exists(sample_path):
-        raise FileNotFoundError(f"サンプル設定ファイルが見つかりません: {sample_path}")
+    try:
+        default_config = _read_asset_text(DEFAULT_CONFIG_RESOURCE)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"デフォルト設定ファイルが見つかりません: assets/{DEFAULT_CONFIG_RESOURCE}") from e
 
-    shutil.copyfile(sample_path, config_path)
+    with open(config_path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(default_config)
     return config_path
 
 def get_version(script_dir):

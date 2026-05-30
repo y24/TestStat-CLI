@@ -18,7 +18,6 @@ $includeFiles = @(
     "pyproject.toml",
     "setup.py",
     "MANIFEST.in",
-    "config_sample.json",
     "test_stat_cli.py",
     "lists/list_sample.yaml"
 )

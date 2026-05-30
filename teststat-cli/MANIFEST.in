@@ -1,6 +1,5 @@
 include README.md
 include requirements.txt
-include config_sample.json
 include dist_config.json
 include *.bat
 include *.sh

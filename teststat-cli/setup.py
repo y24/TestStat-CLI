@@ -29,7 +29,7 @@ setup(
     package_data={
         "": ["*.json", "*.txt", "*.yaml", "*.yml"],
         "utils": ["*.py"],
-        "assets": ["*.txt", "claude/commands/*.md", "agents/skills/*/SKILL.md"],
+        "assets": ["*.json", "*.txt", "claude/commands/*.md", "agents/skills/*/SKILL.md"],
     },
     install_requires=read_requirements(),
     entry_points={

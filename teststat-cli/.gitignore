@@ -1,0 +1,17 @@
+utils/__pycache__/*
+assets/__pycache__/*
+input_sample/*
+build/*
+dist/*
+dist_package/*
+*.zip
+__pycache__/*
+**/__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+pytest-cache-files-*/
+config.json
+lists/*
+!lists/list_sample.yaml

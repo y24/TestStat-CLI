@@ -177,6 +177,63 @@ def _build_file_breakdown(results, settings):
 
     return files
 
+def _aggregate_api_progress(results):
+    completed = 0
+    available = 0
+    start_dates = []
+
+    for _, result in results:
+        if not isinstance(result, dict) or "error" in result or "total" not in result:
+            continue
+
+        completed += result["total"].get("完了数", 0)
+        available += result.get("stats", {}).get("available", 0)
+
+        start_date = result.get("run", {}).get("start_date")
+        if start_date:
+            start_dates.append(start_date)
+
+    return {
+        "completed": completed,
+        "available": available,
+        "start_dates": start_dates
+    }
+
+def _has_subtask_id(subtask_id):
+    return subtask_id is not None and subtask_id != ""
+
+def _build_file_api_payloads(results, skipped_subtask_ids=None):
+    skipped_subtask_ids = set(skipped_subtask_ids or [])
+    api_payloads = {}
+
+    # 同じファイル・同じサブタスクIDで合算
+    for filepath, result in results:
+        if not isinstance(result, dict) or "subtask_id" not in result or "error" in result or "total" not in result:
+            continue
+
+        subtask_id = result["subtask_id"]
+        if subtask_id in skipped_subtask_ids:
+            continue
+
+        key = (filepath, subtask_id)
+        completed = result["total"].get("完了数", 0)
+        available = result.get("stats", {}).get("available", 0)
+        start_date = result.get("run", {}).get("start_date")
+
+        if key not in api_payloads:
+            api_payloads[key] = {
+                "completed": completed,
+                "available": available,
+                "start_dates": [start_date] if start_date else []
+            }
+        else:
+            api_payloads[key]["completed"] += completed
+            api_payloads[key]["available"] += available
+            if start_date:
+                api_payloads[key]["start_dates"].append(start_date)
+
+    return api_payloads
+
 def _build_summary_json_output(output_data, results, settings, is_multiple_files, current_load_time, project_info=None):
     if is_multiple_files:
         summary = output_data.get("summary", {})
@@ -392,7 +449,7 @@ def main():
                 result["label"] = task["label"]
             if "target_environments" in task["overrides"]:
                 result["target_environments"] = task["overrides"]["target_environments"]
-            if task.get("subtask_id"):
+            if _has_subtask_id(task.get("subtask_id")):
                 result["subtask_id"] = task["subtask_id"]
             results.append((filepath, result))
                 
@@ -503,12 +560,14 @@ def main():
                 ConsoleFormatter.print_summary_results_table(r, f, settings=settings, script_root_dir=script_dir)
 
 
-    # API連携: WBSサブタスクの進捗更新 (ファイルごと)
+    # API連携: WBSサブタスクの進捗更新
     api_config = settings.get("wbs_api", {})
     api_enabled = api_config.get("enabled", True)
     base_url = api_config.get("base_url")
+    project_subtask_id = project_info.get("subtask_id") if project_info else None
+    has_project_subtask = _has_subtask_id(project_subtask_id)
     has_subtasks = any("subtask_id" in r for f, r in results if isinstance(r, dict))
-    if api_enabled and base_url and has_subtasks:
+    if api_enabled and base_url and (has_project_subtask or has_subtasks):
         from utils.ApiIntegration import update_subtask_progress
         
         if not is_json_mode:
@@ -516,28 +575,34 @@ def main():
             ConsoleFormatter.print_section("API Integration")
         
         api_updates = []
-        # 同じファイル・同じサブタスクIDで合算
-        api_payloads = {}
-        for f, r in results:
-            if "subtask_id" in r and "error" not in r and "total" in r:
-                subtask_id = r["subtask_id"]
-                key = (f, subtask_id)
-                
-                completed = r["total"].get("完了数", 0)
-                available = r.get("stats", {}).get("available", 0)
-                start_date = r.get("run", {}).get("start_date")
-                
-                if key not in api_payloads:
-                    api_payloads[key] = {
-                        "completed": completed,
-                        "available": available,
-                        "start_dates": [start_date] if start_date else []
-                    }
+
+        skipped_subtask_ids = set()
+        if has_project_subtask:
+            overall_data = _aggregate_api_progress(results)
+            progress_percent = (overall_data["completed"] / overall_data["available"] * 100) if overall_data["available"] > 0 else 0
+
+            kwargs = {}
+            if overall_data["start_dates"]:
+                kwargs["actual_start_date"] = min(overall_data["start_dates"])
+
+            success, msg = update_subtask_progress(base_url, project_subtask_id, progress_percent, verbose_logger, **kwargs)
+            skipped_subtask_ids.add(project_subtask_id)
+
+            if is_json_mode:
+                api_updates.append({
+                    "scope": "project",
+                    "subtask_id": project_subtask_id,
+                    "progress": int(progress_percent),
+                    "success": success,
+                    "message": msg
+                })
+            else:
+                if not success:
+                    ConsoleFormatter.print_warning(f"プロジェクト全体 (サブタスクID: {project_subtask_id}) の進捗率更新に失敗: {msg}")
                 else:
-                    api_payloads[key]["completed"] += completed
-                    api_payloads[key]["available"] += available
-                    if start_date:
-                        api_payloads[key]["start_dates"].append(start_date)
+                    ConsoleFormatter.print_info(f"プロジェクト全体 (サブタスクID: {project_subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+
+        api_payloads = _build_file_api_payloads(results, skipped_subtask_ids)
                         
         for (f, subtask_id), data in api_payloads.items():
             completed = data["completed"]
@@ -551,6 +616,7 @@ def main():
             success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
             if is_json_mode:
                 api_updates.append({
+                    "scope": "file",
                     "file": f,
                     "subtask_id": subtask_id,
                     "progress": int(progress_percent),

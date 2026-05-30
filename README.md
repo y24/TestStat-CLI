@@ -389,7 +389,7 @@ project:
 | --- | --- | --- |
 | `project.project_name` | 必須 | プロジェクト名。サマリー表示やJSON出力のプロジェクト名に使用されます。 |
 | `project.files` | 必須 | 処理対象のファイル定義リスト。1件以上指定します。 |
-| `project.subtask_id` | 任意 | プロジェクト単位のサブタスクID。現状、API更新はファイル単位の `files[].subtask_id` を使用します。 |
+| `project.subtask_id` | 任意 | プロジェクト全体のAPI連携で更新対象にするサブタスクID。全ファイルの合計進捗率と最も古い開始日を送信します。 |
 
 `project.files` の各要素では、以下の項目を指定できます。
 
@@ -457,17 +457,22 @@ project:
 
 #### 2. プロジェクトリスト（YAML）の設定
 
-API連携を行うファイルごとに `subtask_id` を指定します。
+API連携を行う対象に `subtask_id` を指定します。
+プロジェクト全体の結果を連携する場合は `project.subtask_id`、ファイルごとの結果を連携する場合は `files[].subtask_id` を使用します。
 
 ```yaml
 project:
+  project_name: サンプルプロジェクト
+  subtask_id: 999  # プロジェクト全体の更新対象サブタスクID
   files:
     - label: TEST001
       path: input_sample/sample1.xlsx
-      subtask_id: 123  # 更新対象のサブタスクID
+      subtask_id: 123  # ファイル単位の更新対象サブタスクID
 ```
 
-`subtask_id` が設定されていないファイルについては、API連携はスキップされます。
+`project.subtask_id` が設定されている場合は、全ファイルの合計の `完了数 / 実施対象数` から進捗率を算出し、全ファイルで最も古い実施日を `actual_start_date` として送信します。
+同じ `subtask_id` が `project.subtask_id` と `files[].subtask_id` の両方に指定されている場合、そのIDへの送信はプロジェクト全体の結果を優先し、ファイル単位の送信は行いません。
+`subtask_id` が設定されていないファイルについては、ファイル単位のAPI連携はスキップされます。
 
 ### API仕様
 

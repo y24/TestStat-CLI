@@ -452,13 +452,13 @@ project:
 {
   "wbs_api": {
     "enabled": true,
-    "base_url": "http://your-wbs-tool.com/api"
+    "base_url": "http://your-wbs-tool.com"
   }
 }
 ```
 
 - `enabled`: `true` に設定するとAPI連携が有効になります（デフォルトは `false`）。
-- `base_url`: APIのベースURLを指定します。
+- `base_url`: WBS管理ツールのベースURLを指定します。`/api` はツール側で付与します。
 
 #### 2. プロジェクトリスト（YAML）の設定
 
@@ -484,7 +484,7 @@ project:
 本ツールは集計完了後、指定された `subtask_id` ごとに以下のリクエストを送信します。
 
 - **HTTPメソッド**: `PATCH`
-- **URL**: `{base_url}/subtasks/{subtask_id}`
+- **URL**: `{base_url}/api/subtasks/{subtask_id}`
 - **Content-Type**: `application/json`
 - **リクエストボディ**:
 

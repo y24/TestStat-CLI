@@ -90,7 +90,7 @@
     },
     "wbs_api": {
         "enabled": false,
-        "base_url": "http://localhost:5173/api"
+        "base_url": "http://localhost:5173"
     },
     "reporting_api": {
         "enabled": true,

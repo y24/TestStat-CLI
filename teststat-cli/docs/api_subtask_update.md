@@ -73,7 +73,7 @@
 # 1. 完了ステータスIDの取得（例として 4 を使用）
 $doneStatusId = 4
 $subtaskId = 123
-$baseUrl = "http://localhost:8000/api"
+$baseUrl = "http://localhost:8000"
 
 # 2. 更新内容の構築
 $payload = @{
@@ -83,5 +83,5 @@ $payload = @{
 } | ConvertTo-Json
 
 # 3. API実行
-Invoke-RestMethod -Uri "$baseUrl/subtasks/$subtaskId" -Method Patch -Body $payload -ContentType "application/json"
+Invoke-RestMethod -Uri "$baseUrl/api/subtasks/$subtaskId" -Method Patch -Body $payload -ContentType "application/json"
 ```

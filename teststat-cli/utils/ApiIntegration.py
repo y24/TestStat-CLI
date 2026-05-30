@@ -7,7 +7,7 @@ def update_subtask_progress(base_url, subtask_id, progress_percent, logger=None,
     WBS管理ツールのサブタスクを更新するAPIを呼び出します。
     
     Args:
-        base_url (str): APIのベースURL
+        base_url (str): WBS管理ツールのベースURL
         subtask_id (int/str): 更新対象のサブタスクID
         progress_percent (int/float): 進捗率 (0〜100)
         logger (VerboseLogger, optional): ロガー
@@ -19,7 +19,7 @@ def update_subtask_progress(base_url, subtask_id, progress_percent, logger=None,
     if not base_url or not subtask_id:
         return False, "APIのベースURLまたはサブタスクIDが設定されていません。"
         
-    url = f"{base_url.rstrip('/')}/subtasks/{subtask_id}"
+    url = f"{base_url.rstrip('/')}/api/subtasks/{subtask_id}"
     
     # ペイロードの構築（進捗率のみ必須とし、その他は拡張用kwargsとして受け取る）
     payload = {

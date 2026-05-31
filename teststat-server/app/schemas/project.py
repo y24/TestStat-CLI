@@ -28,6 +28,7 @@ class ProjectResponse(BaseModel):
     actual_available_cases: int
     actual_completed: int
     actual_completed_rate: float
+    actual_vs_plan_rate: float | None
     actual_all_completed: bool
     # 有効な計画バージョン数（Phase B2 で埋まる。現状は常に 0）
     active_plan_count: int

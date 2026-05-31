@@ -169,6 +169,70 @@ class TestProjectCRUD(unittest.TestCase):
         self.assertEqual(p.actual_completed_rate, 100)
         self.assertTrue(p.actual_all_completed)
 
+    def test_actual_vs_plan_rate_uses_plan_until_latest_actual_date(self):
+        from app.models.plan import Plan, PlanDaily
+        from app.models.progress import DailyProgress, FileProgress, Testing
+        from datetime import date, datetime
+
+        self.db.add(Testing(testing_id=5004, project_name="CLI Project", updated_at=datetime(2026, 5, 31, 4, 42)))
+        self.db.add(
+            FileProgress(
+                testing_id=5004,
+                file_name="a.xlsx",
+                total_cases=20,
+                available_cases=20,
+                completed=8,
+                executed=10,
+                completed_rate=40,
+                sent_at=datetime(2026, 5, 31, 4, 42),
+            )
+        )
+        self.db.commit()
+        create_project(self.db, ProjectCreate(testing_id=5004, name="対計画率P"))
+
+        plan = Plan(
+            testing_id=5004,
+            label=None,
+            version=1,
+            is_active=True,
+            planned_total_cases=20,
+            start_date=date(2026, 5, 30),
+            end_date=date(2026, 6, 2),
+        )
+        self.db.add(plan)
+        self.db.flush()
+        self.db.add_all(
+            [
+                PlanDaily(plan_id=plan.id, date=date(2026, 5, 30), planned_count=4),
+                PlanDaily(plan_id=plan.id, date=date(2026, 5, 31), planned_count=6),
+                PlanDaily(plan_id=plan.id, date=date(2026, 6, 1), planned_count=5),
+            ]
+        )
+        self.db.add_all(
+            [
+                DailyProgress(
+                    testing_id=5004,
+                    file_name="a.xlsx",
+                    date=date(2026, 5, 30),
+                    completed=4,
+                    executed=4,
+                ),
+                DailyProgress(
+                    testing_id=5004,
+                    file_name="a.xlsx",
+                    date=date(2026, 5, 31),
+                    completed=4,
+                    executed=6,
+                ),
+            ]
+        )
+        self.db.commit()
+
+        p = get_project(self.db, 5004)
+
+        self.assertEqual(p.actual_completed_rate, 40)
+        self.assertEqual(p.actual_vs_plan_rate, 100)
+
 
 if __name__ == "__main__":
     unittest.main()

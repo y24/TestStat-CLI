@@ -44,14 +44,21 @@ export function ProjectOverview({
       </header>
 
       <section className="summary-grid">
-        <StatusTile label="実績" value={project.has_actuals ? '受信済み' : '未受信'} />
+        <StatusTile label="完了率(対全体)" value={formatRate(project.actual_completed_rate)} />
+        <StatusTile label="完了率(対計画)" value={formatRate(project.actual_vs_plan_rate)} />
         <StatusTile label="最終更新" value={formatDateTime(project.actuals_updated_at)} />
-        <StatusTile label="有効な計画" value={`${project.active_plan_count} 件`} />
       </section>
 
       <PbChartPanel key={project.testing_id} project={project} />
     </div>
   )
+}
+
+function formatRate(value: number | null | undefined) {
+  if (value == null) {
+    return '-'
+  }
+  return `${value.toFixed(value % 1 === 0 ? 0 : 2)}%`
 }
 
 function StatusTile({ label, value }: { label: string; value: string }) {

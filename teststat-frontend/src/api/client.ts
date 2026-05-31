@@ -57,18 +57,49 @@ export const fetchProgressFiles = (testing_id: number) =>
 export const fetchProgressDaily = (testing_id: number) =>
   get<DailyProgressItem[]>(`/api/v1/progress/${testing_id}/daily`)
 
+function withProjectActualFallback(project: ProjectItem, summary?: ProgressSummaryResponse): ProjectItem {
+  return {
+    ...project,
+    actual_available_cases: project.actual_available_cases ?? summary?.summary.available_cases ?? 0,
+    actual_completed: project.actual_completed ?? summary?.summary.completed ?? 0,
+    actual_completed_rate: project.actual_completed_rate ?? summary?.summary.completed_rate ?? 0,
+    actual_vs_plan_rate: project.actual_vs_plan_rate ?? null,
+    actual_all_completed:
+      project.actual_all_completed ??
+      Boolean(summary && summary.summary.available_cases > 0 && summary.summary.completed_rate >= 100),
+  }
+}
+
+async function enrichProjectActuals(project: ProjectItem): Promise<ProjectItem> {
+  if (
+    !project.has_actuals ||
+    (project.actual_available_cases != null &&
+      project.actual_completed != null &&
+      project.actual_completed_rate != null &&
+      project.actual_vs_plan_rate !== undefined &&
+      project.actual_all_completed != null)
+  ) {
+    return withProjectActualFallback(project)
+  }
+  const summary = await fetchProgressSummary(project.testing_id).catch(() => undefined)
+  return withProjectActualFallback(project, summary)
+}
+
 // プロジェクト系（Phase F1）
-export const fetchProjects = () => get<ProjectItem[]>('/api/v1/projects')
+export const fetchProjects = async () => {
+  const projects = await get<ProjectItem[]>('/api/v1/projects')
+  return Promise.all(projects.map(enrichProjectActuals))
+}
 export const createProject = (payload: ProjectCreatePayload) =>
   request<ProjectItem>('/api/v1/projects', {
     method: 'POST',
     body: JSON.stringify(payload),
-  })
+  }).then(enrichProjectActuals)
 export const updateProject = (testing_id: number, payload: ProjectUpdatePayload) =>
   request<ProjectItem>(`/api/v1/projects/${testing_id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
-  })
+  }).then(enrichProjectActuals)
 export const deleteProject = (testing_id: number) =>
   request<void>(`/api/v1/projects/${testing_id}`, {
     method: 'DELETE',

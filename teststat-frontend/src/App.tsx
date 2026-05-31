@@ -5,6 +5,7 @@ import type { ProjectItem } from './api/types'
 import { PlanEditor } from './components/PlanEditor'
 import { ProjectEditor } from './components/ProjectEditor'
 import { ProjectOverview } from './components/ProjectOverview'
+import { SettingsScreen } from './components/SettingsScreen'
 import { Sidebar } from './components/Sidebar'
 import type { ApiStatus, ViewMode } from './types/ui'
 import { getErrorMessage } from './utils/errors'
@@ -87,6 +88,7 @@ export default function App() {
           setViewMode('new')
         }}
         onRefresh={loadProjects}
+        onSettings={() => setViewMode('settings')}
       />
       <main className="main-area">
         {error && (
@@ -129,6 +131,7 @@ export default function App() {
             onChanged={loadProjects}
           />
         )}
+        {viewMode === 'settings' && <SettingsScreen />}
       </main>
     </div>
   )

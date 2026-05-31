@@ -64,6 +64,21 @@ export interface HealthResponse {
   db: string
 }
 
+export interface HolidayItem {
+  date: string
+  name: string
+}
+
+export interface HolidayCreatePayload {
+  date: string
+  name: string
+}
+
+export interface HolidaySyncResult {
+  updated: number
+  holidays: HolidayItem[]
+}
+
 // === 計画系（フロント新設バックエンド。Phase B1〜B3 で実装後に使う） ===
 
 export interface ProjectItem {

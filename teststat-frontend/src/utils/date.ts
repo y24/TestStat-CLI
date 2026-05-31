@@ -35,6 +35,11 @@ export function enumerateDates(start: string, end: string) {
   return result
 }
 
+export function isWeekend(value: string) {
+  const day = new Date(`${value}T00:00:00`).getDay()
+  return day === 0 || day === 6
+}
+
 function toDateInputValue(value: Date) {
   const year = value.getFullYear()
   const month = String(value.getMonth() + 1).padStart(2, '0')

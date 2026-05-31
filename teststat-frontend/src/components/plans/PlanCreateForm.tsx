@@ -9,6 +9,7 @@ export function PlanCreateForm({
   formError,
   targetLabel,
   availableCases,
+  holidays,
   submitting,
   onFormChange,
   onSubmit,
@@ -17,11 +18,12 @@ export function PlanCreateForm({
   formError: string | null
   targetLabel: string | null
   availableCases: number
+  holidays: Set<string>
   submitting: boolean
   onFormChange: (form: PlanFormState) => void
   onSubmit: (event: FormEvent) => void
 }) {
-  const preview = useMemo(() => buildPreview(form), [form])
+  const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
 
   return (
     <form className="editor-form plan-form wide" onSubmit={onSubmit}>
@@ -198,7 +200,7 @@ interface PreviewState {
   error: string | null
 }
 
-function buildPreview(form: PlanFormState): PreviewState {
+function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState {
   const total = Number(form.planned_total_cases)
   if (!Number.isInteger(total) || total <= 0 || !form.start_date || !form.end_date) {
     return { points: [], plannedTotal: 0, dailyTotal: 0, error: '項目数と期間を入力するとプレビューを表示します。' }
@@ -210,7 +212,7 @@ function buildPreview(form: PlanFormState): PreviewState {
   try {
     const daily =
       form.inputMode === 'even'
-        ? buildEvenDaily(form.start_date, form.end_date, total)
+        ? buildEvenDaily(form.start_date, form.end_date, total, holidays)
         : parseDailyCsv(form.dailyText)
     const dates = enumerateDates(form.start_date, form.end_date)
     const dailyMap = new Map(daily.map((item) => [item.date, item.planned_count]))

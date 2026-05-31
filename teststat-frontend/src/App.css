@@ -115,6 +115,27 @@
   padding: 6px;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.settings-button {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 650;
+  text-align: left;
+  padding: 8px 10px;
+}
+
+.settings-button:hover {
+  background: #f1f4f8;
+}
+
 .main-area {
   flex: 1;
   display: flex;
@@ -421,6 +442,16 @@
   border-radius: 6px;
   padding: 10px 12px;
   font-size: 13px;
+}
+
+.form-success {
+  color: #147d54;
+  background: #edf8f3;
+  border: 1px solid #bfe6d1;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
 }
 
 .form-actions {
@@ -847,6 +878,94 @@
   height: 34px;
 }
 
+.settings-panel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 7px;
+  padding: 16px;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.settings-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.holiday-add-form {
+  display: grid;
+  grid-template-columns: 180px minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.holiday-add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.holiday-add-form input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--text);
+  font: inherit;
+  background: #fff;
+}
+
+.list-toggle-button {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: #fbfcfd;
+  color: var(--accent);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.list-toggle-button:hover {
+  background: #f1f4f8;
+}
+
+.chevron-icon {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.chevron-icon.down {
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.chevron-icon.up {
+  transform: rotate(225deg) translateY(-2px);
+}
+
+
 @media (max-width: 760px) {
   .app-layout {
     flex-direction: column;
@@ -889,6 +1008,10 @@
 
   .chart-controls {
     justify-content: flex-start;
+  }
+
+  .holiday-add-form {
+    grid-template-columns: 1fr;
   }
 
   .pb-chart {

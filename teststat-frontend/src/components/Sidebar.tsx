@@ -8,6 +8,7 @@ interface ProjectNavProps {
   onSelect: (testingId: number) => void
   onCreate: () => void
   onRefresh: () => void
+  onSettings: () => void
 }
 
 export function Sidebar({
@@ -18,6 +19,7 @@ export function Sidebar({
   onSelect,
   onCreate,
   onRefresh,
+  onSettings,
 }: ProjectNavProps & { apiStatus: ApiStatus }) {
   return (
     <aside className="sidebar">
@@ -29,6 +31,7 @@ export function Sidebar({
         onSelect={onSelect}
         onCreate={onCreate}
         onRefresh={onRefresh}
+        onSettings={onSettings}
       />
     </aside>
   )
@@ -60,6 +63,7 @@ function ProjectNav({
   onSelect,
   onCreate,
   onRefresh,
+  onSettings,
 }: ProjectNavProps) {
   const activeProjects = projects.filter((project) => !project.archived)
   const archivedProjects = projects.filter((project) => project.archived)
@@ -93,6 +97,11 @@ function ProjectNav({
           />
         </details>
       )}
+      <div className="sidebar-footer">
+        <button className="settings-button" type="button" onClick={onSettings}>
+          設定
+        </button>
+      </div>
     </div>
   )
 }

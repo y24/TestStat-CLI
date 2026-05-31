@@ -11,6 +11,9 @@ import type {
   PlanCreatePayload,
   PlanDetail,
   PlanItem,
+  HolidayItem,
+  HolidayCreatePayload,
+  HolidaySyncResult,
 } from './types'
 
 // 開発時は vite.config のプロキシ経由で localhost:18000 へ転送される。
@@ -136,4 +139,16 @@ export const activatePlan = (plan_id: number) =>
 export const deletePlan = (plan_id: number) =>
   request<void>(`/api/v1/plans/${plan_id}`, {
     method: 'DELETE',
+  })
+
+// 設定: 祝日一覧
+export const fetchHolidays = () => get<HolidayItem[]>('/api/v1/holidays')
+export const createHoliday = (payload: HolidayCreatePayload) =>
+  request<HolidayItem>('/api/v1/holidays', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+export const syncHolidays = () =>
+  request<HolidaySyncResult>('/api/v1/holidays/sync', {
+    method: 'POST',
   })

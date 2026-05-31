@@ -1,6 +1,6 @@
 export type ApiStatus = 'checking' | 'ok' | 'error'
 
-export type ViewMode = 'overview' | 'new' | 'edit' | 'plans'
+export type ViewMode = 'overview' | 'new' | 'edit' | 'plans' | 'settings'
 
 export interface ChartLayers {
   plannedLine: boolean

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { activatePlan, createPlan, deletePlan, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
+import { activatePlan, createPlan, deletePlan, fetchHolidays, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
 import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
 import { formatDate, getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
@@ -47,6 +47,7 @@ export function PlanEditor({
   const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
+  const [holidayDates, setHolidayDates] = useState<Set<string>>(() => new Set())
 
   const loadPlans = () => {
     Promise.all([
@@ -98,6 +99,24 @@ export function PlanEditor({
       ignore = true
     }
   }, [project.testing_id])
+
+  useEffect(() => {
+    let ignore = false
+    fetchHolidays()
+      .then((holidays) => {
+        if (!ignore) {
+          setHolidayDates(new Set(holidays.map((holiday) => holiday.date)))
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setHolidayDates(new Set())
+        }
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const loading = result?.testingId !== project.testing_id
   const plans = result?.testingId === project.testing_id ? result.plans : []
@@ -201,7 +220,7 @@ export function PlanEditor({
     try {
       daily =
         form.inputMode === 'even'
-          ? buildEvenDaily(form.start_date, form.end_date, plannedTotal)
+          ? buildEvenDaily(form.start_date, form.end_date, plannedTotal, holidayDates)
           : parseDailyCsv(form.dailyText)
     } catch (err) {
       setFormError(getErrorMessage(err))
@@ -325,6 +344,7 @@ export function PlanEditor({
           formError={formError}
           targetLabel={form.label.trim() || null}
           availableCases={form.label.trim() ? availableCasesByLabel[form.label.trim()] : overallAvailableCases}
+          holidays={holidayDates}
           submitting={submitting}
           onFormChange={setForm}
           onSubmit={submitPlan}

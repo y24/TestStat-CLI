@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { fetchHealth, fetchProjects } from './api/client'
 import type { ProjectItem } from './api/types'
+import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { PlanEditor } from './components/PlanEditor'
 import { ProjectEditor } from './components/ProjectEditor'
 import { ProjectOverview } from './components/ProjectOverview'
@@ -73,73 +74,74 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout" aria-busy={loadingProjects}>
-      <Sidebar
-        apiStatus={apiStatus}
-        projects={projects}
-        selectedTestingId={selectedTestingId}
-        loading={loadingProjects}
-        onSelect={(testingId) => {
-          setSelectedTestingId(testingId)
-          setViewMode('overview')
-        }}
-        onCreate={() => {
-          setSelectedTestingId(null)
-          setViewMode('new')
-        }}
-        onRefresh={loadProjects}
-        onSettings={() => setViewMode('settings')}
-      />
-      <main className="main-area">
-        {loadingProjects ? (
-          <ProjectLoading />
-        ) : (
-          <>
-            {error && (
-              <div className="error-strip">
-                <span>{error}</span>
-                <button className="link-button" type="button" onClick={loadProjects}>
-                  再読込
-                </button>
-              </div>
-            )}
-            {viewMode === 'new' && (
-              <ProjectEditor
-                mode="new"
-                project={null}
-                onCancel={() => setViewMode(selectedProject ? 'overview' : 'new')}
-                onSaved={handleProjectSaved}
-              />
-            )}
-            {viewMode === 'edit' && selectedProject && (
-              <ProjectEditor
-                mode="edit"
-                project={selectedProject}
-                onCancel={() => setViewMode('overview')}
-                onSaved={handleProjectSaved}
-                onDeleted={handleDeleted}
-              />
-            )}
-            {viewMode === 'overview' && (
-              <ProjectOverview
-                project={selectedProject}
-                onCreate={() => setViewMode('new')}
-                onEdit={() => setViewMode('edit')}
-                onPlans={() => setViewMode('plans')}
-              />
-            )}
-            {viewMode === 'plans' && selectedProject && (
-              <PlanEditor
-                project={selectedProject}
-                onBack={() => setViewMode('overview')}
-                onChanged={loadProjects}
-              />
-            )}
-            {viewMode === 'settings' && <SettingsScreen />}
-          </>
-        )}
-      </main>
-    </div>
+    <ConfirmDialogProvider>
+      <div className="app-layout" aria-busy={loadingProjects}>
+        <Sidebar
+          apiStatus={apiStatus}
+          projects={projects}
+          selectedTestingId={selectedTestingId}
+          loading={loadingProjects}
+          onSelect={(testingId) => {
+            setSelectedTestingId(testingId)
+            setViewMode('overview')
+          }}
+          onCreate={() => {
+            setViewMode('new')
+          }}
+          onRefresh={loadProjects}
+          onSettings={() => setViewMode('settings')}
+        />
+        <main className="main-area">
+          {loadingProjects ? (
+            <ProjectLoading />
+          ) : (
+            <>
+              {error && (
+                <div className="error-strip">
+                  <span>{error}</span>
+                  <button className="link-button" type="button" onClick={loadProjects}>
+                    再読込
+                  </button>
+                </div>
+              )}
+              {viewMode === 'new' && (
+                <ProjectEditor
+                  mode="new"
+                  project={null}
+                  onCancel={() => setViewMode('overview')}
+                  onSaved={handleProjectSaved}
+                />
+              )}
+              {viewMode === 'edit' && selectedProject && (
+                <ProjectEditor
+                  mode="edit"
+                  project={selectedProject}
+                  onCancel={() => setViewMode('overview')}
+                  onSaved={handleProjectSaved}
+                  onDeleted={handleDeleted}
+                />
+              )}
+              {viewMode === 'overview' && (
+                <ProjectOverview
+                  project={selectedProject}
+                  onCreate={() => setViewMode('new')}
+                  onEdit={() => setViewMode('edit')}
+                  onPlans={() => setViewMode('plans')}
+                />
+              )}
+              {viewMode === 'plans' && selectedProject && (
+                <PlanEditor
+                  project={selectedProject}
+                  onBack={() => setViewMode('overview')}
+                  onChanged={loadProjects}
+                />
+              )}
+              {viewMode === 'settings' && <SettingsScreen />}
+            </>
+          )}
+        </main>
+      </div>
+    </ConfirmDialogProvider>
   )
 }
 

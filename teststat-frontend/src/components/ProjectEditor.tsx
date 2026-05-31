@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { createProject, deleteProject, updateProject } from '../api/client'
+import { createProject, deleteProject, fetchProgressSummary, updateProject } from '../api/client'
 import type { ProjectItem } from '../api/types'
 import { getErrorMessage } from '../utils/errors'
+import { useConfirmDialog } from './confirmDialogContext'
 
 interface ProjectFormState {
   testing_id: string
@@ -29,6 +30,7 @@ export function ProjectEditor({
   onSaved: (project: ProjectItem) => void
   onDeleted?: (testingId: number) => void
 }) {
+  const confirm = useConfirmDialog()
   const [form, setForm] = useState<ProjectFormState>(() =>
     project
       ? {
@@ -40,6 +42,50 @@ export function ProjectEditor({
   )
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
+
+  useEffect(() => {
+    if (mode !== 'new') {
+      return
+    }
+
+    const testingId = Number(form.testing_id)
+    if (!Number.isInteger(testingId) || testingId <= 0) {
+      autoFilledNameRef.current = null
+      return
+    }
+
+    let active = true
+    const timeoutId = window.setTimeout(() => {
+      fetchProgressSummary(testingId)
+        .then((summary) => {
+          if (!active) {
+            return
+          }
+          setForm((current) => {
+            const canAutoFill =
+              !current.name.trim() ||
+              (autoFilledNameRef.current !== null && current.name === autoFilledNameRef.current)
+            autoFilledNameRef.current = summary.project_name
+            if (!canAutoFill) {
+              return current
+            }
+            return { ...current, name: summary.project_name }
+          })
+        })
+        .catch(() => {
+          if (!active) {
+            return
+          }
+          autoFilledNameRef.current = null
+        })
+    }, 300)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [form.testing_id, mode])
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -73,13 +119,16 @@ export function ProjectEditor({
       .finally(() => setSubmitting(false))
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!project || !onDeleted) {
       return
     }
-    const confirmed = window.confirm(
-      `testing_id ${project.testing_id} のプロジェクトと計画を削除します。実績データは削除されません。`,
-    )
+    const confirmed = await confirm({
+      title: 'プロジェクトの削除',
+      message: `testing_id ${project.testing_id} のプロジェクトと計画を削除します。実績データは削除されません。`,
+      confirmLabel: '削除',
+      danger: true,
+    })
     if (!confirmed) {
       return
     }
@@ -109,7 +158,10 @@ export function ProjectEditor({
             min="1"
             value={form.testing_id}
             disabled={mode === 'edit' || submitting}
-            onChange={(event) => setForm({ ...form, testing_id: event.target.value })}
+            onChange={(event) => {
+              autoFilledNameRef.current = null
+              setForm({ ...form, testing_id: event.target.value })
+            }}
             required
           />
         </label>
@@ -120,7 +172,13 @@ export function ProjectEditor({
             maxLength={255}
             value={form.name}
             disabled={submitting}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            onChange={(event) => {
+              const nextName = event.target.value
+              if (nextName !== autoFilledNameRef.current) {
+                autoFilledNameRef.current = null
+              }
+              setForm({ ...form, name: nextName })
+            }}
             required
           />
         </label>

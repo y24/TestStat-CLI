@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import type { FormEvent } from 'react'
-import type { PlanFormState, PlanInputMode } from '../PlanEditor'
 import { enumerateDates, formatDate } from '../../utils/date'
 import { buildEvenDaily, displayLabel, parseDailyCsv } from '../../utils/plans'
+import type { PlanFormState, PlanInputMode } from './planFormTypes'
 
 export function PlanCreateForm({
   form,

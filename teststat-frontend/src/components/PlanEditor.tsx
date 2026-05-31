@@ -2,24 +2,13 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { activatePlan, createPlan, deletePlan, fetchHolidays, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
 import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
-import { formatDate, getTodayString } from '../utils/date'
+import { getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 import { buildEvenDaily, displayLabel, parseDailyCsv } from '../utils/plans'
-import { PlanCreateForm } from './plans/PlanCreateForm'
-import { PlanVersionTable } from './plans/PlanVersionTable'
-
-export type PlanInputMode = 'even' | 'csv'
-
-export interface PlanFormState {
-  label: string
-  reason: string
-  planned_total_cases: string
-  start_date: string
-  end_date: string
-  activate: boolean
-  inputMode: PlanInputMode
-  dailyText: string
-}
+import { useConfirmDialog } from './confirmDialogContext'
+import { PlanCreateScreen } from './plans/PlanCreateScreen'
+import { PlanListScreen } from './plans/PlanListScreen'
+import type { PlanFormState } from './plans/planFormTypes'
 
 interface PlanResult {
   testingId: number
@@ -40,6 +29,7 @@ export function PlanEditor({
   onBack: () => void
   onChanged: () => void
 }) {
+  const confirm = useConfirmDialog()
   const [result, setResult] = useState<PlanResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -164,7 +154,7 @@ export function PlanEditor({
       .finally(() => setSubmitting(false))
   }
 
-  const handleToggleOverall = (checked: boolean) => {
+  const handleToggleOverall = async (checked: boolean) => {
     if (checked === useOverallPlan || submitting) {
       return
     }
@@ -174,11 +164,14 @@ export function PlanEditor({
       return
     }
 
-    const confirmed = window.confirm(
-      checked
+    const confirmed = await confirm({
+      title: '計画の切り替え',
+      message: checked
         ? '全体計画に切り替えるため、入力済みの個別計画をすべて削除します。続行しますか。'
         : '個別計画に切り替えるため、入力済みの全体計画を削除します。続行しますか。',
-    )
+      confirmLabel: '削除して切り替え',
+      danger: true,
+    })
     if (!confirmed) {
       return
     }
@@ -209,9 +202,14 @@ export function PlanEditor({
     setMode('create')
   }
 
-  const cancelCreate = () => {
+  const cancelCreate = async () => {
     if (!isSamePlanForm(form, initialCreateForm)) {
-      const confirmed = window.confirm('データが破棄されますが、よろしいですか？')
+      const confirmed = await confirm({
+        title: '入力内容の破棄',
+        message: 'データが破棄されますが、よろしいですか？',
+        confirmLabel: '破棄',
+        danger: true,
+      })
       if (!confirmed) {
         return
       }
@@ -220,7 +218,7 @@ export function PlanEditor({
     setMode('list')
   }
 
-  const submitPlan = (event: FormEvent) => {
+  const submitPlan = async (event: FormEvent) => {
     event.preventDefault()
     setFormError(null)
 
@@ -260,11 +258,14 @@ export function PlanEditor({
       targetLabel === null ? plan.label !== null : plan.label === null,
     )
     if (conflictingPlans.length > 0) {
-      const confirmed = window.confirm(
-        targetLabel === null
+      const confirmed = await confirm({
+        title: '既存計画の削除',
+        message: targetLabel === null
           ? '全体計画を作成するため、入力済みの個別計画をすべて削除します。続行しますか。'
           : '個別計画を作成するため、入力済みの全体計画を削除します。続行しますか。',
-      )
+        confirmLabel: '削除して作成',
+        danger: true,
+      })
       if (!confirmed) {
         return
       }
@@ -306,157 +307,58 @@ export function PlanEditor({
       .finally(() => setSubmitting(false))
   }
 
-  const handleDeletePlan = (plan: PlanItem) => {
-    const confirmed = window.confirm(`計画 ${displayLabel(plan.label)} v${plan.version} を削除します。`)
+  const handleDeletePlan = async (plan: PlanItem) => {
+    const confirmed = await confirm({
+      title: '計画の削除',
+      message: `計画 ${displayLabel(plan.label)} v${plan.version} を削除します。`,
+      confirmLabel: '削除',
+      danger: true,
+    })
     if (!confirmed) {
       return
     }
     deletePlans([plan])
   }
 
-  return (
-    <div className="content-shell">
-      <header className="content-header">
-        <div>
-          <div className="eyebrow">{project.name}</div>
-          <h1>{mode === 'create' ? '新バージョン作成' : 'テスト計画'}</h1>
-        </div>
-        {mode === 'list' && (
-          <div className="header-actions">
-            <button className="secondary-button" type="button" onClick={onBack}>
-              ダッシュボード
-            </button>
-          </div>
-        )}
-      </header>
+  if (mode === 'create') {
+    return (
+      <PlanCreateScreen
+        projectName={project.name}
+        loading={loading}
+        error={result?.error}
+        form={form}
+        formError={formError}
+        targetLabel={targetPlanLabel}
+        holidays={holidayDates}
+        showReason={isCreatingNewVersion}
+        submitting={submitting}
+        onFormChange={setForm}
+        onCancel={cancelCreate}
+        onSubmit={submitPlan}
+      />
+    )
+  }
 
-      {loading && <div className="chart-state">計画を読み込み中...</div>}
-      {!loading && result?.error && (
-        <div className="form-error">計画を取得できませんでした: {result.error}</div>
-      )}
-      {!loading && !result?.error && mode === 'list' && (
-        <PlanVersionTable
-          labels={labels}
-          actualLabels={actualLabels}
-          plans={plans}
-          useOverallPlan={useOverallPlan}
-          submitting={submitting}
-          onToggleOverall={handleToggleOverall}
-          onCreate={openCreateScreen}
-          onManage={(label) => setModalLabel(label)}
-          formatDate={formatDate}
-        />
-      )}
-      {!loading && !result?.error && mode === 'create' && (
-        <PlanCreateForm
-          form={form}
-          formError={formError}
-          targetLabel={targetPlanLabel}
-          holidays={holidayDates}
-          showReason={isCreatingNewVersion}
-          submitting={submitting}
-          onFormChange={setForm}
-          onCancel={cancelCreate}
-          onSubmit={submitPlan}
-        />
-      )}
-      {modalLabel !== undefined && (
-        <PlanVersionModal
-          label={modalLabel}
-          plans={selectedModalPlans}
-          submitting={submitting}
-          onActivate={handleActivate}
-          onDelete={handleDeletePlan}
-          onClose={() => setModalLabel(undefined)}
-        />
-      )}
-    </div>
-  )
-}
-
-function PlanVersionModal({
-  label,
-  plans,
-  submitting,
-  onActivate,
-  onDelete,
-  onClose,
-}: {
-  label: string | null
-  plans: PlanItem[]
-  submitting: boolean
-  onActivate: (plan: PlanItem) => void
-  onDelete: (plan: PlanItem) => void
-  onClose: () => void
-}) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <div
-        className="modal-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="plan-version-modal-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="modal-header">
-          <div>
-            <div className="eyebrow">{displayLabel(label)}</div>
-            <h2 id="plan-version-modal-title">版の変更/削除</h2>
-          </div>
-          <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="閉じる">
-            x
-          </button>
-        </div>
-        <div className="plan-table-wrap">
-          <table className="plan-table">
-            <thead>
-              <tr>
-                <th>版</th>
-                <th>項目数</th>
-                <th>期間</th>
-                <th>理由</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((plan) => (
-                <tr key={plan.id} className={plan.is_active ? 'active-plan-row' : ''}>
-                  <td>
-                    v{plan.version}
-                    {plan.is_active && <span className="active-badge">有効</span>}
-                  </td>
-                  <td>{plan.planned_total_cases}</td>
-                  <td>
-                    {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
-                  </td>
-                  <td>{plan.reason || '-'}</td>
-                  <td>
-                    <div className="table-actions">
-                      <button
-                        className="secondary-button compact"
-                        type="button"
-                        disabled={plan.is_active || submitting}
-                        onClick={() => onActivate(plan)}
-                      >
-                        有効化
-                      </button>
-                      <button
-                        className="danger-button compact"
-                        type="button"
-                        disabled={submitting}
-                        onClick={() => onDelete(plan)}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <PlanListScreen
+      projectName={project.name}
+      loading={loading}
+      error={result?.error}
+      labels={labels}
+      actualLabels={actualLabels}
+      plans={plans}
+      useOverallPlan={useOverallPlan}
+      submitting={submitting}
+      modalLabel={modalLabel}
+      selectedModalPlans={selectedModalPlans}
+      onBack={onBack}
+      onToggleOverall={handleToggleOverall}
+      onCreate={openCreateScreen}
+      onManage={(label) => setModalLabel(label)}
+      onActivate={handleActivate}
+      onDelete={handleDeletePlan}
+      onCloseModal={() => setModalLabel(undefined)}
+    />
   )
 }
 

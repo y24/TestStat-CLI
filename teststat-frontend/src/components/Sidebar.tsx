@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react'
+import { RefreshCw, Settings } from 'lucide-react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
 import { LockIcon } from './icons/LockIcon'
@@ -58,6 +58,13 @@ function getProjectStatus(project: ProjectItem) {
   return '進行中'
 }
 
+function formatRate(value: number | null | undefined) {
+  if (value == null) {
+    return '-'
+  }
+  return `${value.toFixed(1)}%`
+}
+
 function ProjectNav({
   projects,
   selectedTestingId,
@@ -83,7 +90,7 @@ function ProjectNav({
           title="再読込"
           disabled={loading}
         >
-          ↻
+          <RefreshCw className="nav-refresh-icon" aria-hidden="true" strokeWidth={2.1} />
         </button>
       </div>
       {loading && <div className="nav-message">読み込み中...</div>}
@@ -138,9 +145,9 @@ function ProjectList({
             <span className="project-name">{project.name}</span>
           </span>
           <span className="project-meta">
-            #{project.testing_id}
-            {' / '}
             {getProjectStatus(project)}
+            {' / '}
+            {formatRate(project.actual_completed_rate)}
           </span>
         </button>
       ))}

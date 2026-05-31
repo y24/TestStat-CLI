@@ -218,10 +218,42 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .project-title .lock-icon {
   flex: 0 0 20px;
+}
+
+.project-title span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.icon-button.project-edit-button {
+  border-color: transparent;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  flex: 0 0 30px;
+  padding: 0;
+  background: transparent;
+  color: #5e6a78;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button.project-edit-button:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.icon-button.project-edit-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
 }
 
 .eyebrow,
@@ -1118,6 +1150,15 @@
   border-color: #cfd6df;
   color: var(--text);
   font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-refresh-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
 }
 
 .link-button {

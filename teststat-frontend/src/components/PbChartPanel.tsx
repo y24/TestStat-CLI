@@ -467,5 +467,5 @@ function toRate(count: number, total: number) {
 }
 
 function formatCountRate(count: number, rate: number) {
-  return `${count} (${rate.toFixed(2)}%)`
+  return `${count} (${rate.toFixed(1)}%)`
 }

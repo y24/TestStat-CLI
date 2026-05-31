@@ -2,6 +2,7 @@ import type { ProjectItem } from '../api/types'
 import { formatDateTime } from '../utils/date'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
+import { Pencil } from 'lucide-react'
 
 export function ProjectOverview({
   project,
@@ -35,6 +36,15 @@ export function ProjectOverview({
           <h1 className="project-title">
             {project.archived && <LockIcon />}
             <span>{project.name}</span>
+            <button
+              className="icon-button project-edit-button"
+              type="button"
+              onClick={onEdit}
+              aria-label="プロジェクト情報を編集"
+              title="プロジェクト情報を編集"
+            >
+              <Pencil aria-hidden="true" />
+            </button>
           </h1>
           <div className={`project-status ${status.className}`}>
             <span className="status-dot" aria-hidden="true" />
@@ -42,9 +52,6 @@ export function ProjectOverview({
           </div>
         </div>
         <div className="header-actions">
-          <button className="secondary-button" type="button" onClick={onEdit}>
-            プロジェクト情報編集
-          </button>
           <button className="primary-button" type="button" onClick={onPlans}>
             テスト計画入力
           </button>
@@ -76,7 +83,7 @@ function formatRate(value: number | null | undefined) {
   if (value == null) {
     return '-'
   }
-  return `${value.toFixed(value % 1 === 0 ? 0 : 2)}%`
+  return `${value.toFixed(1)}%`
 }
 
 function StatusTile({ label, value }: { label: string; value: string }) {

@@ -92,6 +92,12 @@ export function PlanEditor({
   const labels = Array.from(
     new Set(files.map((file) => file.label).filter((label): label is string => Boolean(label))),
   ).sort((a, b) => a.localeCompare(b))
+  const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
+    if (file.label) {
+      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + file.available_cases
+    }
+    return casesByLabel
+  }, {})
 
   const submitPlan = (event: FormEvent) => {
     event.preventDefault()
@@ -210,6 +216,7 @@ export function PlanEditor({
             form={form}
             formError={formError}
             labels={labels}
+            availableCasesByLabel={availableCasesByLabel}
             submitting={submitting}
             onFormChange={setForm}
             onSubmit={submitPlan}

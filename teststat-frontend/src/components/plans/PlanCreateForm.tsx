@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { PlanFormState, PlanInputMode } from '../PlanEditor'
 
@@ -5,6 +6,7 @@ export function PlanCreateForm({
   form,
   formError,
   labels,
+  availableCasesByLabel,
   submitting,
   onFormChange,
   onSubmit,
@@ -12,29 +14,36 @@ export function PlanCreateForm({
   form: PlanFormState
   formError: string | null
   labels: string[]
+  availableCasesByLabel: Record<string, number>
   submitting: boolean
   onFormChange: (form: PlanFormState) => void
   onSubmit: (event: FormEvent) => void
 }) {
+  const updateLabel = (label: string, fillActualCases = false) => {
+    const availableCases = availableCasesByLabel[label]
+    onFormChange({
+      ...form,
+      label,
+      planned_total_cases:
+        fillActualCases && availableCases !== undefined
+          ? String(availableCases)
+          : form.planned_total_cases,
+    })
+  }
+
   return (
     <form className="editor-form plan-form" onSubmit={onSubmit}>
       <div className="panel-title">新バージョン作成</div>
       {formError && <div className="form-error">{formError}</div>}
       <label>
         <span>テスト(label)</span>
-        <input
-          list="label-candidates"
-          type="text"
+        <LabelCombobox
           value={form.label}
+          labels={labels}
           disabled={submitting}
-          onChange={(event) => onFormChange({ ...form, label: event.target.value })}
-          placeholder="全体計画の場合は空欄"
+          onChange={(label) => updateLabel(label)}
+          onSelectCandidate={(label) => updateLabel(label, true)}
         />
-        <datalist id="label-candidates">
-          {labels.map((label) => (
-            <option key={label} value={label} />
-          ))}
-        </datalist>
       </label>
       <label>
         <span>変更理由</span>
@@ -126,5 +135,90 @@ export function PlanCreateForm({
         </button>
       </div>
     </form>
+  )
+}
+
+function LabelCombobox({
+  value,
+  labels,
+  disabled,
+  onChange,
+  onSelectCandidate,
+}: {
+  value: string
+  labels: string[]
+  disabled: boolean
+  onChange: (value: string) => void
+  onSelectCandidate: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const normalizedValue = value.trim().toLocaleLowerCase()
+  const filteredLabels = useMemo(
+    () =>
+      normalizedValue
+        ? labels.filter((label) => label.toLocaleLowerCase().includes(normalizedValue))
+        : labels,
+    [labels, normalizedValue],
+  )
+
+  const showMenu = open && !disabled && labels.length > 0
+
+  return (
+    <div
+      className="label-combobox"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false)
+        }
+      }}
+    >
+      <input
+        type="text"
+        value={value}
+        disabled={disabled}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          onChange(event.target.value)
+          setOpen(true)
+        }}
+        placeholder="全体計画の場合は空欄"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={showMenu}
+      />
+      <button
+        className="label-combobox-button"
+        type="button"
+        disabled={disabled || labels.length === 0}
+        onClick={() => setOpen((current) => !current)}
+        aria-label="label候補を開く"
+      >
+        <span aria-hidden="true" />
+      </button>
+      {showMenu && (
+        <div className="label-combobox-menu" role="listbox">
+          {filteredLabels.length > 0 ? (
+            filteredLabels.map((label) => (
+              <button
+                className={label === value ? 'label-combobox-option selected' : 'label-combobox-option'}
+                type="button"
+                key={label}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onSelectCandidate(label)
+                  setOpen(false)
+                }}
+                role="option"
+                aria-selected={label === value}
+              >
+                {label}
+              </button>
+            ))
+          ) : (
+            <div className="label-combobox-empty">一致する候補はありません</div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

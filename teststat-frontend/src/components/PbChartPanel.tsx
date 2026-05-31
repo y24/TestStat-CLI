@@ -14,7 +14,7 @@ import { fetchPbChart, fetchPlans, fetchProgressDaily, fetchProgressFiles } from
 import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
 import { buildChartNotices, buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
-import { formatDate, formatDateTime } from '../utils/date'
+import { formatDate } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 
 echarts.use([
@@ -188,10 +188,6 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
           )}
           <PbChart chart={chart} layers={layers} />
           <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
-          <div className="chart-foot">
-            実績最終更新: {formatDateTime(chart.actuals_updated_at)} / 実績対象件数:{' '}
-            {chart.available_cases} / 計画項目数: {chart.planned_total_cases ?? '-'}
-          </div>
         </>
       )}
     </section>

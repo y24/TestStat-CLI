@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createProject, deleteProject, updateProject } from '../api/client'
 import type { ProjectItem } from '../api/types'
-import { formatDateTime } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 
 interface ProjectFormState {
@@ -135,14 +134,6 @@ export function ProjectEditor({
             />
             <span>アーカイブ済みにする</span>
           </label>
-        )}
-
-        {project && (
-          <div className="actuals-note">
-            {project.has_actuals
-              ? `実績受信済み: ${formatDateTime(project.actuals_updated_at)}`
-              : '実績未受信: CLI 送信後に testing_id で紐付きます'}
-          </div>
         )}
 
         <div className="form-actions">

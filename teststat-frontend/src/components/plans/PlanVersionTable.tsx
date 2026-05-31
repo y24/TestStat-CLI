@@ -53,7 +53,7 @@ export function PlanVersionTable({
           <table className="plan-table">
             <thead>
               <tr>
-                <th>テスト(label)</th>
+                <th>テスト種別</th>
                 <th>有効な版</th>
                 <th>項目数</th>
                 <th>期間</th>

@@ -8,8 +8,8 @@ export function PlanCreateForm({
   form,
   formError,
   targetLabel,
-  availableCases,
   holidays,
+  showReason,
   submitting,
   onFormChange,
   onSubmit,
@@ -17,8 +17,8 @@ export function PlanCreateForm({
   form: PlanFormState
   formError: string | null
   targetLabel: string | null
-  availableCases: number
   holidays: Set<string>
+  showReason: boolean
   submitting: boolean
   onFormChange: (form: PlanFormState) => void
   onSubmit: (event: FormEvent) => void
@@ -32,19 +32,8 @@ export function PlanCreateForm({
           <div className="panel-title">新バージョン作成</div>
           <div className="panel-subtitle">対象: {displayLabel(targetLabel)}</div>
         </div>
-        <div className="actuals-note compact-note">実績項目数: {availableCases || '-'}</div>
       </div>
       {formError && <div className="form-error">{formError}</div>}
-      <label>
-        <span>変更理由</span>
-        <input
-          type="text"
-          value={form.reason}
-          disabled={submitting}
-          onChange={(event) => onFormChange({ ...form, reason: event.target.value })}
-          placeholder="仕様追加、期間見直しなど"
-        />
-      </label>
       <div className="form-grid">
         <label>
           <span>項目数</span>
@@ -115,6 +104,18 @@ export function PlanCreateForm({
         <span>作成後に有効な計画にする</span>
       </label>
       <PlanPreview preview={preview} />
+      {showReason && (
+        <label>
+          <span>変更理由</span>
+          <input
+            type="text"
+            value={form.reason}
+            disabled={submitting}
+            onChange={(event) => onFormChange({ ...form, reason: event.target.value })}
+            placeholder="仕様追加、期間見直しなど"
+          />
+        </label>
+      )}
       <div className="form-actions">
         <button className="primary-button" type="submit" disabled={submitting}>
           {submitting ? '作成中...' : '計画を作成'}

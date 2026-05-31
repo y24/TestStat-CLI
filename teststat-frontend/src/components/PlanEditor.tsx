@@ -145,6 +145,10 @@ export function PlanEditor({
     modalLabel === undefined
       ? []
       : plans.filter((plan) => (modalLabel === null ? plan.label === null : plan.label === modalLabel))
+  const targetPlanLabel = form.label.trim() || null
+  const isCreatingNewVersion = plans.some((plan) =>
+    targetPlanLabel === null ? plan.label === null : plan.label === targetPlanLabel,
+  )
 
   const deletePlans = (targetPlans: PlanItem[]) => {
     const replacementPlans = findReplacementPlansAfterDelete(plans, targetPlans)
@@ -342,9 +346,9 @@ export function PlanEditor({
         <PlanCreateForm
           form={form}
           formError={formError}
-          targetLabel={form.label.trim() || null}
-          availableCases={form.label.trim() ? availableCasesByLabel[form.label.trim()] : overallAvailableCases}
+          targetLabel={targetPlanLabel}
           holidays={holidayDates}
+          showReason={isCreatingNewVersion}
           submitting={submitting}
           onFormChange={setForm}
           onSubmit={submitPlan}

@@ -25,13 +25,17 @@ export function ProjectOverview({
     )
   }
 
+  const status = getProjectStatus(project)
+
   return (
-    <div className="content-shell">
+    <div className="content-shell project-overview">
       <header className="content-header">
         <div>
-          <div className="eyebrow">testing_id: {project.testing_id}</div>
           <h1>{project.name}</h1>
-          <div className="header-meta">{project.archived ? 'アーカイブ済み' : '進行中'}</div>
+          <div className={`project-status ${status.className}`}>
+            <span className="status-dot" aria-hidden="true" />
+            {status.label}
+          </div>
         </div>
         <div className="header-actions">
           <button className="secondary-button" type="button" onClick={onEdit}>
@@ -52,6 +56,16 @@ export function ProjectOverview({
       <PbChartPanel key={project.testing_id} project={project} />
     </div>
   )
+}
+
+function getProjectStatus(project: ProjectItem): { label: string; className: string } {
+  if (!project.has_actuals) {
+    return { label: '未開始', className: 'not-started' }
+  }
+  if (project.actual_all_completed) {
+    return { label: '完了', className: 'completed' }
+  }
+  return { label: '進行中', className: 'active' }
 }
 
 function formatRate(value: number | null | undefined) {

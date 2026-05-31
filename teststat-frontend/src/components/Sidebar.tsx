@@ -71,10 +71,16 @@ function ProjectNav({
   return (
     <div className="project-nav">
       <div className="nav-actions">
-        <button className="primary-button" type="button" onClick={onCreate}>
+        <button className="primary-button" type="button" onClick={onCreate} disabled={loading}>
           + プロジェクト
         </button>
-        <button className="icon-button" type="button" onClick={onRefresh} title="再読込">
+        <button
+          className="icon-button"
+          type="button"
+          onClick={onRefresh}
+          title="再読込"
+          disabled={loading}
+        >
           ↻
         </button>
       </div>
@@ -98,7 +104,7 @@ function ProjectNav({
         </details>
       )}
       <div className="sidebar-footer">
-        <button className="settings-button" type="button" onClick={onSettings}>
+        <button className="settings-button" type="button" onClick={onSettings} disabled={loading}>
           設定
         </button>
       </div>

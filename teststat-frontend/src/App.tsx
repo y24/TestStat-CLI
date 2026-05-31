@@ -73,7 +73,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div className="app-layout" aria-busy={loadingProjects}>
       <Sidebar
         apiStatus={apiStatus}
         projects={projects}
@@ -91,48 +91,63 @@ export default function App() {
         onSettings={() => setViewMode('settings')}
       />
       <main className="main-area">
-        {error && (
-          <div className="error-strip">
-            <span>{error}</span>
-            <button className="link-button" type="button" onClick={loadProjects}>
-              再読込
-            </button>
-          </div>
+        {loadingProjects ? (
+          <ProjectLoading />
+        ) : (
+          <>
+            {error && (
+              <div className="error-strip">
+                <span>{error}</span>
+                <button className="link-button" type="button" onClick={loadProjects}>
+                  再読込
+                </button>
+              </div>
+            )}
+            {viewMode === 'new' && (
+              <ProjectEditor
+                mode="new"
+                project={null}
+                onCancel={() => setViewMode(selectedProject ? 'overview' : 'new')}
+                onSaved={handleProjectSaved}
+              />
+            )}
+            {viewMode === 'edit' && selectedProject && (
+              <ProjectEditor
+                mode="edit"
+                project={selectedProject}
+                onCancel={() => setViewMode('overview')}
+                onSaved={handleProjectSaved}
+                onDeleted={handleDeleted}
+              />
+            )}
+            {viewMode === 'overview' && (
+              <ProjectOverview
+                project={selectedProject}
+                onCreate={() => setViewMode('new')}
+                onEdit={() => setViewMode('edit')}
+                onPlans={() => setViewMode('plans')}
+              />
+            )}
+            {viewMode === 'plans' && selectedProject && (
+              <PlanEditor
+                project={selectedProject}
+                onBack={() => setViewMode('overview')}
+                onChanged={loadProjects}
+              />
+            )}
+            {viewMode === 'settings' && <SettingsScreen />}
+          </>
         )}
-        {viewMode === 'new' && (
-          <ProjectEditor
-            mode="new"
-            project={null}
-            onCancel={() => setViewMode(selectedProject ? 'overview' : 'new')}
-            onSaved={handleProjectSaved}
-          />
-        )}
-        {viewMode === 'edit' && selectedProject && (
-          <ProjectEditor
-            mode="edit"
-            project={selectedProject}
-            onCancel={() => setViewMode('overview')}
-            onSaved={handleProjectSaved}
-            onDeleted={handleDeleted}
-          />
-        )}
-        {viewMode === 'overview' && (
-          <ProjectOverview
-            project={selectedProject}
-            onCreate={() => setViewMode('new')}
-            onEdit={() => setViewMode('edit')}
-            onPlans={() => setViewMode('plans')}
-          />
-        )}
-        {viewMode === 'plans' && selectedProject && (
-          <PlanEditor
-            project={selectedProject}
-            onBack={() => setViewMode('overview')}
-            onChanged={loadProjects}
-          />
-        )}
-        {viewMode === 'settings' && <SettingsScreen />}
       </main>
+    </div>
+  )
+}
+
+function ProjectLoading() {
+  return (
+    <div className="loading-state" role="status" aria-live="polite">
+      <div className="loading-spinner" aria-hidden="true" />
+      <div>プロジェクトを読み込み中...</div>
     </div>
   )
 }

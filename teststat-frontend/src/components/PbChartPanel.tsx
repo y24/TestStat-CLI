@@ -125,7 +125,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
               disabled={loading && labels.length === 0}
               onChange={(event) => setSelectedLabel(event.target.value)}
             >
-              <option value="">全テスト</option>
+              <option value="">全テスト種別</option>
               {labels.map((item) => (
                 <option key={item} value={item}>
                   {item}

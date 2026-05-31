@@ -31,7 +31,7 @@ export function PlanVersionTable({
         <div>
           <div className="panel-title">計画バージョン</div>
           <div className="panel-subtitle">
-            {useOverallPlan ? '全体計画を1つだけ管理します。' : '実績データのlabelごとに計画を管理します。'}
+            {useOverallPlan ? '全体計画を1つだけ管理します。' : '実績データのテスト種別ごとに計画を管理します。'}
           </div>
         </div>
         <label className="switch-row">
@@ -46,7 +46,7 @@ export function PlanVersionTable({
         </label>
       </div>
       {!useOverallPlan && labels.length === 0 && (
-        <div className="muted-block">実績データのlabelがまだありません。</div>
+        <div className="muted-block">実績データのテスト種別がまだありません。</div>
       )}
       {(useOverallPlan || labels.length > 0) && (
         <div className="plan-table-wrap">

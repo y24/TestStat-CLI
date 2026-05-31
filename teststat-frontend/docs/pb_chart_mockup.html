@@ -110,7 +110,7 @@
     <div class="controls">
       <span>表示対象:
         <select id="target">
-          <option value="all">全テスト（合算）</option>
+          <option value="all">全テスト種別（合算）</option>
           <option value="TEST001">TEST001（シナリオ）</option>
           <option value="TEST002">TEST002（帳票）</option>
           <option value="TEST003">TEST003（インストール）</option>
@@ -136,7 +136,7 @@
   </section>
 
 <script>
-// ===== サンプルデータ（実装では /daily を label でフィルタ＆日付集約して作る）=====
+// ===== サンプルデータ（実装では /daily をテスト種別でフィルタ＆日付集約して作る）=====
 const A = 800; // available_cases（バーンダウンの母数）
 const dates = [];
 for (let d = 1; d <= 20; d++) dates.push(`2026-05-${String(d).padStart(2,'0')}`);

@@ -6,7 +6,7 @@
 <title>TestStat 計画編集 / プロジェクト編集 モック</title>
 <!-- 設計イメージ用の静的モック。計画・プロジェクトは本プロジェクトで新設するバックエンド
      (POST /api/v1/projects, POST /api/v1/projects/{testing_id}/plans) に対応します。
-     testing_id は外部チケット管理システムのチケットID。実績は testing_id+label で紐付け。 -->
+     testing_id は外部チケット管理システムのチケットID。実績は testing_id+テスト種別 で紐付け。 -->
 <style>
   :root { --bg:#f5f6f8; --panel:#fff; --border:#e3e6ea; --text:#1f2933; --muted:#7b8794; --accent:#2f6fed; --accent-soft:#eaf1ff; }
   * { box-sizing: border-box; }
@@ -86,7 +86,7 @@
             <td style="text-align:right"><button class="btn ghost mini">計画を作成</button></td></tr>
       </tbody>
     </table>
-    <p class="hint">テスト種別は実績データから候補提示します。手入力時は実績の label と表記を合わせてください（文字列一致で紐付くため）。</p>
+    <p class="hint">テスト種別は実績データから候補提示します。手入力時は実績のテスト種別と表記を合わせてください（文字列一致で紐付くため）。</p>
   </div>
 
   <!-- ③ 新しい計画バージョンの作成 -->

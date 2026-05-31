@@ -21,6 +21,7 @@ import {
   DEFAULT_PROGRESS_STATUS_THRESHOLDS,
   type ProgressStatusThresholds,
 } from './utils/statusThresholds'
+import { getStoredSelectedTestingId, setStoredSelectedTestingId } from './utils/uiStateStorage'
 
 export default function App() {
   return (
@@ -48,18 +49,25 @@ function AppContent() {
     [projects, selectedTestingId],
   )
 
+  const resolveSelectedTestingId = (
+    items: ProjectItem[],
+    preferredTestingId: number | null,
+  ) => {
+    if (preferredTestingId !== null && items.some((item) => item.testing_id === preferredTestingId)) {
+      return preferredTestingId
+    }
+    return items[0]?.testing_id ?? null
+  }
+
   const loadProjects = () => {
     setLoadingProjects(true)
     setError(null)
     fetchProjects()
       .then((items) => {
         setProjects(items)
-        setSelectedTestingId((current) => {
-          if (current !== null && items.some((item) => item.testing_id === current)) {
-            return current
-          }
-          return items[0]?.testing_id ?? null
-        })
+        const nextSelectedTestingId = resolveSelectedTestingId(items, selectedTestingId)
+        setSelectedTestingId(nextSelectedTestingId)
+        setStoredSelectedTestingId(nextSelectedTestingId)
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
@@ -72,7 +80,9 @@ function AppContent() {
     fetchProjects()
       .then((items) => {
         setProjects(items)
-        setSelectedTestingId(items[0]?.testing_id ?? null)
+        const nextSelectedTestingId = resolveSelectedTestingId(items, getStoredSelectedTestingId())
+        setSelectedTestingId(nextSelectedTestingId)
+        setStoredSelectedTestingId(nextSelectedTestingId)
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
@@ -135,12 +145,19 @@ function AppContent() {
       return sortProjects(next)
     })
     setSelectedTestingId(project.testing_id)
+    setStoredSelectedTestingId(project.testing_id)
   }
 
   const handleDeleted = (testingId: number) => {
     setHasUnsavedChanges(false)
-    setProjects((current) => current.filter((item) => item.testing_id !== testingId))
-    setSelectedTestingId((current) => (current === testingId ? null : current))
+    const nextProjects = projects.filter((item) => item.testing_id !== testingId)
+    const nextSelectedTestingId =
+      selectedTestingId === testingId
+        ? resolveSelectedTestingId(nextProjects, null)
+        : resolveSelectedTestingId(nextProjects, selectedTestingId)
+    setProjects(nextProjects)
+    setSelectedTestingId(nextSelectedTestingId)
+    setStoredSelectedTestingId(nextSelectedTestingId)
     setViewMode('overview')
   }
 
@@ -160,6 +177,7 @@ function AppContent() {
         onSelect={(testingId) => {
           void runAfterDiscardConfirmation(() => {
             setSelectedTestingId(testingId)
+            setStoredSelectedTestingId(testingId)
             setViewMode('overview')
           })
         }}

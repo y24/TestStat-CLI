@@ -3,7 +3,7 @@ project:
   testing_id: 1001
   subtask_id: 999
   files:
-  - label: TEST001
+  - label: シナリオテスト_環境1
     path: input_sample/sample1.xlsx
     subtask_id: 111
     target_sheets:
@@ -13,7 +13,7 @@ project:
     include_hidden_sheets: false
     target_environments:
       - 環境a
-  - label: TEST001
+  - label: シナリオテスト_環境2
     path: input_sample/sample1.xlsx
     subtask_id: 96
     target_sheets:
@@ -22,7 +22,7 @@ project:
       - Sheet1
     target_environments:
       - 環境b
-  - label: TEST002
+  - label: 性能テスト
     path: input_sample/sample2.xlsx
     subtask_id: 87
   - label: TEST003

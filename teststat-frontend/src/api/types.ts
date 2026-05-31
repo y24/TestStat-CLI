@@ -71,9 +71,23 @@ export interface ProjectItem {
   name: string
   ticket_ref: string | null
   archived: boolean
+  created_at: string
+  updated_at: string
   has_actuals: boolean
   actuals_updated_at: string | null
   active_plan_count: number
+}
+
+export interface ProjectCreatePayload {
+  testing_id: number
+  name: string
+  ticket_ref?: string | null
+}
+
+export interface ProjectUpdatePayload {
+  name?: string
+  ticket_ref?: string | null
+  archived?: boolean
 }
 
 export interface PlanItem {
@@ -88,6 +102,7 @@ export interface PlanItem {
   end_date: string
   created_at: string
   created_by: string | null
+  daily_total: number
 }
 
 export interface PlanDailyItem {
@@ -99,6 +114,17 @@ export interface PlanDetail extends PlanItem {
   daily: PlanDailyItem[]
 }
 
+export interface PlanCreatePayload {
+  label?: string | null
+  reason?: string | null
+  planned_total_cases: number
+  start_date: string
+  end_date: string
+  activate: boolean
+  daily: PlanDailyItem[]
+  created_by?: string | null
+}
+
 export interface PbChartSeries {
   date: string
   planned_remaining: number | null
@@ -108,16 +134,20 @@ export interface PbChartSeries {
 }
 
 export interface PbChartPastPlan {
+  plan_id: number
   version: number
-  series: Array<{ date: string; planned_remaining: number }>
+  label: string | null
+  reason: string | null
+  planned_total_cases: number
+  series: Array<{ date: string; planned_remaining: number; planned_completed_daily: number }>
 }
 
 export interface PbChartResponse {
   testing_id: number
   label: string | null
-  range: { from: string; to: string }
+  range: { from: string; to: string } | null
   actuals_updated_at: string | null
-  available_cases: number | null
+  available_cases: number
   planned_total_cases: number | null
   series: PbChartSeries[]
   past_plans: PbChartPastPlan[]

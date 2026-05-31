@@ -4,6 +4,13 @@ import type {
   ProgressSummaryResponse,
   FileProgressItem,
   DailyProgressItem,
+  ProjectCreatePayload,
+  ProjectItem,
+  ProjectUpdatePayload,
+  PbChartResponse,
+  PlanCreatePayload,
+  PlanDetail,
+  PlanItem,
 } from './types'
 
 // 開発時は vite.config のプロキシ経由で localhost:18000 へ転送される。
@@ -20,6 +27,24 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...init.headers,
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`)
+  }
+  if (res.status === 204) {
+    return undefined as T
+  }
+  return res.json() as Promise<T>
+}
+
 // ヘルスチェック
 export const fetchHealth = () => get<HealthResponse>('/health')
 
@@ -31,3 +56,53 @@ export const fetchProgressFiles = (testing_id: number) =>
   get<FileProgressItem[]>(`/api/v1/progress/${testing_id}/files`)
 export const fetchProgressDaily = (testing_id: number) =>
   get<DailyProgressItem[]>(`/api/v1/progress/${testing_id}/daily`)
+
+// プロジェクト系（Phase F1）
+export const fetchProjects = () => get<ProjectItem[]>('/api/v1/projects')
+export const createProject = (payload: ProjectCreatePayload) =>
+  request<ProjectItem>('/api/v1/projects', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+export const updateProject = (testing_id: number, payload: ProjectUpdatePayload) =>
+  request<ProjectItem>(`/api/v1/projects/${testing_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+export const deleteProject = (testing_id: number) =>
+  request<void>(`/api/v1/projects/${testing_id}`, {
+    method: 'DELETE',
+  })
+
+// PB図（Phase F2/F4）
+export const fetchPbChart = (
+  testing_id: number,
+  options: { label?: string | null; includePastPlans?: boolean } = {},
+) => {
+  const params = new URLSearchParams()
+  if (options.label) {
+    params.set('label', options.label)
+  }
+  if (options.includePastPlans) {
+    params.set('include_past_plans', 'true')
+  }
+  const query = params.toString()
+  return get<PbChartResponse>(`/api/v1/projects/${testing_id}/pb-chart${query ? `?${query}` : ''}`)
+}
+
+// 計画編集（Phase F3）
+export const fetchPlans = (testing_id: number) =>
+  get<PlanItem[]>(`/api/v1/projects/${testing_id}/plans`)
+export const createPlan = (testing_id: number, payload: PlanCreatePayload) =>
+  request<PlanDetail>(`/api/v1/projects/${testing_id}/plans`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+export const activatePlan = (plan_id: number) =>
+  request<PlanItem>(`/api/v1/plans/${plan_id}/activate`, {
+    method: 'POST',
+  })
+export const deletePlan = (plan_id: number) =>
+  request<void>(`/api/v1/plans/${plan_id}`, {
+    method: 'DELETE',
+  })

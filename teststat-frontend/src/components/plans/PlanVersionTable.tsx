@@ -103,7 +103,7 @@ export function PlanVersionTable({
                             disabled={submitting}
                             onClick={() => onManage(label)}
                           >
-                            変更/削除
+                            版の変更/削除
                           </button>
                         )}
                         <button

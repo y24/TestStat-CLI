@@ -10,8 +10,8 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { fetchPbChart, fetchPlans, fetchProgressFiles } from '../api/client'
-import type { FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
+import { fetchPbChart, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
+import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
 import { buildChartNotices, buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { formatDate, formatDateTime } from '../utils/date'
@@ -34,8 +34,35 @@ interface ChartResult {
   includePastPlans: boolean
   chart: PbChartResponse | null
   files: FileProgressItem[]
+  daily: DailyProgressItem[]
   plans: PlanItem[]
   error: string | null
+}
+
+type ResultKey = 'Pass' | 'Fixed' | 'Fail' | 'Blocked' | 'Suspend' | 'N/A'
+
+interface BreakdownRow {
+  key: string
+  file: string
+  env: string
+  total: number
+  results: Record<ResultKey, number>
+  notRun: number
+  completed: number
+  executed: number
+  completedRate: number
+  executedRate: number
+}
+
+const resultKeys: ResultKey[] = ['Pass', 'Fixed', 'Fail', 'Blocked', 'Suspend', 'N/A']
+
+const resultHeaderClassNames: Record<ResultKey, string> = {
+  Pass: 'pass',
+  Fixed: 'fixed',
+  Fail: 'fail',
+  Blocked: 'blocked',
+  Suspend: 'suspend',
+  'N/A': 'na',
 }
 
 export function PbChartPanel({ project }: { project: ProjectItem }) {
@@ -54,9 +81,10 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
     Promise.all([
       fetchPbChart(project.testing_id, { label, includePastPlans: layers.pastPlans }),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
+      fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
       fetchPlans(project.testing_id).catch(() => [] as PlanItem[]),
     ])
-      .then(([data, files, plans]) => {
+      .then(([data, files, daily, plans]) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
@@ -64,6 +92,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
             includePastPlans: layers.pastPlans,
             chart: data,
             files,
+            daily,
             plans,
             error: null,
           })
@@ -77,6 +106,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
             includePastPlans: layers.pastPlans,
             chart: null,
             files: [],
+            daily: [],
             plans: [],
             error: getErrorMessage(err),
           })
@@ -95,6 +125,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
   const chart = isCurrentResult ? result.chart : null
   const error = isCurrentResult ? result.error : null
   const files = isCurrentResult ? result.files : []
+  const daily = isCurrentResult ? result.daily : []
   const plans = isCurrentResult ? result.plans : []
   const labels = Array.from(
     new Set(
@@ -156,6 +187,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
             </div>
           )}
           <PbChart chart={chart} layers={layers} />
+          <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
           <div className="chart-foot">
             実績最終更新: {formatDateTime(chart.actuals_updated_at)} / 実績対象件数:{' '}
             {chart.available_cases} / 計画項目数: {chart.planned_total_cases ?? '-'}
@@ -236,4 +268,208 @@ function PbChart({ chart, layers }: { chart: PbChartResponse; layers: ChartLayer
   }, [chart, layers])
 
   return <div className="pb-chart" ref={containerRef} />
+}
+
+function ProgressBreakdown({
+  files,
+  daily,
+  selectedLabel,
+}: {
+  files: FileProgressItem[]
+  daily: DailyProgressItem[]
+  selectedLabel: string | null
+}) {
+  const rows = buildBreakdownRows(files, daily, selectedLabel)
+  if (rows.length === 0) {
+    return null
+  }
+
+  const total = rows.reduce<BreakdownRow>(
+    (acc, row) => {
+      acc.total += row.total
+      acc.notRun += row.notRun
+      acc.completed += row.completed
+      acc.executed += row.executed
+      for (const key of resultKeys) {
+        acc.results[key] += row.results[key]
+      }
+      return acc
+    },
+    {
+      key: 'total',
+      file: 'Total',
+      env: '',
+      total: 0,
+      results: emptyResultCounts(),
+      notRun: 0,
+      completed: 0,
+      executed: 0,
+      completedRate: 0,
+      executedRate: 0,
+    },
+  )
+  total.completedRate = toRate(total.completed, total.total)
+  total.executedRate = toRate(total.executed, total.total)
+
+  return (
+    <div className="progress-breakdown">
+      <section className="breakdown-block" aria-label="テスト結果合計">
+        <h3>テスト結果合計</h3>
+        <div className="breakdown-table-wrap">
+          <table className="breakdown-table">
+            <thead>
+              <tr>
+                <th>合計</th>
+                {resultKeys.map((key) => (
+                  <th key={key}>
+                    <ResultHeader result={key} />
+                  </th>
+                ))}
+                <th>未実施</th>
+                <th>完了数</th>
+                <th>消化数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{total.total}</td>
+                {resultKeys.map((key) => (
+                  <td key={key}>{total.results[key]}</td>
+                ))}
+                <td>{total.notRun}</td>
+                <td>{formatCountRate(total.completed, total.completedRate)}</td>
+                <td>{formatCountRate(total.executed, total.executedRate)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="breakdown-block" aria-label="ファイル別内訳">
+        <h3>ファイル別内訳</h3>
+        <div className="breakdown-table-wrap">
+          <table className="breakdown-table">
+            <thead>
+              <tr>
+                <th>ファイル</th>
+                <th>環境</th>
+                <th>合計</th>
+                {resultKeys.map((key) => (
+                  <th key={key}>
+                    <ResultHeader result={key} />
+                  </th>
+                ))}
+                <th>未実施</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.key}>
+                  <td className="breakdown-file-cell" title={row.file}>
+                    {row.file}
+                  </td>
+                  <td>{row.env}</td>
+                  <td>{row.total}</td>
+                  {resultKeys.map((key) => (
+                    <td key={key}>{row.results[key]}</td>
+                  ))}
+                  <td>{row.notRun}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function ResultHeader({ result }: { result: ResultKey }) {
+  return (
+    <span className={`result-header result-header-${resultHeaderClassNames[result]}`}>
+      {result}
+    </span>
+  )
+}
+
+function buildBreakdownRows(
+  files: FileProgressItem[],
+  daily: DailyProgressItem[],
+  selectedLabel: string | null,
+): BreakdownRow[] {
+  const matchingFiles = files.filter((file) => !selectedLabel || file.label === selectedLabel)
+  const rows = new Map<string, BreakdownRow>()
+
+  for (const file of matchingFiles) {
+    const key = breakdownKey(file.file_name, file.label, file.environment)
+    rows.set(key, {
+      key,
+      file: file.label || file.file_name,
+      env: file.environment || '-',
+      total: file.available_cases,
+      results: emptyResultCounts(),
+      notRun: Math.max(file.available_cases - file.executed, 0),
+      completed: file.completed,
+      executed: file.executed,
+      completedRate: file.completed_rate,
+      executedRate: file.executed_rate,
+    })
+  }
+
+  for (const item of daily) {
+    if (selectedLabel && item.label !== selectedLabel) {
+      continue
+    }
+    const key = breakdownKey(item.file_name, item.label, item.environment)
+    let row = rows.get(key)
+    if (!row) {
+      row = {
+        key,
+        file: item.label || item.file_name,
+        env: item.environment || '-',
+        total: 0,
+        results: emptyResultCounts(),
+        notRun: 0,
+        completed: 0,
+        executed: 0,
+        completedRate: 0,
+        executedRate: 0,
+      }
+      rows.set(key, row)
+    }
+    row.results.Pass += item.Pass
+    row.results.Fixed += item.Fixed
+    row.results.Fail += item.Fail
+    row.results.Blocked += item.Blocked
+    row.results.Suspend += item.Suspend
+    row.results['N/A'] += item['N/A']
+  }
+
+  return [...rows.values()].sort((a, b) => {
+    const fileCompare = a.file.localeCompare(b.file, 'ja')
+    return fileCompare === 0 ? a.env.localeCompare(b.env, 'ja') : fileCompare
+  })
+}
+
+function breakdownKey(fileName: string, label: string | null, environment: string | null) {
+  return `${fileName}\u0000${label ?? ''}\u0000${environment ?? ''}`
+}
+
+function emptyResultCounts(): Record<ResultKey, number> {
+  return {
+    Pass: 0,
+    Fixed: 0,
+    Fail: 0,
+    Blocked: 0,
+    Suspend: 0,
+    'N/A': 0,
+  }
+}
+
+function toRate(count: number, total: number) {
+  return total > 0 ? Math.round((count / total) * 10000) / 100 : 0
+}
+
+function formatCountRate(count: number, rate: number) {
+  return `${count} (${rate.toFixed(2)}%)`
 }

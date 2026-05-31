@@ -12,6 +12,7 @@ FastAPI backend for receiving and storing TestStat CLI progress reports.
 ### 1. 仮想環境の作成とライブラリのインストール
 
 ```powershell
+cd teststat-server
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install .

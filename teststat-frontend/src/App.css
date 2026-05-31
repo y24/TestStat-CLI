@@ -210,6 +210,28 @@
   letter-spacing: 0;
 }
 
+.header-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.header-back-button {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  flex: 0 0 34px;
+  margin-top: 1px;
+}
+
+.header-back-button svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
 .project-overview .content-header h1 {
   font-size: 23px;
 }

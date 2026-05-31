@@ -219,6 +219,21 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(pp.series[0].planned_completed_daily, 30)  # 20 + 10
         self.assertEqual(pp.series[0].planned_remaining, 120)       # 150 - 30
 
+    def test_past_plan_for_one_label_includes_other_active_labels_in_all_view(self):
+        self._make_plan(label="TEST001", total=80, daily_counts=[16] * 5, activate=True)
+        self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5, activate=True)
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5, activate=True)
+
+        result = get_pb_chart(self.db, 1001, label=None, include_past_plans=True)
+
+        self.assertEqual(len(result.past_plans), 1)
+        pp = result.past_plans[0]
+        self.assertEqual(pp.version, 1)
+        self.assertIsNone(pp.label)
+        self.assertEqual(pp.planned_total_cases, 130)       # TEST001 v1 + TEST002 active
+        self.assertEqual(pp.series[0].planned_completed_daily, 26)  # 16 + 10
+        self.assertEqual(pp.series[0].planned_remaining, 104)       # 130 - 26
+
     def test_past_plans_not_returned_by_default(self):
         self._make_plan(total=80, activate=True)
         self._make_plan(total=100, activate=True)

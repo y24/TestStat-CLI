@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react'
 import type { PlanFormState } from './planFormTypes'
 import { PlanCreateForm } from './PlanCreateForm'
+import { ArrowLeft } from 'lucide-react'
 
 export function PlanCreateScreen({
   projectName,
@@ -32,9 +33,20 @@ export function PlanCreateScreen({
   return (
     <div className="content-shell">
       <header className="content-header">
-        <div>
-          <div className="eyebrow">{projectName}</div>
-          <h1>新バージョン作成</h1>
+        <div className="header-title-row">
+          <button
+            className="icon-button header-back-button"
+            type="button"
+            onClick={onCancel}
+            aria-label="テスト計画入力に戻る"
+            title="テスト計画入力に戻る"
+          >
+            <ArrowLeft aria-hidden="true" />
+          </button>
+          <div>
+            <div className="eyebrow">{projectName}</div>
+            <h1>新バージョン作成</h1>
+          </div>
         </div>
       </header>
 

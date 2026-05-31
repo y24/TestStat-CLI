@@ -181,7 +181,10 @@ def _compute_past_plans(
     if not past_plans:
         return []
 
-    all_ids = [p.id for p in past_plans]
+    active_plans = _get_active_plans(db, testing_id, None) if label is None else []
+    active_plans_by_label = {p.label: p for p in active_plans}
+
+    all_ids = list({p.id for p in [*past_plans, *active_plans]})
     daily_rows = db.execute(
         select(PlanDaily.plan_id, PlanDaily.date, PlanDaily.planned_count)
         .where(PlanDaily.plan_id.in_(all_ids))
@@ -200,7 +203,16 @@ def _compute_past_plans(
             plans_by_version[plan.version].append(plan)
 
         for version in sorted(plans_by_version, reverse=True):
-            plans = plans_by_version[version]
+            version_past_plans = plans_by_version[version]
+            past_labels = {p.label for p in version_past_plans}
+            plans = [
+                *version_past_plans,
+                *[
+                    active_plan
+                    for active_label, active_plan in active_plans_by_label.items()
+                    if active_label not in past_labels
+                ],
+            ]
             start_date = min(p.start_date for p in plans)
             end_date = max(p.end_date for p in plans)
             planned_total_cases = sum(p.planned_total_cases for p in plans)
@@ -220,7 +232,7 @@ def _compute_past_plans(
                     planned_completed_daily=cnt,
                 ))
             result.append(PastPlanSeries(
-                plan_id=min(p.id for p in plans),
+                plan_id=min(p.id for p in version_past_plans),
                 version=version,
                 label=None,
                 reason=None,

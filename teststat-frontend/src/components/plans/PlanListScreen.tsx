@@ -3,6 +3,7 @@ import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
+import { ArrowLeft } from 'lucide-react'
 
 export function PlanListScreen({
   projectName,
@@ -42,14 +43,20 @@ export function PlanListScreen({
   return (
     <div className="content-shell">
       <header className="content-header">
-        <div>
-          <div className="eyebrow">{projectName}</div>
-          <h1>テスト計画入力</h1>
-        </div>
-        <div className="header-actions">
-          <button className="secondary-button" type="button" onClick={onBack}>
-            PB図
+        <div className="header-title-row">
+          <button
+            className="icon-button header-back-button"
+            type="button"
+            onClick={onBack}
+            aria-label="PB図に戻る"
+            title="PB図に戻る"
+          >
+            <ArrowLeft aria-hidden="true" />
           </button>
+          <div>
+            <div className="eyebrow">{projectName}</div>
+            <h1>テスト計画入力</h1>
+          </div>
         </div>
       </header>
 

@@ -23,12 +23,14 @@ export function ProjectEditor({
   onCancel,
   onSaved,
   onDeleted,
+  onDirtyChange,
 }: {
   mode: 'new' | 'edit'
   project: ProjectItem | null
   onCancel: () => void
   onSaved: (project: ProjectItem) => void
   onDeleted?: (testingId: number) => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const confirm = useConfirmDialog()
   const [form, setForm] = useState<ProjectFormState>(() =>
@@ -43,6 +45,19 @@ export function ProjectEditor({
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
+
+  useEffect(() => {
+    const dirty =
+      mode === 'new'
+        ? Boolean(form.testing_id.trim()) ||
+          (Boolean(form.name.trim()) && form.name !== autoFilledNameRef.current)
+        : project !== null && (form.name !== project.name || form.archived !== project.archived)
+    onDirtyChange(dirty)
+  }, [form, mode, onDirtyChange, project])
+
+  useEffect(() => {
+    return () => onDirtyChange(false)
+  }, [onDirtyChange])
 
   useEffect(() => {
     if (mode !== 'new') {

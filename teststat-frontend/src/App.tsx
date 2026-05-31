@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { fetchHealth, fetchProjects } from './api/client'
 import type { ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
+import { useConfirmDialog } from './components/confirmDialogContext'
 import { PlanEditor } from './components/PlanEditor'
 import { ProjectEditor } from './components/ProjectEditor'
 import { ProjectOverview } from './components/ProjectOverview'
@@ -13,12 +14,22 @@ import { getErrorMessage } from './utils/errors'
 import { sortProjects } from './utils/projects'
 
 export default function App() {
+  return (
+    <ConfirmDialogProvider>
+      <AppContent />
+    </ConfirmDialogProvider>
+  )
+}
+
+function AppContent() {
+  const confirm = useConfirmDialog()
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedTestingId, setSelectedTestingId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.testing_id === selectedTestingId) ?? null,
@@ -55,7 +66,47 @@ export default function App() {
       .finally(() => setLoadingProjects(false))
   }, [])
 
+  const confirmDiscardChanges = useCallback(async () => {
+    if (!hasUnsavedChanges) {
+      return true
+    }
+    return confirm({
+      title: '入力内容の破棄',
+      message: '編集した内容が保存されていません。画面を離れてもよろしいですか？',
+      confirmLabel: 'OK',
+      cancelLabel: 'キャンセル',
+      danger: true,
+    })
+  }, [confirm, hasUnsavedChanges])
+
+  const runAfterDiscardConfirmation = useCallback(
+    async (action: () => void) => {
+      const confirmed = await confirmDiscardChanges()
+      if (!confirmed) {
+        return
+      }
+      setHasUnsavedChanges(false)
+      action()
+    },
+    [confirmDiscardChanges],
+  )
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
   const handleProjectSaved = (project: ProjectItem) => {
+    setHasUnsavedChanges(false)
     setProjects((current) => {
       const exists = current.some((item) => item.testing_id === project.testing_id)
       const next = exists
@@ -68,80 +119,92 @@ export default function App() {
   }
 
   const handleDeleted = (testingId: number) => {
+    setHasUnsavedChanges(false)
     setProjects((current) => current.filter((item) => item.testing_id !== testingId))
     setSelectedTestingId((current) => (current === testingId ? null : current))
     setViewMode('overview')
   }
 
   return (
-    <ConfirmDialogProvider>
-      <div className="app-layout" aria-busy={loadingProjects}>
-        <Sidebar
-          apiStatus={apiStatus}
-          projects={projects}
-          selectedTestingId={selectedTestingId}
-          loading={loadingProjects}
-          onSelect={(testingId) => {
+    <div className="app-layout" aria-busy={loadingProjects}>
+      <Sidebar
+        apiStatus={apiStatus}
+        projects={projects}
+        selectedTestingId={selectedTestingId}
+        loading={loadingProjects}
+        onSelect={(testingId) => {
+          void runAfterDiscardConfirmation(() => {
             setSelectedTestingId(testingId)
             setViewMode('overview')
-          }}
-          onCreate={() => {
-            setViewMode('new')
-          }}
-          onRefresh={loadProjects}
-          onSettings={() => setViewMode('settings')}
-        />
-        <main className="main-area">
-          {loadingProjects ? (
-            <ProjectLoading />
-          ) : (
-            <>
-              {error && (
-                <div className="error-strip">
-                  <span>{error}</span>
-                  <button className="link-button" type="button" onClick={loadProjects}>
-                    再読込
-                  </button>
-                </div>
-              )}
-              {viewMode === 'new' && (
-                <ProjectEditor
-                  mode="new"
-                  project={null}
-                  onCancel={() => setViewMode('overview')}
-                  onSaved={handleProjectSaved}
-                />
-              )}
-              {viewMode === 'edit' && selectedProject && (
-                <ProjectEditor
-                  mode="edit"
-                  project={selectedProject}
-                  onCancel={() => setViewMode('overview')}
-                  onSaved={handleProjectSaved}
-                  onDeleted={handleDeleted}
-                />
-              )}
-              {viewMode === 'overview' && (
-                <ProjectOverview
-                  project={selectedProject}
-                  onCreate={() => setViewMode('new')}
-                  onEdit={() => setViewMode('edit')}
-                  onPlans={() => setViewMode('plans')}
-                />
-              )}
-              {viewMode === 'plans' && selectedProject && (
-                <PlanEditor
-                  project={selectedProject}
-                  onBack={() => setViewMode('overview')}
-                  onChanged={loadProjects}
-                />
-              )}
-              {viewMode === 'settings' && <SettingsScreen />}
-            </>
-          )}
-        </main>
-      </div>
-    </ConfirmDialogProvider>
+          })
+        }}
+        onCreate={() => {
+          void runAfterDiscardConfirmation(() => setViewMode('new'))
+        }}
+        onRefresh={loadProjects}
+        onSettings={() => {
+          void runAfterDiscardConfirmation(() => setViewMode('settings'))
+        }}
+      />
+      <main className="main-area">
+        {loadingProjects ? (
+          <ProjectLoading />
+        ) : (
+          <>
+            {error && (
+              <div className="error-strip">
+                <span>{error}</span>
+                <button className="link-button" type="button" onClick={loadProjects}>
+                  再読込
+                </button>
+              </div>
+            )}
+            {viewMode === 'new' && (
+              <ProjectEditor
+                mode="new"
+                project={null}
+                onCancel={() => {
+                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
+                }}
+                onSaved={handleProjectSaved}
+                onDirtyChange={setHasUnsavedChanges}
+              />
+            )}
+            {viewMode === 'edit' && selectedProject && (
+              <ProjectEditor
+                mode="edit"
+                project={selectedProject}
+                onCancel={() => {
+                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
+                }}
+                onSaved={handleProjectSaved}
+                onDeleted={handleDeleted}
+                onDirtyChange={setHasUnsavedChanges}
+              />
+            )}
+            {viewMode === 'overview' && (
+              <ProjectOverview
+                project={selectedProject}
+                onCreate={() => setViewMode('new')}
+                onEdit={() => setViewMode('edit')}
+                onPlans={() => setViewMode('plans')}
+              />
+            )}
+            {viewMode === 'plans' && selectedProject && (
+              <PlanEditor
+                project={selectedProject}
+                onBack={() => {
+                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
+                }}
+                onChanged={loadProjects}
+                onDirtyChange={setHasUnsavedChanges}
+              />
+            )}
+            {viewMode === 'settings' && <SettingsScreen />}
+          </>
+        )}
+      </main>
+    </div>
   )
 }
 

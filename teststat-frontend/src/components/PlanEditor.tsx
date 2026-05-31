@@ -24,10 +24,12 @@ export function PlanEditor({
   project,
   onBack,
   onChanged,
+  onDirtyChange,
 }: {
   project: ProjectItem
   onBack: () => void
   onChanged: () => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const confirm = useConfirmDialog()
   const [result, setResult] = useState<PlanResult | null>(null)
@@ -108,6 +110,14 @@ export function PlanEditor({
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    onDirtyChange(mode === 'create' && !isSamePlanForm(form, initialCreateForm))
+  }, [form, initialCreateForm, mode, onDirtyChange])
+
+  useEffect(() => {
+    return () => onDirtyChange(false)
+  }, [onDirtyChange])
 
   const loading = result?.testingId !== project.testing_id
   const plans = result?.testingId === project.testing_id ? result.plans : []

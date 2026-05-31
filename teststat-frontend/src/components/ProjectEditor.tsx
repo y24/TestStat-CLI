@@ -45,6 +45,7 @@ export function ProjectEditor({
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
+  const deleteDisabledReason = project?.archived ? 'アーカイブ済みのプロジェクトは削除できません。' : null
 
   useEffect(() => {
     const dirty =
@@ -138,6 +139,10 @@ export function ProjectEditor({
     if (!project || !onDeleted) {
       return
     }
+    if (project.archived) {
+      setFormError('アーカイブ済みプロジェクトは削除できません。削除する場合はアーカイブを解除してください。')
+      return
+    }
     const confirmed = await confirm({
       title: 'プロジェクトの削除',
       message: `testing_id ${project.testing_id} のプロジェクトと計画を削除します。実績データは削除されません。`,
@@ -217,9 +222,20 @@ export function ProjectEditor({
             キャンセル
           </button>
           {mode === 'edit' && (
-            <button className="danger-button" type="button" onClick={handleDelete} disabled={submitting}>
-              削除
-            </button>
+            <span
+              className="delete-action-tooltip"
+              data-tooltip={deleteDisabledReason ?? undefined}
+              tabIndex={deleteDisabledReason ? 0 : undefined}
+            >
+              <button
+                className="danger-button"
+                type="button"
+                onClick={handleDelete}
+                disabled={submitting || Boolean(deleteDisabledReason)}
+              >
+                削除
+              </button>
+            </span>
           )}
         </div>
       </form>

@@ -1020,6 +1020,55 @@
   color: #b4234f;
 }
 
+.danger-button:disabled {
+  background: #f2f4f7;
+  border-color: #d8dee8;
+  color: #9aa6b2;
+  cursor: not-allowed;
+}
+
+.delete-action-tooltip {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.delete-action-tooltip .danger-button {
+  margin-left: 0;
+}
+
+.delete-action-tooltip[data-tooltip]:hover::after,
+.delete-action-tooltip[data-tooltip]:focus::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: #1f2933;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  box-shadow: 0 8px 18px rgb(16 24 40 / 18%);
+}
+
+.delete-action-tooltip[data-tooltip]:hover::before,
+.delete-action-tooltip[data-tooltip]:focus::before {
+  content: '';
+  position: absolute;
+  z-index: 31;
+  right: 16px;
+  bottom: calc(100% + 3px);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: #1f2933 transparent transparent;
+}
+
 .icon-button {
   padding: 0;
   background: #fff;
@@ -1277,6 +1326,10 @@
   }
 
   .danger-button {
+    margin-left: 0;
+  }
+
+  .delete-action-tooltip {
     margin-left: 0;
   }
 

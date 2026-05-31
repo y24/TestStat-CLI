@@ -79,6 +79,17 @@ class TestProjectCRUD(unittest.TestCase):
         with self.assertRaises(HTTPException):
             get_project(self.db, 4001)
 
+    def test_delete_archived_project_raises(self):
+        create_project(self.db, ProjectCreate(testing_id=4002, name="削除不可対象"))
+        update_project(self.db, 4002, ProjectUpdate(archived=True))
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            delete_project(self.db, 4002)
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertTrue(get_project(self.db, 4002).archived)
+
     def test_has_actuals_when_testing_exists(self):
         from app.models.progress import Testing
         from datetime import datetime

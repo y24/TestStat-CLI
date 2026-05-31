@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.models.project import Project
 from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, Testing
 from app.schemas.progress import DailyProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
 
@@ -29,8 +30,18 @@ def _get_or_create_testing(db: Session, testing_id: int, project_name: str) -> T
     return testing
 
 
+def _ensure_project_accepts_progress(db: Session, testing_id: int) -> None:
+    project = db.scalar(select(Project).where(Project.testing_id == testing_id))
+    if project is not None and project.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="archived project cannot accept progress updates",
+        )
+
+
 def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostResponse:
     _validate_replace_payload(payload)
+    _ensure_project_accepts_progress(db, payload.testing_id)
 
     _get_or_create_testing(db, payload.testing_id, payload.project_name)
 

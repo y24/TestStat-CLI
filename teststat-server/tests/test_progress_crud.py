@@ -11,6 +11,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
 from app.crud.progress import get_daily_progress, get_file_progress, get_progress_summary, replace_progress  # noqa: E402
 from app.database import Base  # noqa: E402
+from app.models.project import Project  # noqa: E402
 from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress  # noqa: E402
 from app.schemas.progress import ProgressRequest  # noqa: E402
 
@@ -131,6 +132,19 @@ class ProgressCrudTests(unittest.TestCase):
         self.assertEqual(len(get_file_progress(self.db, 1001)), 1)
         self.assertEqual(len(self.db.scalars(select(DailyProgress).where(DailyProgress.testing_id == 1001)).all()), 1)
         self.assertEqual(len(self.db.scalars(select(DailyPersonProgress).where(DailyPersonProgress.testing_id == 1001)).all()), 2)
+
+    def test_archived_project_rejects_replace_without_deleting_existing_rows(self):
+        replace_progress(self.db, make_payload(testing_id=3003, file_name="old.xlsx", pass_count=4))
+        self.db.add(Project(testing_id=3003, name="Archived Project", archived=True))
+        self.db.commit()
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            replace_progress(self.db, make_payload(testing_id=3003, file_name="new.xlsx", pass_count=9))
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertEqual([row.file_name for row in get_file_progress(self.db, 3003)], ["old.xlsx"])
+        self.assertEqual(get_progress_summary(self.db, 3003).results.pass_count, 4)
 
 
 if __name__ == "__main__":

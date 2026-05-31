@@ -1,6 +1,23 @@
 import unittest
+import urllib.error
+from unittest.mock import patch
 
-from utils.ReportingClient import build_progress_payload
+from utils.ReportingClient import build_progress_payload, send_progress
+
+
+class FakeResponse:
+    def __init__(self, status=200, body="{}"):
+        self.status = status
+        self._body = body.encode("utf-8")
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
 
 
 class ReportingClientPayloadTests(unittest.TestCase):
@@ -87,6 +104,56 @@ class ReportingClientPayloadTests(unittest.TestCase):
         self.assertEqual(payload["files"][0]["file_name"], "missing.xlsx")
         self.assertEqual(payload["files"][0]["available_cases"], 0)
         self.assertEqual(payload["files"][0]["error"], "sheet missing")
+
+
+class ReportingClientSendTests(unittest.TestCase):
+    def test_send_progress_skips_archived_project(self):
+        requests = []
+
+        def fake_urlopen(req, timeout=10):
+            requests.append(req)
+            return FakeResponse(body='{"testing_id":1001,"archived":true}')
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
+            success, msg = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+
+        self.assertFalse(success)
+        self.assertIn("アーカイブ済み", msg)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0].full_url, "http://localhost:18000/api/v1/projects/1001")
+
+    def test_send_progress_posts_when_project_is_active(self):
+        requests = []
+
+        def fake_urlopen(req, timeout=10):
+            requests.append(req)
+            if req.full_url.endswith("/api/v1/projects/1001"):
+                return FakeResponse(body='{"testing_id":1001,"archived":false}')
+            return FakeResponse(body='{"testing_id":1001,"inserted_files":0,"inserted_daily_rows":0,"inserted_person_rows":0}')
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
+            success, _ = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+
+        self.assertTrue(success)
+        self.assertEqual([req.full_url for req in requests], [
+            "http://localhost:18000/api/v1/projects/1001",
+            "http://localhost:18000/api/v1/progress",
+        ])
+
+    def test_send_progress_posts_when_project_is_not_registered(self):
+        requests = []
+
+        def fake_urlopen(req, timeout=10):
+            requests.append(req)
+            if req.full_url.endswith("/api/v1/projects/1001"):
+                raise urllib.error.HTTPError(req.full_url, 404, "Not Found", hdrs=None, fp=None)
+            return FakeResponse(body='{"testing_id":1001,"inserted_files":0,"inserted_daily_rows":0,"inserted_person_rows":0}')
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
+            success, _ = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+
+        self.assertTrue(success)
+        self.assertEqual(len(requests), 2)
 
 
 if __name__ == "__main__":

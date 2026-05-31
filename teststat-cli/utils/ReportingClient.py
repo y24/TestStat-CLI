@@ -125,9 +125,38 @@ def build_progress_payload(project_info, results, sender=None):
     }
 
 
+def _get_project_status(base_url, testing_id, timeout=10):
+    url = f"{base_url.rstrip('/')}/api/v1/projects/{testing_id}"
+    req = urllib.request.Request(url, method="GET")
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            body = response.read().decode("utf-8")
+            if 200 <= response.status < 300:
+                return True, json.loads(body)
+            return False, f"プロジェクト状態の確認に失敗しました: ステータスコード {response.status}"
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return True, None
+        body = e.read().decode("utf-8", errors="replace")
+        return False, f"プロジェクト状態の確認に失敗しました: ステータスコード {e.code}, レスポンス: {body}"
+    except urllib.error.URLError as e:
+        return False, f"プロジェクト状態の確認に失敗しました: {e}"
+    except Exception as e:
+        return False, f"プロジェクト状態の確認に失敗しました: {e}"
+
+
 def send_progress(base_url, payload, timeout=10, logger=None):
     if not base_url:
         return False, "reporting_api.base_url が設定されていません。"
+
+    testing_id = payload.get("testing_id")
+    if testing_id is not None:
+        ok, project = _get_project_status(base_url, testing_id, timeout=timeout)
+        if not ok:
+            return False, project
+        if project and project.get("archived"):
+            return False, f"testing_id={testing_id} はアーカイブ済みのため進捗データを送信しません。"
 
     url = f"{base_url.rstrip('/')}/api/v1/progress"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")

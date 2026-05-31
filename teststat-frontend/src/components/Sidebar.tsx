@@ -72,7 +72,7 @@ function ProjectNav({
     <div className="project-nav">
       <div className="nav-actions">
         <button className="primary-button" type="button" onClick={onCreate} disabled={loading}>
-          + プロジェクト
+          + プロジェクト追加
         </button>
         <button
           className="icon-button"

@@ -203,5 +203,10 @@ def delete_project(db: Session, testing_id: int) -> None:
     project = db.scalar(select(Project).where(Project.testing_id == testing_id))
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="project not found")
+    if project.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="archived project cannot be deleted",
+        )
     db.delete(project)
     db.commit()

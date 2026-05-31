@@ -1,17 +1,15 @@
-import { LayoutDashboard, RefreshCw, Settings } from 'lucide-react'
+import { RefreshCw, Settings } from 'lucide-react'
 import type { ProjectItem } from '../api/types'
-import type { ApiStatus, ViewMode } from '../types/ui'
+import type { ApiStatus } from '../types/ui'
 import { LockIcon } from './icons/LockIcon'
 
 interface ProjectNavProps {
   projects: ProjectItem[]
   selectedTestingId: number | null
-  viewMode: ViewMode
   loading: boolean
   onSelect: (testingId: number) => void
   onCreate: () => void
   onRefresh: () => void
-  onOverview: () => void
   onSettings: () => void
 }
 
@@ -19,12 +17,10 @@ export function Sidebar({
   apiStatus,
   projects,
   selectedTestingId,
-  viewMode,
   loading,
   onSelect,
   onCreate,
   onRefresh,
-  onOverview,
   onSettings,
 }: ProjectNavProps & { apiStatus: ApiStatus }) {
   return (
@@ -33,12 +29,10 @@ export function Sidebar({
       <ProjectNav
         projects={projects}
         selectedTestingId={selectedTestingId}
-        viewMode={viewMode}
         loading={loading}
         onSelect={onSelect}
         onCreate={onCreate}
         onRefresh={onRefresh}
-        onOverview={onOverview}
         onSettings={onSettings}
       />
     </aside>
@@ -74,12 +68,10 @@ function formatRate(value: number | null | undefined) {
 function ProjectNav({
   projects,
   selectedTestingId,
-  viewMode,
   loading,
   onSelect,
   onCreate,
   onRefresh,
-  onOverview,
   onSettings,
 }: ProjectNavProps) {
   const activeProjects = projects.filter((project) => !project.archived)
@@ -120,17 +112,6 @@ function ProjectNav({
           />
         </details>
       )}
-      <div className="sidebar-shortcuts">
-        <button
-          className={`settings-button overview-button ${viewMode === 'overview' ? 'selected' : ''}`}
-          type="button"
-          onClick={onOverview}
-          disabled={loading || selectedTestingId === null}
-        >
-          <LayoutDashboard className="settings-button-icon" aria-hidden="true" strokeWidth={2.1} />
-          ダッシュボード
-        </button>
-      </div>
       <div className="sidebar-footer">
         <button className="settings-button" type="button" onClick={onSettings} disabled={loading}>
           <Settings className="settings-button-icon" aria-hidden="true" strokeWidth={2.1} />

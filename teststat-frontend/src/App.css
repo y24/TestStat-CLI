@@ -131,13 +131,6 @@
   padding-top: 12px;
 }
 
-.sidebar-shortcuts {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 14px;
-}
-
 .settings-button {
   width: 100%;
   min-height: 38px;
@@ -162,12 +155,6 @@
 
 .settings-button:hover {
   background: #f1f4f8;
-}
-
-.overview-button.selected {
-  border-color: #c8d8ff;
-  background: var(--accent-soft);
-  color: var(--accent);
 }
 
 .settings-button:disabled,

@@ -96,15 +96,6 @@ export function PlanCreateForm({
           />
         </label>
       )}
-      <label className="checkbox-row">
-        <input
-          type="checkbox"
-          checked={form.activate}
-          disabled={submitting}
-          onChange={(event) => onFormChange({ ...form, activate: event.target.checked })}
-        />
-        <span>作成後に有効な計画にする</span>
-      </label>
       <PlanPreview preview={preview} />
       {showReason && (
         <label>
@@ -118,6 +109,15 @@ export function PlanCreateForm({
           />
         </label>
       )}
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={form.activate}
+          disabled={submitting}
+          onChange={(event) => onFormChange({ ...form, activate: event.target.checked })}
+        />
+        <span>作成後に有効な計画にする</span>
+      </label>
       <div className="form-actions">
         <button className="primary-button" type="submit" disabled={submitting}>
           {submitting ? '作成中...' : '計画を作成'}

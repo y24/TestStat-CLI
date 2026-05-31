@@ -135,6 +135,7 @@ function AppContent() {
         apiStatus={apiStatus}
         projects={projects}
         selectedTestingId={selectedTestingId}
+        viewMode={viewMode}
         loading={loadingProjects}
         onSelect={(testingId) => {
           void runAfterDiscardConfirmation(() => {
@@ -146,6 +147,9 @@ function AppContent() {
           void runAfterDiscardConfirmation(() => setViewMode('new'))
         }}
         onRefresh={loadProjects}
+        onPbChart={() => {
+          void runAfterDiscardConfirmation(() => setViewMode('overview'))
+        }}
         onSettings={() => {
           void runAfterDiscardConfirmation(() => setViewMode('settings'))
         }}

@@ -54,7 +54,7 @@ export function PlanVersionTable({
             <thead>
               <tr>
                 <th>テスト種別</th>
-                <th>有効な版</th>
+                <th>版</th>
                 <th>項目数</th>
                 <th>期間</th>
                 <th>日別合計</th>
@@ -77,16 +77,7 @@ export function PlanVersionTable({
                       {!activePlan && <span className="row-note">未計画</span>}
                       {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}
                     </td>
-                    <td>
-                      {activePlan ? (
-                        <>
-                          v{activePlan.version}
-                          {activePlan.is_active && <span className="active-badge">有効</span>}
-                        </>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
+                    <td>{activePlan ? `v${activePlan.version}` : '-'}</td>
                     <td>{activePlan?.planned_total_cases ?? '-'}</td>
                     <td>
                       {activePlan

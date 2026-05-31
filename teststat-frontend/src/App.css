@@ -131,6 +131,13 @@
   padding-top: 12px;
 }
 
+.sidebar-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 .settings-button {
   width: 100%;
   min-height: 38px;
@@ -155,6 +162,12 @@
 
 .settings-button:hover {
   background: #f1f4f8;
+}
+
+.pb-chart-button.selected {
+  border-color: #c8d8ff;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .settings-button:disabled,
@@ -865,17 +878,12 @@
   white-space: nowrap;
 }
 
-.active-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  min-height: 20px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: #e7f6ef;
-  color: #147d54;
-  font-size: 11px;
-  font-weight: 700;
+.active-plan-radio {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
 }
 
 .table-actions {
@@ -1258,6 +1266,14 @@
 .modal-close {
   width: 34px;
   height: 34px;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .settings-panel {

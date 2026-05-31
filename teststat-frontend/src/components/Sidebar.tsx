@@ -1,15 +1,17 @@
-import { RefreshCw, Settings } from 'lucide-react'
+import { ChartLine, RefreshCw, Settings } from 'lucide-react'
 import type { ProjectItem } from '../api/types'
-import type { ApiStatus } from '../types/ui'
+import type { ApiStatus, ViewMode } from '../types/ui'
 import { LockIcon } from './icons/LockIcon'
 
 interface ProjectNavProps {
   projects: ProjectItem[]
   selectedTestingId: number | null
+  viewMode: ViewMode
   loading: boolean
   onSelect: (testingId: number) => void
   onCreate: () => void
   onRefresh: () => void
+  onPbChart: () => void
   onSettings: () => void
 }
 
@@ -17,10 +19,12 @@ export function Sidebar({
   apiStatus,
   projects,
   selectedTestingId,
+  viewMode,
   loading,
   onSelect,
   onCreate,
   onRefresh,
+  onPbChart,
   onSettings,
 }: ProjectNavProps & { apiStatus: ApiStatus }) {
   return (
@@ -29,10 +33,12 @@ export function Sidebar({
       <ProjectNav
         projects={projects}
         selectedTestingId={selectedTestingId}
+        viewMode={viewMode}
         loading={loading}
         onSelect={onSelect}
         onCreate={onCreate}
         onRefresh={onRefresh}
+        onPbChart={onPbChart}
         onSettings={onSettings}
       />
     </aside>
@@ -68,10 +74,12 @@ function formatRate(value: number | null | undefined) {
 function ProjectNav({
   projects,
   selectedTestingId,
+  viewMode,
   loading,
   onSelect,
   onCreate,
   onRefresh,
+  onPbChart,
   onSettings,
 }: ProjectNavProps) {
   const activeProjects = projects.filter((project) => !project.archived)
@@ -112,6 +120,18 @@ function ProjectNav({
           />
         </details>
       )}
+      <div className="sidebar-shortcuts">
+        <button
+          className={`settings-button pb-chart-button ${viewMode === 'overview' ? 'selected' : ''}`}
+          type="button"
+          onClick={onPbChart}
+          disabled={loading || selectedTestingId === null}
+          title="選択中プロジェクトのPB図を表示"
+        >
+          <ChartLine className="settings-button-icon" aria-hidden="true" strokeWidth={2.1} />
+          PB図
+        </button>
+      </div>
       <div className="sidebar-footer">
         <button className="settings-button" type="button" onClick={onSettings} disabled={loading}>
           <Settings className="settings-button-icon" aria-hidden="true" strokeWidth={2.1} />

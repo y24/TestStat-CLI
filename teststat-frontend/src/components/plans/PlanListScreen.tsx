@@ -1,6 +1,7 @@
 import type { PlanItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
+import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
 
 export function PlanListScreen({
@@ -18,8 +19,7 @@ export function PlanListScreen({
   onToggleOverall,
   onCreate,
   onManage,
-  onActivate,
-  onDelete,
+  onSaveModal,
   onCloseModal,
 }: {
   projectName: string
@@ -36,8 +36,7 @@ export function PlanListScreen({
   onToggleOverall: (checked: boolean) => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
-  onActivate: (plan: PlanItem) => void
-  onDelete: (plan: PlanItem) => void
+  onSaveModal: (changes: PlanVersionModalChanges) => void
   onCloseModal: () => void
 }) {
   return (
@@ -45,11 +44,11 @@ export function PlanListScreen({
       <header className="content-header">
         <div>
           <div className="eyebrow">{projectName}</div>
-          <h1>テスト計画</h1>
+          <h1>テスト計画入力</h1>
         </div>
         <div className="header-actions">
           <button className="secondary-button" type="button" onClick={onBack}>
-            ダッシュボード
+            PB図
           </button>
         </div>
       </header>
@@ -74,8 +73,7 @@ export function PlanListScreen({
           label={modalLabel}
           plans={selectedModalPlans}
           submitting={submitting}
-          onActivate={onActivate}
-          onDelete={onDelete}
+          onSave={onSaveModal}
           onClose={onCloseModal}
         />
       )}

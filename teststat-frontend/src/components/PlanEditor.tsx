@@ -4,11 +4,12 @@ import { activatePlan, createPlan, deletePlan, fetchHolidays, fetchPlans, fetchP
 import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
 import { getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
-import { buildEvenDaily, displayLabel, parseDailyCsv } from '../utils/plans'
+import { buildEvenDaily, parseDailyCsv } from '../utils/plans'
 import { useConfirmDialog } from './confirmDialogContext'
 import { PlanCreateScreen } from './plans/PlanCreateScreen'
 import { PlanListScreen } from './plans/PlanListScreen'
 import type { PlanFormState } from './plans/planFormTypes'
+import type { PlanVersionModalChanges } from './plans/PlanVersionModal'
 
 interface PlanResult {
   testingId: number
@@ -306,28 +307,24 @@ export function PlanEditor({
       .finally(() => setSubmitting(false))
   }
 
-  const handleActivate = (plan: PlanItem) => {
+  const handleSaveModalChanges = (changes: PlanVersionModalChanges) => {
+    const targetPlans = plans.filter((plan) => changes.deletedPlanIds.includes(plan.id))
+    const activePlanChanged = changes.activePlanId !== selectedModalPlans.find((plan) => plan.is_active)?.id
+    const activePlanDeleted = targetPlans.some((plan) => plan.id === changes.activePlanId)
     setSubmitting(true)
-    activatePlan(plan.id)
+    Promise.all(targetPlans.map((plan) => deletePlan(plan.id)))
+      .then(() =>
+        changes.activePlanId !== null && activePlanChanged && !activePlanDeleted
+          ? activatePlan(changes.activePlanId).then(() => undefined)
+          : Promise.resolve(),
+      )
       .then(() => {
+        setModalLabel(undefined)
         loadPlans()
         onChanged()
       })
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
-  }
-
-  const handleDeletePlan = async (plan: PlanItem) => {
-    const confirmed = await confirm({
-      title: '計画の削除',
-      message: `計画 ${displayLabel(plan.label)} v${plan.version} を削除します。`,
-      confirmLabel: '削除',
-      danger: true,
-    })
-    if (!confirmed) {
-      return
-    }
-    deletePlans([plan])
   }
 
   if (mode === 'create') {
@@ -365,8 +362,7 @@ export function PlanEditor({
       onToggleOverall={handleToggleOverall}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}
-      onActivate={handleActivate}
-      onDelete={handleDeletePlan}
+      onSaveModal={handleSaveModalChanges}
       onCloseModal={() => setModalLabel(undefined)}
     />
   )

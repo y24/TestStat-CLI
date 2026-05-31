@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Settings } from 'lucide-react'
 import { createHoliday, fetchHolidays, syncHolidays } from '../api/client'
 import type { HolidayItem } from '../api/types'
 import { formatDate } from '../utils/date'
@@ -134,7 +135,10 @@ export function SettingsScreen({
     <div className="content-shell">
       <header className="content-header">
         <div>
-          <h1>設定</h1>
+          <h1 className="title-with-icon">
+            <Settings className="title-icon" aria-hidden="true" />
+            <span>設定</span>
+          </h1>
         </div>
       </header>
 

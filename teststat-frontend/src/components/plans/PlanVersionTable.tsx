@@ -1,3 +1,4 @@
+import { ChartLine } from 'lucide-react'
 import type { PlanItem } from '../../api/types'
 import { displayLabel } from '../../utils/plans'
 
@@ -29,7 +30,7 @@ export function PlanVersionTable({
     <div className="plan-list-panel">
       <div className="plan-panel-header">
         <div>
-          <div className="panel-title">計画バージョン</div>
+          <div className="panel-title">テスト計画一覧</div>
           <div className="panel-subtitle">
             {useOverallPlan ? '全体計画を1つだけ管理します。' : '実績データのテスト種別ごとに計画を管理します。'}
           </div>
@@ -98,12 +99,13 @@ export function PlanVersionTable({
                           </button>
                         )}
                         <button
-                          className="primary-button compact"
+                          className="primary-button compact icon-text-button"
                           type="button"
                           disabled={submitting}
                           onClick={() => onCreate(label)}
                         >
-                          作成
+                          <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />
+                          <span>作成</span>
                         </button>
                       </div>
                     </td>

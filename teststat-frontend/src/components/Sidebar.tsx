@@ -1,4 +1,4 @@
-import { RefreshCw, Settings } from 'lucide-react'
+import { FolderKanban, Plus, RefreshCw, Settings } from 'lucide-react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
 import { LockIcon } from './icons/LockIcon'
@@ -80,8 +80,9 @@ function ProjectNav({
   return (
     <div className="project-nav">
       <div className="nav-actions">
-        <button className="primary-button" type="button" onClick={onCreate} disabled={loading}>
-          + プロジェクト作成
+        <button className="primary-button nav-create-button" type="button" onClick={onCreate} disabled={loading}>
+          <Plus className="nav-create-icon" aria-hidden="true" strokeWidth={2.4} />
+          <span>プロジェクト作成</span>
         </button>
         <button
           className="icon-button"
@@ -141,6 +142,7 @@ function ProjectList({
           onClick={() => onSelect(project.testing_id)}
         >
           <span className="project-name-row">
+            <FolderKanban className="project-list-icon" aria-hidden="true" />
             {project.archived && <LockIcon />}
             <span className="project-name">{project.name}</span>
           </span>

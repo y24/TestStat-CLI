@@ -3,7 +3,7 @@ import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ClipboardList } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -39,7 +39,7 @@ export function PlanListScreen({
   onCloseModal: () => void
 }) {
   return (
-    <div className="content-shell">
+    <div className="content-shell plan-screen">
       <header className="content-header">
         <div className="header-title-row">
           <button
@@ -52,7 +52,10 @@ export function PlanListScreen({
             <ArrowLeft aria-hidden="true" />
           </button>
           <div>
-            <h1>テスト計画入力</h1>
+            <h1 className="title-with-icon">
+              <ClipboardList className="title-icon" aria-hidden="true" />
+              <span>テスト計画入力</span>
+            </h1>
           </div>
         </div>
       </header>

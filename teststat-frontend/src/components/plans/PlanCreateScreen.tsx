@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react'
 import type { PlanFormState } from './planFormTypes'
 import { PlanCreateForm } from './PlanCreateForm'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChartLine } from 'lucide-react'
 
 export function PlanCreateScreen({
   loading,
@@ -29,7 +29,7 @@ export function PlanCreateScreen({
   onSubmit: (event: FormEvent) => void
 }) {
   return (
-    <div className="content-shell">
+    <div className="content-shell plan-screen">
       <header className="content-header">
         <div className="header-title-row">
           <button
@@ -42,7 +42,10 @@ export function PlanCreateScreen({
             <ArrowLeft aria-hidden="true" />
           </button>
           <div>
-            <h1>新バージョン作成</h1>
+            <h1 className="title-with-icon">
+              <ChartLine className="title-icon" aria-hidden="true" />
+              <span>計画線の作成</span>
+            </h1>
           </div>
         </div>
       </header>

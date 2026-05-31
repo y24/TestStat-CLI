@@ -56,6 +56,19 @@
   margin-bottom: 12px;
 }
 
+.nav-create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.nav-create-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
 .nav-message {
   color: var(--muted);
   font-size: 12px;
@@ -103,6 +116,14 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+.project-list-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: #5e6a78;
+  stroke-width: 2.1;
 }
 
 .project-name-row .lock-icon {
@@ -210,6 +231,20 @@
   letter-spacing: 0;
 }
 
+.title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.title-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: #2f6fed;
+  stroke-width: 2.2;
+}
+
 .header-title-row {
   display: flex;
   align-items: flex-start;
@@ -236,6 +271,10 @@
   font-size: 23px;
 }
 
+.plan-screen .content-header h1 {
+  font-size: 23px;
+}
+
 .project-title {
   display: flex;
   align-items: center;
@@ -245,6 +284,10 @@
 
 .project-title .lock-icon {
   flex: 0 0 20px;
+}
+
+.project-title .title-icon {
+  margin-right: 1px;
 }
 
 .project-title span {
@@ -770,6 +813,12 @@
   align-items: center;
   gap: 7px;
   line-height: 1;
+}
+
+.button-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
 }
 
 .lock-icon {

@@ -31,8 +31,7 @@ export function PlanCreateForm({
     <form className="editor-form plan-form wide" onSubmit={onSubmit}>
       <div className="create-target">
         <div>
-          <div className="panel-title">新バージョン作成</div>
-          <div className="panel-subtitle">対象: {displayLabel(targetLabel)}</div>
+          <div className="panel-title">対象: {displayLabel(targetLabel)}</div>
         </div>
       </div>
       {formError && <div className="form-error">{formError}</div>}
@@ -116,7 +115,7 @@ export function PlanCreateForm({
           disabled={submitting}
           onChange={(event) => onFormChange({ ...form, activate: event.target.checked })}
         />
-        <span>作成後に有効な計画にする</span>
+        <span>作成後に有効化する</span>
       </label>
       <div className="form-actions">
         <button className="primary-button" type="submit" disabled={submitting}>

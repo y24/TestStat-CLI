@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.routers import progress_router
+from app.routers import progress_router, project_router, plan_router
 
 settings = get_settings()
 
@@ -20,6 +20,8 @@ app.add_middleware(
 )
 
 app.include_router(progress_router)
+app.include_router(project_router)
+app.include_router(plan_router)
 
 
 @app.get("/health")

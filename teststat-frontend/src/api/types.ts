@@ -75,6 +75,10 @@ export interface ProjectItem {
   updated_at: string
   has_actuals: boolean
   actuals_updated_at: string | null
+  actual_available_cases: number
+  actual_completed: number
+  actual_completed_rate: number
+  actual_all_completed: boolean
   active_plan_count: number
 }
 

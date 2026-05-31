@@ -5,9 +5,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.plan import Plan
-from app.models.progress import Testing
+from app.models.progress import FileProgress, Testing
 from app.models.project import Project
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+
+
+ActualSummary = tuple[int, int, float, bool]
 
 
 def _active_plan_count(db: Session, testing_id: int) -> int:
@@ -17,7 +20,47 @@ def _active_plan_count(db: Session, testing_id: int) -> int:
     ) or 0
 
 
-def _to_response(project: Project, testing: Testing | None, active_plan_count: int = 0) -> ProjectResponse:
+def _actual_summary(db: Session, testing_id: int) -> ActualSummary:
+    available_cases, completed, file_count, min_completed_rate = db.execute(
+        select(
+            func.coalesce(func.sum(FileProgress.available_cases), 0),
+            func.coalesce(func.sum(FileProgress.completed), 0),
+            func.count(FileProgress.id),
+            func.min(FileProgress.completed_rate),
+        ).where(FileProgress.testing_id == testing_id)
+    ).one()
+    completed_rate = round((completed / available_cases * 100), 2) if available_cases else 0
+    actual_all_completed = bool(file_count and min_completed_rate is not None and min_completed_rate >= 100)
+    return int(available_cases), int(completed), completed_rate, actual_all_completed
+
+
+def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSummary]:
+    rows = db.execute(
+        select(
+            FileProgress.testing_id,
+            func.coalesce(func.sum(FileProgress.available_cases), 0),
+            func.coalesce(func.sum(FileProgress.completed), 0),
+            func.count(FileProgress.id),
+            func.min(FileProgress.completed_rate),
+        )
+        .where(FileProgress.testing_id.in_(testing_ids))
+        .group_by(FileProgress.testing_id)
+    ).all()
+    summaries: dict[int, ActualSummary] = {}
+    for testing_id, available_cases, completed, file_count, min_completed_rate in rows:
+        completed_rate = round((completed / available_cases * 100), 2) if available_cases else 0
+        actual_all_completed = bool(file_count and min_completed_rate is not None and min_completed_rate >= 100)
+        summaries[testing_id] = (int(available_cases), int(completed), completed_rate, actual_all_completed)
+    return summaries
+
+
+def _to_response(
+    project: Project,
+    testing: Testing | None,
+    active_plan_count: int = 0,
+    actual_summary: ActualSummary = (0, 0, 0, False),
+) -> ProjectResponse:
+    actual_available_cases, actual_completed, actual_completed_rate, actual_all_completed = actual_summary
     return ProjectResponse(
         testing_id=project.testing_id,
         name=project.name,
@@ -27,6 +70,10 @@ def _to_response(project: Project, testing: Testing | None, active_plan_count: i
         updated_at=project.updated_at,
         has_actuals=testing is not None,
         actuals_updated_at=testing.updated_at if testing else None,
+        actual_available_cases=actual_available_cases,
+        actual_completed=actual_completed,
+        actual_completed_rate=actual_completed_rate,
+        actual_all_completed=actual_all_completed,
         active_plan_count=active_plan_count,
     )
 
@@ -48,14 +95,28 @@ def list_projects(db: Session) -> list[ProjectResponse]:
             .group_by(Plan.testing_id)
         ).all()
     )
-    return [_to_response(p, testings.get(p.testing_id), plan_counts.get(p.testing_id, 0)) for p in projects]
+    actual_summaries = _actual_summaries(db, tids)
+    return [
+        _to_response(
+            p,
+            testings.get(p.testing_id),
+            plan_counts.get(p.testing_id, 0),
+            actual_summaries.get(p.testing_id, (0, 0, 0, False)),
+        )
+        for p in projects
+    ]
 
 
 def get_project(db: Session, testing_id: int) -> ProjectResponse:
     project = db.scalar(select(Project).where(Project.testing_id == testing_id))
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="project not found")
-    return _to_response(project, _get_testing(db, testing_id), _active_plan_count(db, testing_id))
+    return _to_response(
+        project,
+        _get_testing(db, testing_id),
+        _active_plan_count(db, testing_id),
+        _actual_summary(db, testing_id),
+    )
 
 
 def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
@@ -72,7 +133,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
     )
     db.add(project)
     db.commit()
-    return _to_response(project, _get_testing(db, payload.testing_id), 0)
+    return _to_response(project, _get_testing(db, payload.testing_id), 0, _actual_summary(db, payload.testing_id))
 
 
 def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> ProjectResponse:
@@ -87,7 +148,12 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
         project.archived = payload.archived
     project.updated_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
-    return _to_response(project, _get_testing(db, testing_id), _active_plan_count(db, testing_id))
+    return _to_response(
+        project,
+        _get_testing(db, testing_id),
+        _active_plan_count(db, testing_id),
+        _actual_summary(db, testing_id),
+    )
 
 
 def delete_project(db: Session, testing_id: int) -> None:

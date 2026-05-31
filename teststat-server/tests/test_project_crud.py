@@ -91,6 +91,84 @@ class TestProjectCRUD(unittest.TestCase):
         self.assertTrue(p.has_actuals)
         self.assertIsNotNone(p.actuals_updated_at)
 
+    def test_actual_summary_when_file_progress_exists(self):
+        from app.models.progress import FileProgress, Testing
+        from datetime import datetime
+
+        t = Testing(testing_id=5002, project_name="CLI Project", updated_at=datetime(2026, 5, 20, 18, 0))
+        self.db.add(t)
+        self.db.add_all(
+            [
+                FileProgress(
+                    testing_id=5002,
+                    file_name="a.xlsx",
+                    total_cases=10,
+                    available_cases=10,
+                    completed=10,
+                    executed=10,
+                    completed_rate=100,
+                    sent_at=datetime(2026, 5, 20, 18, 0),
+                ),
+                FileProgress(
+                    testing_id=5002,
+                    file_name="b.xlsx",
+                    total_cases=5,
+                    available_cases=5,
+                    completed=3,
+                    executed=4,
+                    completed_rate=60,
+                    sent_at=datetime(2026, 5, 20, 18, 0),
+                ),
+            ]
+        )
+        self.db.commit()
+        create_project(self.db, ProjectCreate(testing_id=5002, name="集計ありP"))
+
+        p = get_project(self.db, 5002)
+
+        self.assertEqual(p.actual_available_cases, 15)
+        self.assertEqual(p.actual_completed, 13)
+        self.assertEqual(p.actual_completed_rate, 86.67)
+        self.assertFalse(p.actual_all_completed)
+
+    def test_actual_all_completed_when_every_file_is_100_percent(self):
+        from app.models.progress import FileProgress, Testing
+        from datetime import datetime
+
+        t = Testing(testing_id=5003, project_name="CLI Project", updated_at=datetime(2026, 5, 20, 18, 0))
+        self.db.add(t)
+        self.db.add_all(
+            [
+                FileProgress(
+                    testing_id=5003,
+                    file_name="a.xlsx",
+                    total_cases=10,
+                    available_cases=10,
+                    completed=10,
+                    executed=10,
+                    completed_rate=100,
+                    sent_at=datetime(2026, 5, 20, 18, 0),
+                ),
+                FileProgress(
+                    testing_id=5003,
+                    file_name="b.xlsx",
+                    total_cases=5,
+                    available_cases=5,
+                    completed=5,
+                    executed=5,
+                    completed_rate=100,
+                    sent_at=datetime(2026, 5, 20, 18, 0),
+                ),
+            ]
+        )
+        self.db.commit()
+        create_project(self.db, ProjectCreate(testing_id=5003, name="完了P"))
+
+        p = get_project(self.db, 5003)
+
+        self.assertEqual(p.actual_completed_rate, 100)
+        self.assertTrue(p.actual_all_completed)
+
 
 if __name__ == "__main__":
     unittest.main()

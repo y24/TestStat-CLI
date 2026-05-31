@@ -38,13 +38,19 @@ function SidebarHeader({ apiStatus }: { apiStatus: ApiStatus }) {
   return (
     <div className="sidebar-header">
       <div className="app-title">テスト状況</div>
-      <div className={`api-status api-status-${apiStatus}`}>
-        {apiStatus === 'checking' && 'API 接続確認中...'}
-        {apiStatus === 'ok' && 'API 接続OK'}
-        {apiStatus === 'error' && 'API 接続失敗'}
-      </div>
+      {apiStatus === 'error' && <div className="api-status api-status-error">API 接続失敗</div>}
     </div>
   )
+}
+
+function getProjectStatus(project: ProjectItem) {
+  if (!project.has_actuals) {
+    return '未開始'
+  }
+  if (project.actual_all_completed) {
+    return '完了'
+  }
+  return '進行中'
 }
 
 function ProjectNav({
@@ -112,7 +118,8 @@ function ProjectList({
           <span className="project-name">{project.name}</span>
           <span className="project-meta">
             #{project.testing_id}
-            {project.has_actuals ? ' / 実績あり' : ' / 実績なし'}
+            {' / '}
+            {getProjectStatus(project)}
           </span>
         </button>
       ))}

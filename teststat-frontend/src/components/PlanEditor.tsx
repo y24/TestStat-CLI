@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { activatePlan, createPlan, deletePlan, fetchPlans, fetchProgressFiles } from '../api/client'
-import type { FileProgressItem, PlanItem, ProjectItem } from '../api/types'
+import { activatePlan, createPlan, deletePlan, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
+import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
 import { formatDate, getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 import { buildEvenDaily, displayLabel, parseDailyCsv } from '../utils/plans'
@@ -25,6 +25,7 @@ interface PlanResult {
   testingId: number
   plans: PlanItem[]
   files: FileProgressItem[]
+  daily: DailyProgressItem[]
   error: string | null
 }
 
@@ -51,15 +52,17 @@ export function PlanEditor({
     Promise.all([
       fetchPlans(project.testing_id),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
+      fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
     ])
-      .then(([plans, files]) =>
-        setResult({ testingId: project.testing_id, plans, files, error: null }),
+      .then(([plans, files, daily]) =>
+        setResult({ testingId: project.testing_id, plans, files, daily, error: null }),
       )
       .catch((err) =>
         setResult({
           testingId: project.testing_id,
           plans: [],
           files: [],
+          daily: [],
           error: getErrorMessage(err),
         }),
       )
@@ -70,10 +73,11 @@ export function PlanEditor({
     Promise.all([
       fetchPlans(project.testing_id),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
+      fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
     ])
-      .then(([plans, files]) => {
+      .then(([plans, files, daily]) => {
         if (!ignore) {
-          setResult({ testingId: project.testing_id, plans, files, error: null })
+          setResult({ testingId: project.testing_id, plans, files, daily, error: null })
           const hasOverall = plans.some((plan) => plan.label === null)
           const hasIndividual = plans.some((plan) => plan.label !== null)
           setUseOverallPlan(hasOverall && !hasIndividual)
@@ -85,6 +89,7 @@ export function PlanEditor({
             testingId: project.testing_id,
             plans: [],
             files: [],
+            daily: [],
             error: getErrorMessage(err),
           })
         }
@@ -97,6 +102,7 @@ export function PlanEditor({
   const loading = result?.testingId !== project.testing_id
   const plans = result?.testingId === project.testing_id ? result.plans : []
   const files = result?.testingId === project.testing_id ? result.files : []
+  const daily = result?.testingId === project.testing_id ? result.daily : []
   const actualLabels = Array.from(
     new Set(files.map((file) => file.label).filter((label): label is string => Boolean(label))),
   ).sort((a, b) => a.localeCompare(b))
@@ -157,9 +163,11 @@ export function PlanEditor({
   }
 
   const openCreateScreen = (label: string | null) => {
+    const actualDateRange = getActualDateRange(label, daily, files)
+    const initialForm = createInitialPlanForm()
     setFormError(null)
     setForm({
-      ...createInitialPlanForm(),
+      ...initialForm,
       label: label ?? '',
       planned_total_cases:
         label === null
@@ -169,6 +177,8 @@ export function PlanEditor({
           : availableCasesByLabel[label] !== undefined
             ? String(availableCasesByLabel[label])
             : '',
+      start_date: actualDateRange?.start_date ?? initialForm.start_date,
+      end_date: actualDateRange?.end_date ?? initialForm.end_date,
     })
     setMode('create')
   }
@@ -463,4 +473,45 @@ function createInitialPlanForm(): PlanFormState {
     inputMode: 'even',
     dailyText: '',
   }
+}
+
+function getActualDateRange(
+  label: string | null,
+  daily: DailyProgressItem[],
+  files: FileProgressItem[],
+): { start_date: string; end_date: string } | null {
+  const matchesLabel = (actualLabel: string | null) => label === null || actualLabel === label
+  const dailyDates = daily
+    .filter((item) => matchesLabel(item.label))
+    .map((item) => item.date)
+    .filter(Boolean)
+
+  if (dailyDates.length > 0) {
+    return {
+      start_date: minString(dailyDates),
+      end_date: maxString(dailyDates),
+    }
+  }
+
+  const fileDates = files
+    .filter((file) => matchesLabel(file.label))
+    .flatMap((file) => [file.start_date, file.latest_update])
+    .filter((date): date is string => Boolean(date))
+
+  if (fileDates.length === 0) {
+    return null
+  }
+
+  return {
+    start_date: minString(fileDates),
+    end_date: maxString(fileDates),
+  }
+}
+
+function minString(values: string[]): string {
+  return values.reduce((min, value) => (value < min ? value : min))
+}
+
+function maxString(values: string[]): string {
+  return values.reduce((max, value) => (value > max ? value : max))
 }

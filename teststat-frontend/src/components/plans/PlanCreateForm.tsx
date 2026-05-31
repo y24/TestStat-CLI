@@ -1,50 +1,38 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { FormEvent } from 'react'
 import type { PlanFormState, PlanInputMode } from '../PlanEditor'
+import { enumerateDates, formatDate } from '../../utils/date'
+import { buildEvenDaily, displayLabel, parseDailyCsv } from '../../utils/plans'
 
 export function PlanCreateForm({
   form,
   formError,
-  labels,
-  availableCasesByLabel,
+  targetLabel,
+  availableCases,
   submitting,
   onFormChange,
   onSubmit,
 }: {
   form: PlanFormState
   formError: string | null
-  labels: string[]
-  availableCasesByLabel: Record<string, number>
+  targetLabel: string | null
+  availableCases: number
   submitting: boolean
   onFormChange: (form: PlanFormState) => void
   onSubmit: (event: FormEvent) => void
 }) {
-  const updateLabel = (label: string, fillActualCases = false) => {
-    const availableCases = availableCasesByLabel[label]
-    onFormChange({
-      ...form,
-      label,
-      planned_total_cases:
-        fillActualCases && availableCases !== undefined
-          ? String(availableCases)
-          : form.planned_total_cases,
-    })
-  }
+  const preview = useMemo(() => buildPreview(form), [form])
 
   return (
-    <form className="editor-form plan-form" onSubmit={onSubmit}>
-      <div className="panel-title">新バージョン作成</div>
+    <form className="editor-form plan-form wide" onSubmit={onSubmit}>
+      <div className="create-target">
+        <div>
+          <div className="panel-title">新バージョン作成</div>
+          <div className="panel-subtitle">対象: {displayLabel(targetLabel)}</div>
+        </div>
+        <div className="actuals-note compact-note">実績項目数: {availableCases || '-'}</div>
+      </div>
       {formError && <div className="form-error">{formError}</div>}
-      <label>
-        <span>テスト(label)</span>
-        <LabelCombobox
-          value={form.label}
-          labels={labels}
-          disabled={submitting}
-          onChange={(label) => updateLabel(label)}
-          onSelectCandidate={(label) => updateLabel(label, true)}
-        />
-      </label>
       <label>
         <span>変更理由</span>
         <input
@@ -124,11 +112,7 @@ export function PlanCreateForm({
         />
         <span>作成後に有効な計画にする</span>
       </label>
-      <div className="actuals-note">
-        {labels.length > 0
-          ? `実績label候補: ${labels.join(', ')}`
-          : '実績label候補はありません。labelは手入力できます。'}
-      </div>
+      <PlanPreview preview={preview} />
       <div className="form-actions">
         <button className="primary-button" type="submit" disabled={submitting}>
           {submitting ? '作成中...' : '計画を作成'}
@@ -138,87 +122,115 @@ export function PlanCreateForm({
   )
 }
 
-function LabelCombobox({
-  value,
-  labels,
-  disabled,
-  onChange,
-  onSelectCandidate,
-}: {
-  value: string
-  labels: string[]
-  disabled: boolean
-  onChange: (value: string) => void
-  onSelectCandidate: (value: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const normalizedValue = value.trim().toLocaleLowerCase()
-  const filteredLabels = useMemo(
-    () =>
-      normalizedValue
-        ? labels.filter((label) => label.toLocaleLowerCase().includes(normalizedValue))
-        : labels,
-    [labels, normalizedValue],
-  )
+function PlanPreview({ preview }: { preview: PreviewState }) {
+  if (preview.error) {
+    return <div className="plan-preview empty">{preview.error}</div>
+  }
 
-  const showMenu = open && !disabled && labels.length > 0
+  const width = 720
+  const height = 220
+  const padding = { top: 18, right: 20, bottom: 34, left: 46 }
+  const plotWidth = width - padding.left - padding.right
+  const plotHeight = height - padding.top - padding.bottom
+  const maxValue = Math.max(preview.plannedTotal, ...preview.points.map((point) => point.remaining), 1)
+  const xStep = preview.points.length > 1 ? plotWidth / (preview.points.length - 1) : 0
+  const path = preview.points
+    .map((point, index) => {
+      const x = padding.left + xStep * index
+      const y = padding.top + (1 - point.remaining / maxValue) * plotHeight
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+    })
+    .join(' ')
+  const areaPath = `${path} L ${padding.left + xStep * (preview.points.length - 1)} ${padding.top + plotHeight} L ${padding.left} ${padding.top + plotHeight} Z`
 
   return (
-    <div
-      className="label-combobox"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setOpen(false)
-        }
-      }}
-    >
-      <input
-        type="text"
-        value={value}
-        disabled={disabled}
-        onFocus={() => setOpen(true)}
-        onChange={(event) => {
-          onChange(event.target.value)
-          setOpen(true)
-        }}
-        placeholder="全体計画の場合は空欄"
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={showMenu}
-      />
-      <button
-        className="label-combobox-button"
-        type="button"
-        disabled={disabled || labels.length === 0}
-        onClick={() => setOpen((current) => !current)}
-        aria-label="label候補を開く"
-      >
-        <span aria-hidden="true" />
-      </button>
-      {showMenu && (
-        <div className="label-combobox-menu" role="listbox">
-          {filteredLabels.length > 0 ? (
-            filteredLabels.map((label) => (
-              <button
-                className={label === value ? 'label-combobox-option selected' : 'label-combobox-option'}
-                type="button"
-                key={label}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onSelectCandidate(label)
-                  setOpen(false)
-                }}
-                role="option"
-                aria-selected={label === value}
-              >
-                {label}
-              </button>
-            ))
-          ) : (
-            <div className="label-combobox-empty">一致する候補はありません</div>
-          )}
+    <div className="plan-preview">
+      <div className="plan-preview-header">
+        <div>
+          <div className="panel-title">計画線プレビュー</div>
+          <div className="panel-subtitle">
+            {formatDate(preview.points[0].date)} - {formatDate(preview.points.at(-1)?.date ?? preview.points[0].date)}
+          </div>
         </div>
-      )}
+        <div className="preview-stats">
+          <span>合計 {preview.dailyTotal}</span>
+          <span>日数 {preview.points.length}</span>
+        </div>
+      </div>
+      <svg className="preview-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="計画線プレビュー">
+        <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} />
+        <line
+          x1={padding.left}
+          y1={padding.top + plotHeight}
+          x2={padding.left + plotWidth}
+          y2={padding.top + plotHeight}
+        />
+        <text x={padding.left - 8} y={padding.top + 4} textAnchor="end">
+          {maxValue}
+        </text>
+        <text x={padding.left - 8} y={padding.top + plotHeight + 4} textAnchor="end">
+          0
+        </text>
+        <path className="preview-area" d={areaPath} />
+        <path className="preview-line" d={path} />
+        {preview.points.map((point, index) => {
+          const x = padding.left + xStep * index
+          const y = padding.top + (1 - point.remaining / maxValue) * plotHeight
+          if (preview.points.length > 20 && index !== 0 && index !== preview.points.length - 1) {
+            return null
+          }
+          return <circle key={point.date} cx={x} cy={y} r="3" />
+        })}
+      </svg>
     </div>
   )
+}
+
+interface PreviewPoint {
+  date: string
+  remaining: number
+}
+
+interface PreviewState {
+  points: PreviewPoint[]
+  plannedTotal: number
+  dailyTotal: number
+  error: string | null
+}
+
+function buildPreview(form: PlanFormState): PreviewState {
+  const total = Number(form.planned_total_cases)
+  if (!Number.isInteger(total) || total <= 0 || !form.start_date || !form.end_date) {
+    return { points: [], plannedTotal: 0, dailyTotal: 0, error: '項目数と期間を入力するとプレビューを表示します。' }
+  }
+  if (form.start_date > form.end_date) {
+    return { points: [], plannedTotal: total, dailyTotal: 0, error: '開始日と終了日を正しい順序で入力してください。' }
+  }
+
+  try {
+    const daily =
+      form.inputMode === 'even'
+        ? buildEvenDaily(form.start_date, form.end_date, total)
+        : parseDailyCsv(form.dailyText)
+    const dates = enumerateDates(form.start_date, form.end_date)
+    const dailyMap = new Map(daily.map((item) => [item.date, item.planned_count]))
+    let consumed = 0
+    const points = dates.map((date) => {
+      consumed += dailyMap.get(date) ?? 0
+      return { date, remaining: Math.max(total - consumed, 0) }
+    })
+    return {
+      points,
+      plannedTotal: total,
+      dailyTotal: daily.reduce((sum, item) => sum + item.planned_count, 0),
+      error: points.length === 0 ? '期間内の日付がありません。' : null,
+    }
+  } catch (err) {
+    return {
+      points: [],
+      plannedTotal: total,
+      dailyTotal: 0,
+      error: err instanceof Error ? err.message : 'プレビューを作成できません。',
+    }
+  }
 }

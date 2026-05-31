@@ -28,6 +28,8 @@ interface PlanResult {
   error: string | null
 }
 
+type PlanEditorMode = 'list' | 'create'
+
 export function PlanEditor({
   project,
   onBack,
@@ -40,6 +42,9 @@ export function PlanEditor({
   const [result, setResult] = useState<PlanResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [mode, setMode] = useState<PlanEditorMode>('list')
+  const [useOverallPlan, setUseOverallPlan] = useState(false)
+  const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
 
   const loadPlans = () => {
@@ -69,6 +74,9 @@ export function PlanEditor({
       .then(([plans, files]) => {
         if (!ignore) {
           setResult({ testingId: project.testing_id, plans, files, error: null })
+          const hasOverall = plans.some((plan) => plan.label === null)
+          const hasIndividual = plans.some((plan) => plan.label !== null)
+          setUseOverallPlan(hasOverall && !hasIndividual)
         }
       })
       .catch((err) => {
@@ -89,8 +97,14 @@ export function PlanEditor({
   const loading = result?.testingId !== project.testing_id
   const plans = result?.testingId === project.testing_id ? result.plans : []
   const files = result?.testingId === project.testing_id ? result.files : []
-  const labels = Array.from(
+  const actualLabels = Array.from(
     new Set(files.map((file) => file.label).filter((label): label is string => Boolean(label))),
+  ).sort((a, b) => a.localeCompare(b))
+  const labels = Array.from(
+    new Set([
+      ...actualLabels,
+      ...plans.map((plan) => plan.label).filter((label): label is string => Boolean(label)),
+    ]),
   ).sort((a, b) => a.localeCompare(b))
   const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
     if (file.label) {
@@ -98,6 +112,66 @@ export function PlanEditor({
     }
     return casesByLabel
   }, {})
+  const overallAvailableCases = Object.values(availableCasesByLabel).reduce(
+    (total, count) => total + count,
+    0,
+  )
+  const selectedModalPlans =
+    modalLabel === undefined
+      ? []
+      : plans.filter((plan) => (modalLabel === null ? plan.label === null : plan.label === modalLabel))
+
+  const deletePlans = (targetPlans: PlanItem[]) => {
+    const replacementPlans = findReplacementPlansAfterDelete(plans, targetPlans)
+    setSubmitting(true)
+    Promise.all(targetPlans.map((plan) => deletePlan(plan.id)))
+      .then(() => Promise.all(replacementPlans.map((plan) => activatePlan(plan.id))))
+      .then(() => {
+        loadPlans()
+        onChanged()
+      })
+      .catch((err) => setFormError(getErrorMessage(err)))
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleToggleOverall = (checked: boolean) => {
+    if (checked === useOverallPlan || submitting) {
+      return
+    }
+    const conflictingPlans = plans.filter((plan) => (checked ? plan.label !== null : plan.label === null))
+    if (conflictingPlans.length === 0) {
+      setUseOverallPlan(checked)
+      return
+    }
+
+    const confirmed = window.confirm(
+      checked
+        ? '全体計画に切り替えるため、入力済みの個別計画をすべて削除します。続行しますか。'
+        : '個別計画に切り替えるため、入力済みの全体計画を削除します。続行しますか。',
+    )
+    if (!confirmed) {
+      return
+    }
+    setUseOverallPlan(checked)
+    deletePlans(conflictingPlans)
+  }
+
+  const openCreateScreen = (label: string | null) => {
+    setFormError(null)
+    setForm({
+      ...createInitialPlanForm(),
+      label: label ?? '',
+      planned_total_cases:
+        label === null
+          ? overallAvailableCases > 0
+            ? String(overallAvailableCases)
+            : ''
+          : availableCasesByLabel[label] !== undefined
+            ? String(availableCasesByLabel[label])
+            : '',
+    })
+    setMode('create')
+  }
 
   const submitPlan = (event: FormEvent) => {
     event.preventDefault()
@@ -134,25 +208,41 @@ export function PlanEditor({
       return
     }
 
+    const targetLabel = form.label.trim() || null
+    const conflictingPlans = plans.filter((plan) =>
+      targetLabel === null ? plan.label !== null : plan.label === null,
+    )
+    if (conflictingPlans.length > 0) {
+      const confirmed = window.confirm(
+        targetLabel === null
+          ? '全体計画を作成するため、入力済みの個別計画をすべて削除します。続行しますか。'
+          : '個別計画を作成するため、入力済みの全体計画を削除します。続行しますか。',
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     setSubmitting(true)
-    createPlan(project.testing_id, {
-      label: form.label.trim() || null,
-      reason: form.reason.trim() || null,
-      planned_total_cases: plannedTotal,
-      start_date: form.start_date,
-      end_date: form.end_date,
-      activate: form.activate,
-      daily,
-    })
+    const cleanup = conflictingPlans.length > 0
+      ? Promise.all(conflictingPlans.map((plan) => deletePlan(plan.id)))
+      : Promise.resolve()
+    cleanup
+      .then(() =>
+        createPlan(project.testing_id, {
+          label: targetLabel,
+          reason: form.reason.trim() || null,
+          planned_total_cases: plannedTotal,
+          start_date: form.start_date,
+          end_date: form.end_date,
+          activate: form.activate,
+          daily,
+        }),
+      )
       .then(() => {
-        setForm({
-          ...form,
-          reason: '',
-          planned_total_cases: '',
-          dailyText: '',
-        })
         loadPlans()
         onChanged()
+        setMode('list')
       })
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
@@ -174,14 +264,7 @@ export function PlanEditor({
     if (!confirmed) {
       return
     }
-    setSubmitting(true)
-    deletePlan(plan.id)
-      .then(() => {
-        loadPlans()
-        onChanged()
-      })
-      .catch((err) => setFormError(getErrorMessage(err)))
-      .finally(() => setSubmitting(false))
+    deletePlans([plan])
   }
 
   return (
@@ -189,10 +272,20 @@ export function PlanEditor({
       <header className="content-header">
         <div>
           <div className="eyebrow">{project.name}</div>
-          <h1>テスト計画</h1>
+          <h1>{mode === 'create' ? '新バージョン作成' : 'テスト計画'}</h1>
           <div className="header-meta">testing_id: {project.testing_id}</div>
         </div>
         <div className="header-actions">
+          {mode === 'create' && (
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={submitting}
+              onClick={() => setMode('list')}
+            >
+              計画編集へ戻る
+            </button>
+          )}
           <button className="secondary-button" type="button" onClick={onBack}>
             ダッシュボード
           </button>
@@ -203,28 +296,159 @@ export function PlanEditor({
       {!loading && result?.error && (
         <div className="form-error">計画を取得できませんでした: {result.error}</div>
       )}
-      {!loading && !result?.error && (
-        <section className="plan-layout">
-          <PlanVersionTable
-            plans={plans}
-            submitting={submitting}
-            onActivate={handleActivate}
-            onDelete={handleDeletePlan}
-            formatDate={formatDate}
-          />
-          <PlanCreateForm
-            form={form}
-            formError={formError}
-            labels={labels}
-            availableCasesByLabel={availableCasesByLabel}
-            submitting={submitting}
-            onFormChange={setForm}
-            onSubmit={submitPlan}
-          />
-        </section>
+      {!loading && !result?.error && mode === 'list' && (
+        <PlanVersionTable
+          labels={labels}
+          actualLabels={actualLabels}
+          plans={plans}
+          useOverallPlan={useOverallPlan}
+          submitting={submitting}
+          onToggleOverall={handleToggleOverall}
+          onCreate={openCreateScreen}
+          onManage={(label) => setModalLabel(label)}
+          formatDate={formatDate}
+        />
+      )}
+      {!loading && !result?.error && mode === 'create' && (
+        <PlanCreateForm
+          form={form}
+          formError={formError}
+          targetLabel={form.label.trim() || null}
+          availableCases={form.label.trim() ? availableCasesByLabel[form.label.trim()] : overallAvailableCases}
+          submitting={submitting}
+          onFormChange={setForm}
+          onSubmit={submitPlan}
+        />
+      )}
+      {modalLabel !== undefined && (
+        <PlanVersionModal
+          label={modalLabel}
+          plans={selectedModalPlans}
+          submitting={submitting}
+          onActivate={handleActivate}
+          onDelete={handleDeletePlan}
+          onClose={() => setModalLabel(undefined)}
+        />
       )}
     </div>
   )
+}
+
+function PlanVersionModal({
+  label,
+  plans,
+  submitting,
+  onActivate,
+  onDelete,
+  onClose,
+}: {
+  label: string | null
+  plans: PlanItem[]
+  submitting: boolean
+  onActivate: (plan: PlanItem) => void
+  onDelete: (plan: PlanItem) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plan-version-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div>
+            <div className="eyebrow">{displayLabel(label)}</div>
+            <h2 id="plan-version-modal-title">版の変更/削除</h2>
+          </div>
+          <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="閉じる">
+            x
+          </button>
+        </div>
+        <div className="plan-table-wrap">
+          <table className="plan-table">
+            <thead>
+              <tr>
+                <th>版</th>
+                <th>項目数</th>
+                <th>期間</th>
+                <th>理由</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map((plan) => (
+                <tr key={plan.id} className={plan.is_active ? 'active-plan-row' : ''}>
+                  <td>
+                    v{plan.version}
+                    {plan.is_active && <span className="active-badge">有効</span>}
+                  </td>
+                  <td>{plan.planned_total_cases}</td>
+                  <td>
+                    {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
+                  </td>
+                  <td>{plan.reason || '-'}</td>
+                  <td>
+                    <div className="table-actions">
+                      <button
+                        className="secondary-button compact"
+                        type="button"
+                        disabled={plan.is_active || submitting}
+                        onClick={() => onActivate(plan)}
+                      >
+                        有効化
+                      </button>
+                      <button
+                        className="danger-button compact"
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => onDelete(plan)}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function findReplacementPlansAfterDelete(plans: PlanItem[], targetPlans: PlanItem[]): PlanItem[] {
+  const deletingIds = new Set(targetPlans.map((plan) => plan.id))
+  const deletedActivePlans = targetPlans.filter((plan) => plan.is_active)
+  const replacementPlans: PlanItem[] = []
+
+  deletedActivePlans.forEach((deletedPlan) => {
+    const alreadyQueued = replacementPlans.some((plan) => plan.label === deletedPlan.label)
+    if (alreadyQueued) {
+      return
+    }
+
+    const remainingVersions = plans.filter(
+      (plan) => plan.label === deletedPlan.label && !deletingIds.has(plan.id),
+    )
+    const alreadyActive = remainingVersions.some((plan) => plan.is_active)
+    if (alreadyActive) {
+      return
+    }
+
+    const latestVersion = remainingVersions.reduce<PlanItem | null>(
+      (latest, plan) => (latest === null || plan.version > latest.version ? plan : latest),
+      null,
+    )
+    if (latestVersion) {
+      replacementPlans.push(latestVersion)
+    }
+  })
+
+  return replacementPlans
 }
 
 function createInitialPlanForm(): PlanFormState {

@@ -42,7 +42,7 @@ export function Sidebar({
 function SidebarHeader({ apiStatus }: { apiStatus: ApiStatus }) {
   return (
     <div className="sidebar-header">
-      <div className="app-title">テスト状況</div>
+      <h1 className="app-title">TestStat Studio</h1>
       {apiStatus === 'error' && <div className="api-status api-status-error">API 接続失敗</div>}
     </div>
   )

@@ -16,18 +16,25 @@
 }
 
 .sidebar-header {
-  padding: 18px 18px 12px;
+  padding: 18px 16px 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .app-title {
-  font-size: 15px;
-  font-weight: 700;
+  margin: 0;
   color: var(--text);
-  margin-bottom: 4px;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .api-status {
+  margin-top: 6px;
   font-size: 11px;
   color: var(--muted);
 }

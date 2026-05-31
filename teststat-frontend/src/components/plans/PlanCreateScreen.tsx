@@ -4,7 +4,6 @@ import { PlanCreateForm } from './PlanCreateForm'
 import { ArrowLeft } from 'lucide-react'
 
 export function PlanCreateScreen({
-  projectName,
   loading,
   error,
   form,
@@ -17,7 +16,6 @@ export function PlanCreateScreen({
   onCancel,
   onSubmit,
 }: {
-  projectName: string
   loading: boolean
   error: string | null | undefined
   form: PlanFormState
@@ -44,7 +42,6 @@ export function PlanCreateScreen({
             <ArrowLeft aria-hidden="true" />
           </button>
           <div>
-            <div className="eyebrow">{projectName}</div>
             <h1>新バージョン作成</h1>
           </div>
         </div>

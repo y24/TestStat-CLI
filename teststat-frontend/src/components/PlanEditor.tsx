@@ -330,7 +330,6 @@ export function PlanEditor({
   if (mode === 'create') {
     return (
       <PlanCreateScreen
-        projectName={project.name}
         loading={loading}
         error={result?.error}
         form={form}
@@ -348,7 +347,6 @@ export function PlanEditor({
 
   return (
     <PlanListScreen
-      projectName={project.name}
       loading={loading}
       error={result?.error}
       labels={labels}

@@ -6,7 +6,6 @@ import { PlanVersionTable } from './PlanVersionTable'
 import { ArrowLeft } from 'lucide-react'
 
 export function PlanListScreen({
-  projectName,
   loading,
   error,
   labels,
@@ -23,7 +22,6 @@ export function PlanListScreen({
   onSaveModal,
   onCloseModal,
 }: {
-  projectName: string
   loading: boolean
   error: string | null | undefined
   labels: string[]
@@ -54,7 +52,6 @@ export function PlanListScreen({
             <ArrowLeft aria-hidden="true" />
           </button>
           <div>
-            <div className="eyebrow">{projectName}</div>
             <h1>テスト計画入力</h1>
           </div>
         </div>

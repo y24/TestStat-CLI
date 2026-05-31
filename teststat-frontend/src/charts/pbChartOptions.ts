@@ -24,7 +24,6 @@ export function buildChartNotices(chart: PbChartResponse) {
   const notices: string[] = []
   const hasPlan = chart.planned_total_cases !== null
   const hasActuals = chart.available_cases > 0 && chart.series.some((item) => item.actual_remaining !== null)
-  const hasPastPlans = chart.past_plans.length > 0
   const hasNegativeDaily = chart.series.some(
     (item) =>
       (item.actual_completed_daily !== null && item.actual_completed_daily < 0) ||
@@ -37,9 +36,6 @@ export function buildChartNotices(chart: PbChartResponse) {
   if (!hasActuals) {
     notices.push('実績未受信')
   }
-  if (hasPastPlans) {
-    notices.push(`過去計画 ${chart.past_plans.length} 件`)
-  }
   if (hasNegativeDaily) {
     notices.push('負の日別値あり')
   }
@@ -49,6 +45,9 @@ export function buildChartNotices(chart: PbChartResponse) {
 export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers): PbChartOption {
   const dates = chart.series.map((item) => item.date)
   const series: PbChartOption['series'] = []
+  const plannedLineColor = '#8a94a6'
+  const pastPlanLineColor = 'rgba(95, 107, 126, 0.42)'
+  const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
   const today = getTodayString()
   const showTodayLine = dates.includes(today)
   const todayMarkLine = showTodayLine
@@ -92,7 +91,8 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
         data: dates.map((date) => remainingByDate.get(date) ?? null),
         connectNulls: false,
         symbol: 'none',
-        lineStyle: { type: 'dashed', width: 1, color: 'rgba(95, 107, 126, 0.42)' },
+        lineStyle: { type: 'dashed', width: 1, color: pastPlanLineColor },
+        itemStyle: { color: pastPlanLineColor },
         z: 3,
       })
     })
@@ -105,7 +105,8 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
       data: chart.series.map((item) => item.planned_remaining),
       connectNulls: false,
       symbol: 'none',
-      lineStyle: { type: 'dashed', width: 2, color: '#8a94a6' },
+      lineStyle: { type: 'dashed', width: 2, color: plannedLineColor },
+      itemStyle: { color: plannedLineColor },
       z: 5,
       markLine: !layers.actualLine ? todayMarkLine : undefined,
     })
@@ -126,6 +127,29 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
     })
   }
 
+  const legendData = Array.isArray(series)
+    ? series
+        .map((item) => item.name)
+        .filter((name): name is string => typeof name === 'string')
+        .map((name) => {
+          if (name === '計画未実施') {
+            return {
+              name,
+              icon: dashedLegendIcon,
+              itemStyle: { color: plannedLineColor },
+            }
+          }
+          if (name.startsWith('過去計画 ')) {
+            return {
+              name,
+              icon: dashedLegendIcon,
+              itemStyle: { color: pastPlanLineColor },
+            }
+          }
+          return name
+        })
+    : undefined
+
   return {
     animationDuration: 250,
     color: ['#8a94a6', '#2f6fed'],
@@ -140,6 +164,7 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
       itemHeight: 10,
       textStyle: { color: '#46515f' },
       type: 'scroll',
+      data: legendData,
     },
     grid: { left: 58, right: 24, top: 42, bottom: 58 },
     xAxis: {

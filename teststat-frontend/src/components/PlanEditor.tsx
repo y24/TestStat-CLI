@@ -47,6 +47,7 @@ export function PlanEditor({
   const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
+  const [initialCreateForm, setInitialCreateForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [holidayDates, setHolidayDates] = useState<Set<string>>(() => new Set())
 
   const loadPlans = () => {
@@ -188,8 +189,7 @@ export function PlanEditor({
   const openCreateScreen = (label: string | null) => {
     const actualDateRange = getActualDateRange(label, daily, files)
     const initialForm = createInitialPlanForm()
-    setFormError(null)
-    setForm({
+    const nextForm = {
       ...initialForm,
       label: label ?? '',
       planned_total_cases:
@@ -202,8 +202,22 @@ export function PlanEditor({
             : '',
       start_date: actualDateRange?.start_date ?? initialForm.start_date,
       end_date: actualDateRange?.end_date ?? initialForm.end_date,
-    })
+    }
+    setFormError(null)
+    setForm(nextForm)
+    setInitialCreateForm(nextForm)
     setMode('create')
+  }
+
+  const cancelCreate = () => {
+    if (!isSamePlanForm(form, initialCreateForm)) {
+      const confirmed = window.confirm('データが破棄されますが、よろしいですか？')
+      if (!confirmed) {
+        return
+      }
+    }
+    setFormError(null)
+    setMode('list')
   }
 
   const submitPlan = (event: FormEvent) => {
@@ -306,23 +320,14 @@ export function PlanEditor({
         <div>
           <div className="eyebrow">{project.name}</div>
           <h1>{mode === 'create' ? '新バージョン作成' : 'テスト計画'}</h1>
-          <div className="header-meta">testing_id: {project.testing_id}</div>
         </div>
-        <div className="header-actions">
-          {mode === 'create' && (
-            <button
-              className="secondary-button"
-              type="button"
-              disabled={submitting}
-              onClick={() => setMode('list')}
-            >
-              計画編集へ戻る
+        {mode === 'list' && (
+          <div className="header-actions">
+            <button className="secondary-button" type="button" onClick={onBack}>
+              ダッシュボード
             </button>
-          )}
-          <button className="secondary-button" type="button" onClick={onBack}>
-            ダッシュボード
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
       {loading && <div className="chart-state">計画を読み込み中...</div>}
@@ -351,6 +356,7 @@ export function PlanEditor({
           showReason={isCreatingNewVersion}
           submitting={submitting}
           onFormChange={setForm}
+          onCancel={cancelCreate}
           onSubmit={submitPlan}
         />
       )}
@@ -497,6 +503,19 @@ function createInitialPlanForm(): PlanFormState {
     inputMode: 'even',
     dailyText: '',
   }
+}
+
+function isSamePlanForm(left: PlanFormState, right: PlanFormState): boolean {
+  return (
+    left.label === right.label &&
+    left.reason === right.reason &&
+    left.planned_total_cases === right.planned_total_cases &&
+    left.start_date === right.start_date &&
+    left.end_date === right.end_date &&
+    left.activate === right.activate &&
+    left.inputMode === right.inputMode &&
+    left.dailyText === right.dailyText
+  )
 }
 
 function getActualDateRange(

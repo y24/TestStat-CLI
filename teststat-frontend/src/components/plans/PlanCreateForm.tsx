@@ -12,6 +12,7 @@ export function PlanCreateForm({
   showReason,
   submitting,
   onFormChange,
+  onCancel,
   onSubmit,
 }: {
   form: PlanFormState
@@ -21,6 +22,7 @@ export function PlanCreateForm({
   showReason: boolean
   submitting: boolean
   onFormChange: (form: PlanFormState) => void
+  onCancel: () => void
   onSubmit: (event: FormEvent) => void
 }) {
   const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
@@ -119,6 +121,9 @@ export function PlanCreateForm({
       <div className="form-actions">
         <button className="primary-button" type="submit" disabled={submitting}>
           {submitting ? '作成中...' : '計画を作成'}
+        </button>
+        <button className="secondary-button" type="button" disabled={submitting} onClick={onCancel}>
+          キャンセル
         </button>
       </div>
     </form>

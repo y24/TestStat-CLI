@@ -194,6 +194,41 @@ def _compute_past_plans(
         daily_by_plan[row[0]][row[1]] = row[2]
 
     result: list[PastPlanSeries] = []
+    if label is None:
+        plans_by_version: dict[int, list[Plan]] = defaultdict(list)
+        for plan in past_plans:
+            plans_by_version[plan.version].append(plan)
+
+        for version in sorted(plans_by_version, reverse=True):
+            plans = plans_by_version[version]
+            start_date = min(p.start_date for p in plans)
+            end_date = max(p.end_date for p in plans)
+            planned_total_cases = sum(p.planned_total_cases for p in plans)
+            daily_map: dict[date, int] = defaultdict(int)
+            for plan in plans:
+                for d, count in daily_by_plan.get(plan.id, {}).items():
+                    daily_map[d] += count
+
+            cumsum = 0
+            series_items: list[PastPlanSeriesItem] = []
+            for d in _date_range(start_date, end_date):
+                cnt = daily_map.get(d, 0)
+                cumsum += cnt
+                series_items.append(PastPlanSeriesItem(
+                    date=d,
+                    planned_remaining=planned_total_cases - cumsum,
+                    planned_completed_daily=cnt,
+                ))
+            result.append(PastPlanSeries(
+                plan_id=min(p.id for p in plans),
+                version=version,
+                label=None,
+                reason=None,
+                planned_total_cases=planned_total_cases,
+                series=series_items,
+            ))
+        return result
+
     for plan in past_plans:
         dm = daily_by_plan.get(plan.id, {})
         dates = _date_range(plan.start_date, plan.end_date)

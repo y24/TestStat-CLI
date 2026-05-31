@@ -107,6 +107,11 @@ function AppContent() {
 
   const handleProjectSaved = (project: ProjectItem) => {
     setHasUnsavedChanges(false)
+    handleProjectUpdated(project)
+    setViewMode('overview')
+  }
+
+  const handleProjectUpdated = (project: ProjectItem) => {
     setProjects((current) => {
       const exists = current.some((item) => item.testing_id === project.testing_id)
       const next = exists
@@ -115,7 +120,6 @@ function AppContent() {
       return sortProjects(next)
     })
     setSelectedTestingId(project.testing_id)
-    setViewMode('overview')
   }
 
   const handleDeleted = (testingId: number) => {
@@ -178,6 +182,7 @@ function AppContent() {
                   void runAfterDiscardConfirmation(() => setViewMode('overview'))
                 }}
                 onSaved={handleProjectSaved}
+                onProjectUpdated={handleProjectUpdated}
                 onDeleted={handleDeleted}
                 onDirtyChange={setHasUnsavedChanges}
               />

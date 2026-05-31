@@ -1,6 +1,7 @@
 import type { ProjectItem } from '../api/types'
 import { formatDateTime } from '../utils/date'
 import { PbChartPanel } from './PbChartPanel'
+import { LockIcon } from './icons/LockIcon'
 
 export function ProjectOverview({
   project,
@@ -31,7 +32,10 @@ export function ProjectOverview({
     <div className="content-shell project-overview">
       <header className="content-header">
         <div>
-          <h1>{project.name}</h1>
+          <h1 className="project-title">
+            {project.archived && <LockIcon />}
+            <span>{project.name}</span>
+          </h1>
           <div className={`project-status ${status.className}`}>
             <span className="status-dot" aria-hidden="true" />
             {status.label}
@@ -39,10 +43,10 @@ export function ProjectOverview({
         </div>
         <div className="header-actions">
           <button className="secondary-button" type="button" onClick={onEdit}>
-            編集
+            プロジェクト情報編集
           </button>
           <button className="primary-button" type="button" onClick={onPlans}>
-            計画を編集
+            テスト計画入力
           </button>
         </div>
       </header>

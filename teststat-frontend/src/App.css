@@ -98,6 +98,17 @@
   white-space: nowrap;
 }
 
+.project-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-name-row .lock-icon {
+  flex: 0 0 15px;
+}
+
 .project-meta {
   margin-top: 3px;
   color: var(--muted);
@@ -201,6 +212,16 @@
 
 .project-overview .content-header h1 {
   font-size: 23px;
+}
+
+.project-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-title .lock-icon {
+  flex: 0 0 20px;
 }
 
 .eyebrow,
@@ -347,7 +368,8 @@
 .breakdown-table td {
   border-bottom: 1px solid #d7dde7;
   padding: 9px 10px;
-  text-align: left;
+  text-align: center;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
@@ -370,12 +392,14 @@
 .breakdown-file-cell {
   max-width: 320px;
   overflow: hidden;
+  text-align: left !important;
   text-overflow: ellipsis;
 }
 
 .result-header {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 22px;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -655,6 +679,27 @@
   gap: 8px;
   flex-wrap: wrap;
   padding-top: 4px;
+}
+
+.form-actions-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1;
+}
+
+.lock-icon {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  flex: 0 0 16px;
 }
 
 .plan-layout {
@@ -1014,7 +1059,6 @@
 }
 
 .danger-button {
-  margin-left: auto;
   background: #fff;
   border-color: #e6a9ba;
   color: #b4234f;
@@ -1030,7 +1074,6 @@
 .delete-action-tooltip {
   position: relative;
   display: inline-flex;
-  margin-left: auto;
 }
 
 .delete-action-tooltip .danger-button {
@@ -1326,6 +1369,10 @@
   }
 
   .danger-button {
+    margin-left: 0;
+  }
+
+  .form-actions-right {
     margin-left: 0;
   }
 

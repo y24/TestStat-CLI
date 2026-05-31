@@ -4,17 +4,16 @@ import { createProject, deleteProject, fetchProgressSummary, updateProject } fro
 import type { ProjectItem } from '../api/types'
 import { getErrorMessage } from '../utils/errors'
 import { useConfirmDialog } from './confirmDialogContext'
+import { LockIcon } from './icons/LockIcon'
 
 interface ProjectFormState {
   testing_id: string
   name: string
-  archived: boolean
 }
 
 const emptyForm: ProjectFormState = {
   testing_id: '',
   name: '',
-  archived: false,
 }
 
 export function ProjectEditor({
@@ -22,6 +21,7 @@ export function ProjectEditor({
   project,
   onCancel,
   onSaved,
+  onProjectUpdated,
   onDeleted,
   onDirtyChange,
 }: {
@@ -29,6 +29,7 @@ export function ProjectEditor({
   project: ProjectItem | null
   onCancel: () => void
   onSaved: (project: ProjectItem) => void
+  onProjectUpdated?: (project: ProjectItem) => void
   onDeleted?: (testingId: number) => void
   onDirtyChange: (dirty: boolean) => void
 }) {
@@ -38,7 +39,6 @@ export function ProjectEditor({
       ? {
           testing_id: String(project.testing_id),
           name: project.name,
-          archived: project.archived,
         }
       : emptyForm,
   )
@@ -52,7 +52,7 @@ export function ProjectEditor({
       mode === 'new'
         ? Boolean(form.testing_id.trim()) ||
           (Boolean(form.name.trim()) && form.name !== autoFilledNameRef.current)
-        : project !== null && (form.name !== project.name || form.archived !== project.archived)
+        : project !== null && form.name !== project.name
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
 
@@ -126,11 +126,24 @@ export function ProjectEditor({
           })
         : updateProject(testingId, {
             name: form.name.trim(),
-            archived: form.archived,
           })
 
     request
       .then(onSaved)
+      .catch((err) => setFormError(getErrorMessage(err)))
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleArchiveToggle = () => {
+    if (!project || !onProjectUpdated) {
+      return
+    }
+    setSubmitting(true)
+    setFormError(null)
+    updateProject(project.testing_id, {
+      archived: !project.archived,
+    })
+      .then(onProjectUpdated)
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
   }
@@ -202,17 +215,6 @@ export function ProjectEditor({
             required
           />
         </label>
-        {mode === 'edit' && (
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={form.archived}
-              disabled={submitting}
-              onChange={(event) => setForm({ ...form, archived: event.target.checked })}
-            />
-            <span>アーカイブ済みにする</span>
-          </label>
-        )}
 
         <div className="form-actions">
           <button className="primary-button" type="submit" disabled={submitting}>
@@ -222,19 +224,30 @@ export function ProjectEditor({
             キャンセル
           </button>
           {mode === 'edit' && (
-            <span
-              className="delete-action-tooltip"
-              data-tooltip={deleteDisabledReason ?? undefined}
-              tabIndex={deleteDisabledReason ? 0 : undefined}
-            >
+            <span className="form-actions-right">
               <button
-                className="danger-button"
+                className="secondary-button icon-text-button"
                 type="button"
-                onClick={handleDelete}
-                disabled={submitting || Boolean(deleteDisabledReason)}
+                onClick={handleArchiveToggle}
+                disabled={submitting}
               >
-                削除
+                <LockIcon unlocked={project?.archived} />
+                {project?.archived ? 'アーカイブ解除' : 'アーカイブ'}
               </button>
+              <span
+                className="delete-action-tooltip"
+                data-tooltip={deleteDisabledReason ?? undefined}
+                tabIndex={deleteDisabledReason ? 0 : undefined}
+              >
+                <button
+                  className="danger-button"
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={submitting || Boolean(deleteDisabledReason)}
+                >
+                  削除
+                </button>
+              </span>
             </span>
           )}
         </div>

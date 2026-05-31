@@ -1,5 +1,7 @@
+import { Settings } from 'lucide-react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
+import { LockIcon } from './icons/LockIcon'
 
 interface ProjectNavProps {
   projects: ProjectItem[]
@@ -105,35 +107,11 @@ function ProjectNav({
       )}
       <div className="sidebar-footer">
         <button className="settings-button" type="button" onClick={onSettings} disabled={loading}>
-          <SettingsIcon />
+          <Settings className="settings-button-icon" aria-hidden="true" strokeWidth={2.1} />
           設定
         </button>
       </div>
     </div>
-  )
-}
-
-function SettingsIcon() {
-  return (
-    <svg
-      className="settings-button-icon"
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M19.4 13.5a7.9 7.9 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A8 8 0 0 0 7 6.5l-2.4-1-2 3.5 2 1.5a7.9 7.9 0 0 0 0 3l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a8 8 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
 
@@ -155,7 +133,10 @@ function ProjectList({
           type="button"
           onClick={() => onSelect(project.testing_id)}
         >
-          <span className="project-name">{project.name}</span>
+          <span className="project-name-row">
+            {project.archived && <LockIcon />}
+            <span className="project-name">{project.name}</span>
+          </span>
           <span className="project-meta">
             #{project.testing_id}
             {' / '}

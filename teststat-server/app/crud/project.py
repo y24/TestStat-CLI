@@ -160,7 +160,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"testing_id {payload.testing_id} は既に登録されています",
+            detail=f"Testing ID {payload.testing_id} は既に登録されています",
         )
     project = Project(
         testing_id=payload.testing_id,

@@ -18,7 +18,7 @@ export function ProjectOverview({
     return (
       <div className="empty-state">
         <h1>プロジェクトを作成してください</h1>
-        <p>testing_id を登録すると、CLI から届いた実績と自動で紐付きます。</p>
+        <p>Testing ID を登録すると、CLI から届いた実績と自動で紐付きます。</p>
         <button className="primary-button large" type="button" onClick={onCreate}>
           + プロジェクト
         </button>

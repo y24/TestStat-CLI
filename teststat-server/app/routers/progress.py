@@ -21,21 +21,21 @@ def post_progress(payload: ProgressRequest, db: Session = Depends(get_db)) -> Pr
 def read_progress_summary(testing_id: int, db: Session = Depends(get_db)) -> ProgressSummaryResponse:
     summary = get_progress_summary(db, testing_id)
     if summary is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="testing_id not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Testing ID not found")
     return summary
 
 
 @router.get("/progress/{testing_id}/files", response_model=list[FileProgressItem])
 def read_progress_files(testing_id: int, db: Session = Depends(get_db)) -> list[FileProgressItem]:
     if get_progress_summary(db, testing_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="testing_id not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Testing ID not found")
     return get_file_progress(db, testing_id)
 
 
 @router.get("/progress/{testing_id}/daily", response_model=list[DailyProgressItem])
 def read_progress_daily(testing_id: int, db: Session = Depends(get_db)) -> list[DailyProgressItem]:
     if get_progress_summary(db, testing_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="testing_id not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Testing ID not found")
     return get_daily_progress(db, testing_id)
 
 

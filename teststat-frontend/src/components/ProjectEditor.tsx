@@ -109,7 +109,7 @@ export function ProjectEditor({
 
     const testingId = Number(form.testing_id)
     if (!Number.isInteger(testingId) || testingId <= 0) {
-      setFormError('testing_id は正の整数で入力してください')
+      setFormError('Testing ID は正の整数で入力してください')
       return
     }
     if (!form.name.trim()) {
@@ -158,7 +158,7 @@ export function ProjectEditor({
     }
     const confirmed = await confirm({
       title: 'プロジェクトの削除',
-      message: `testing_id ${project.testing_id} のプロジェクトと計画を削除します。実績データは削除されません。`,
+      message: `Testing ID ${project.testing_id} のプロジェクトと計画を削除します。実績データは削除されません。`,
       confirmLabel: '削除',
       danger: true,
     })
@@ -185,7 +185,7 @@ export function ProjectEditor({
       <form className="editor-form" onSubmit={submit}>
         {formError && <div className="form-error">{formError}</div>}
         <label>
-          <span>testing_id</span>
+          <span>Testing ID</span>
           <input
             type="number"
             min="1"

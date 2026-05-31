@@ -1,16 +1,23 @@
 import type { ProjectItem } from '../api/types'
 import { formatDateTime } from '../utils/date'
+import {
+  getProgressStatusLevel,
+  type ProgressStatusLevel,
+  type ProgressStatusThresholds,
+} from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
 import { Pencil } from 'lucide-react'
 
 export function ProjectOverview({
   project,
+  progressStatusThresholds,
   onCreate,
   onEdit,
   onPlans,
 }: {
   project: ProjectItem | null
+  progressStatusThresholds: ProgressStatusThresholds
   onCreate: () => void
   onEdit: () => void
   onPlans: () => void
@@ -28,6 +35,7 @@ export function ProjectOverview({
   }
 
   const status = getProjectStatus(project)
+  const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
 
   return (
     <div className="content-shell project-overview">
@@ -60,7 +68,11 @@ export function ProjectOverview({
 
       <section className="summary-grid">
         <StatusTile label="完了率(対全体)" value={formatRate(project.actual_completed_rate)} />
-        <StatusTile label="完了率(対計画)" value={formatRate(project.actual_vs_plan_rate)} />
+        <StatusTile
+          label="完了率(対計画)"
+          value={formatRate(project.actual_vs_plan_rate)}
+          statusLevel={planStatusLevel}
+        />
         <StatusTile label="最終更新" value={formatDateTime(project.actuals_updated_at)} />
       </section>
 
@@ -86,11 +98,43 @@ function formatRate(value: number | null | undefined) {
   return `${value.toFixed(1)}%`
 }
 
-function StatusTile({ label, value }: { label: string; value: string }) {
+function StatusTile({
+  label,
+  value,
+  statusLevel,
+}: {
+  label: string
+  value: string
+  statusLevel?: ProgressStatusLevel
+}) {
   return (
     <div className="status-tile">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong className={statusLevel ? 'status-value with-indicator' : 'status-value'}>
+        {statusLevel && (
+          <span
+            className={`plan-status-indicator ${statusLevel}`}
+            aria-label={getProgressStatusLabel(statusLevel)}
+            title={getProgressStatusLabel(statusLevel)}
+          >
+            ●
+          </span>
+        )}
+        <span>{value}</span>
+      </strong>
     </div>
   )
+}
+
+function getProgressStatusLabel(level: ProgressStatusLevel) {
+  if (level === 'normal') {
+    return '正常'
+  }
+  if (level === 'caution') {
+    return '注意'
+  }
+  if (level === 'warning') {
+    return '警告'
+  }
+  return '状態なし'
 }

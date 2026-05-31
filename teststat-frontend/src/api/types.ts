@@ -79,6 +79,11 @@ export interface HolidaySyncResult {
   holidays: HolidayItem[]
 }
 
+export interface ProgressStatusThresholds {
+  caution: number
+  warning: number
+}
+
 // === 計画系（フロント新設バックエンド。Phase B1〜B3 で実装後に使う） ===
 
 export interface ProjectItem {

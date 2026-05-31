@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.routers import holiday_router, progress_router, project_router, plan_router
+from app.routers import holiday_router, progress_router, project_router, plan_router, setting_router
 
 settings = get_settings()
 
@@ -23,6 +23,7 @@ app.include_router(progress_router)
 app.include_router(project_router)
 app.include_router(plan_router)
 app.include_router(holiday_router)
+app.include_router(setting_router)
 
 
 @app.get("/health")

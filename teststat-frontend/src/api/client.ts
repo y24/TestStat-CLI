@@ -14,6 +14,7 @@ import type {
   HolidayItem,
   HolidayCreatePayload,
   HolidaySyncResult,
+  ProgressStatusThresholds,
 } from './types'
 
 // 開発時は vite.config のプロキシ経由で localhost:18000 へ転送される。
@@ -151,4 +152,13 @@ export const createHoliday = (payload: HolidayCreatePayload) =>
 export const syncHolidays = () =>
   request<HolidaySyncResult>('/api/v1/holidays/sync', {
     method: 'POST',
+  })
+
+// 設定: 進捗状態しきい値
+export const fetchProgressStatusThresholds = () =>
+  get<ProgressStatusThresholds>('/api/v1/settings/progress-status-thresholds')
+export const updateProgressStatusThresholds = (payload: ProgressStatusThresholds) =>
+  request<ProgressStatusThresholds>('/api/v1/settings/progress-status-thresholds', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
   })

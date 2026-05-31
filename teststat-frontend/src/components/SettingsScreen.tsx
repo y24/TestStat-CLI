@@ -4,10 +4,21 @@ import { createHoliday, fetchHolidays, syncHolidays } from '../api/client'
 import type { HolidayItem } from '../api/types'
 import { formatDate } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
+import {
+  DEFAULT_PROGRESS_STATUS_THRESHOLDS,
+  normalizeProgressStatusThresholds,
+  type ProgressStatusThresholds,
+} from '../utils/statusThresholds'
 
 const HOLIDAY_COLLAPSED_ROWS = 6
 
-export function SettingsScreen() {
+export function SettingsScreen({
+  progressStatusThresholds,
+  onProgressStatusThresholdsChange,
+}: {
+  progressStatusThresholds: ProgressStatusThresholds
+  onProgressStatusThresholdsChange: (thresholds: ProgressStatusThresholds) => Promise<ProgressStatusThresholds>
+}) {
   const [holidays, setHolidays] = useState<HolidayItem[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -16,6 +27,8 @@ export function SettingsScreen() {
   const [message, setMessage] = useState<string | null>(null)
   const [showAllHolidays, setShowAllHolidays] = useState(false)
   const [holidayForm, setHolidayForm] = useState({ date: '', name: '' })
+  const [thresholdForm, setThresholdForm] = useState(progressStatusThresholds)
+  const [savingThresholds, setSavingThresholds] = useState(false)
 
   const loadHolidays = () => {
     setLoading(true)
@@ -83,6 +96,40 @@ export function SettingsScreen() {
       .finally(() => setAdding(false))
   }
 
+  const handleSaveThresholds = (event: FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    setMessage(null)
+
+    const thresholds = normalizeProgressStatusThresholds(thresholdForm)
+    if (!(thresholds.caution > thresholds.warning)) {
+      setError('注意しきい値は警告しきい値より大きい値にしてください。')
+      return
+    }
+
+    setSavingThresholds(true)
+    onProgressStatusThresholdsChange(thresholds)
+      .then((saved) => {
+        setThresholdForm(saved)
+        setMessage('進捗状態のしきい値を保存しました。')
+      })
+      .catch((err) => setError(getErrorMessage(err)))
+      .finally(() => setSavingThresholds(false))
+  }
+
+  const handleResetThresholds = () => {
+    setError(null)
+    setMessage(null)
+    setSavingThresholds(true)
+    onProgressStatusThresholdsChange(DEFAULT_PROGRESS_STATUS_THRESHOLDS)
+      .then((saved) => {
+        setThresholdForm(saved)
+        setMessage('進捗状態のしきい値を初期値に戻しました。')
+      })
+      .catch((err) => setError(getErrorMessage(err)))
+      .finally(() => setSavingThresholds(false))
+  }
+
   return (
     <div className="content-shell">
       <header className="content-header">
@@ -93,6 +140,66 @@ export function SettingsScreen() {
 
       {error && <div className="form-error">{error}</div>}
       {message && <div className="form-success">{message}</div>}
+
+      <section className="settings-panel">
+        <div className="settings-section-header">
+          <div>
+            <div className="panel-title">進捗状態のしきい値</div>
+            <div className="panel-subtitle">完了率(対計画)の状態表示に使用します。</div>
+          </div>
+        </div>
+        <form className="threshold-settings-form" onSubmit={handleSaveThresholds}>
+          <label>
+            <span className="threshold-label">
+              <span className="threshold-dot caution" aria-hidden="true">●</span>
+              注意以下
+            </span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={thresholdForm.caution}
+              disabled={savingThresholds}
+              onChange={(event) =>
+                setThresholdForm((current) => ({ ...current, caution: Number(event.target.value) }))
+              }
+              required
+            />
+          </label>
+          <label>
+            <span className="threshold-label">
+              <span className="threshold-dot warning" aria-hidden="true">●</span>
+              警告以下
+            </span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={thresholdForm.warning}
+              disabled={savingThresholds}
+              onChange={(event) =>
+                setThresholdForm((current) => ({ ...current, warning: Number(event.target.value) }))
+              }
+              required
+            />
+          </label>
+          <div className="threshold-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleResetThresholds}
+              disabled={savingThresholds}
+            >
+              初期値に戻す
+            </button>
+            <button className="primary-button" type="submit" disabled={savingThresholds}>
+              {savingThresholds ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </section>
 
       <section className="settings-panel">
         <div className="settings-section-header">

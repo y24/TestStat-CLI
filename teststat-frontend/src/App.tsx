@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { fetchHealth, fetchProjects } from './api/client'
+import {
+  fetchHealth,
+  fetchProgressStatusThresholds,
+  fetchProjects,
+  updateProgressStatusThresholds,
+} from './api/client'
 import type { ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { useConfirmDialog } from './components/confirmDialogContext'
@@ -12,6 +17,10 @@ import { Sidebar } from './components/Sidebar'
 import type { ApiStatus, ViewMode } from './types/ui'
 import { getErrorMessage } from './utils/errors'
 import { sortProjects } from './utils/projects'
+import {
+  DEFAULT_PROGRESS_STATUS_THRESHOLDS,
+  type ProgressStatusThresholds,
+} from './utils/statusThresholds'
 
 export default function App() {
   return (
@@ -30,6 +39,9 @@ function AppContent() {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [progressStatusThresholds, setProgressStatusThresholds] = useState<ProgressStatusThresholds>(
+    DEFAULT_PROGRESS_STATUS_THRESHOLDS,
+  )
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.testing_id === selectedTestingId) ?? null,
@@ -64,6 +76,9 @@ function AppContent() {
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
+    fetchProgressStatusThresholds()
+      .then(setProgressStatusThresholds)
+      .catch((err) => setError(getErrorMessage(err)))
   }, [])
 
   const confirmDiscardChanges = useCallback(async () => {
@@ -129,6 +144,12 @@ function AppContent() {
     setViewMode('overview')
   }
 
+  const handleProgressStatusThresholdsChange = async (thresholds: ProgressStatusThresholds) => {
+    const saved = await updateProgressStatusThresholds(thresholds)
+    setProgressStatusThresholds(saved)
+    return saved
+  }
+
   return (
     <div className="app-layout" aria-busy={loadingProjects}>
       <Sidebar
@@ -190,6 +211,7 @@ function AppContent() {
             {viewMode === 'overview' && (
               <ProjectOverview
                 project={selectedProject}
+                progressStatusThresholds={progressStatusThresholds}
                 onCreate={() => setViewMode('new')}
                 onEdit={() => setViewMode('edit')}
                 onPlans={() => setViewMode('plans')}
@@ -205,7 +227,13 @@ function AppContent() {
                 onDirtyChange={setHasUnsavedChanges}
               />
             )}
-            {viewMode === 'settings' && <SettingsScreen />}
+            {viewMode === 'settings' && (
+              <SettingsScreen
+                key={`${progressStatusThresholds.caution}-${progressStatusThresholds.warning}`}
+                progressStatusThresholds={progressStatusThresholds}
+                onProgressStatusThresholdsChange={handleProgressStatusThresholdsChange}
+              />
+            )}
           </>
         )}
       </main>

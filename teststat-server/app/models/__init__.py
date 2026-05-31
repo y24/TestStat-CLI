@@ -2,6 +2,7 @@ from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress
 from app.models.project import Project
 from app.models.plan import Plan, PlanDaily
 from app.models.holiday import Holiday
+from app.models.setting import ProgressStatusSetting
 
 __all__ = [
     "Testing",
@@ -12,4 +13,5 @@ __all__ = [
     "Plan",
     "PlanDaily",
     "Holiday",
+    "ProgressStatusSetting",
 ]

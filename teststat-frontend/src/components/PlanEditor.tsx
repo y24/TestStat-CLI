@@ -192,6 +192,14 @@ export function PlanEditor({
 
   const openCreateScreen = (label: string | null) => {
     const actualDateRange = getActualDateRange(label, daily, files)
+    const projectDateRange =
+      project.planned_start_date && project.planned_end_date
+        ? {
+            start_date: project.planned_start_date,
+            end_date: project.planned_end_date,
+          }
+        : null
+    const initialDateRange = projectDateRange ?? actualDateRange
     const initialForm = createInitialPlanForm()
     const nextForm = {
       ...initialForm,
@@ -204,8 +212,8 @@ export function PlanEditor({
           : availableCasesByLabel[label] !== undefined
             ? String(availableCasesByLabel[label])
             : '',
-      start_date: actualDateRange?.start_date ?? initialForm.start_date,
-      end_date: actualDateRange?.end_date ?? initialForm.end_date,
+      start_date: initialDateRange?.start_date ?? initialForm.start_date,
+      end_date: initialDateRange?.end_date ?? initialForm.end_date,
     }
     setFormError(null)
     setForm(nextForm)

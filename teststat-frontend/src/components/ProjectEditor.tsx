@@ -9,11 +9,15 @@ import { LockIcon } from './icons/LockIcon'
 interface ProjectFormState {
   testing_id: string
   name: string
+  planned_start_date: string
+  planned_end_date: string
 }
 
 const emptyForm: ProjectFormState = {
   testing_id: '',
   name: '',
+  planned_start_date: '',
+  planned_end_date: '',
 }
 
 export function ProjectEditor({
@@ -36,9 +40,11 @@ export function ProjectEditor({
   const confirm = useConfirmDialog()
   const [form, setForm] = useState<ProjectFormState>(() =>
     project
-      ? {
+        ? {
           testing_id: String(project.testing_id),
           name: project.name,
+          planned_start_date: project.planned_start_date ?? '',
+          planned_end_date: project.planned_end_date ?? '',
         }
       : emptyForm,
   )
@@ -51,8 +57,13 @@ export function ProjectEditor({
     const dirty =
       mode === 'new'
         ? Boolean(form.testing_id.trim()) ||
-          (Boolean(form.name.trim()) && form.name !== autoFilledNameRef.current)
-        : project !== null && form.name !== project.name
+          (Boolean(form.name.trim()) && form.name !== autoFilledNameRef.current) ||
+          Boolean(form.planned_start_date) ||
+          Boolean(form.planned_end_date)
+        : project !== null &&
+          (form.name !== project.name ||
+            form.planned_start_date !== (project.planned_start_date ?? '') ||
+            form.planned_end_date !== (project.planned_end_date ?? ''))
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
 
@@ -116,16 +127,26 @@ export function ProjectEditor({
       setFormError('表示名を入力してください')
       return
     }
+    if (form.planned_start_date && form.planned_end_date && form.planned_start_date > form.planned_end_date) {
+      setFormError('テスト期間の開始予定日と終了予定日を正しい順序で入力してください')
+      return
+    }
 
     setSubmitting(true)
+    const plannedDates = {
+      planned_start_date: form.planned_start_date || null,
+      planned_end_date: form.planned_end_date || null,
+    }
     const request =
       mode === 'new'
         ? createProject({
             testing_id: testingId,
             name: form.name.trim(),
+            ...plannedDates,
           })
         : updateProject(testingId, {
             name: form.name.trim(),
+            ...plannedDates,
           })
 
     request
@@ -174,11 +195,10 @@ export function ProjectEditor({
   }
 
   return (
-    <div className="content-shell narrow">
+    <div className="content-shell narrow plan-screen">
       <header className="content-header">
         <div>
-          <div className="eyebrow">プロジェクト</div>
-          <h1>{mode === 'new' ? '新規作成' : '編集'}</h1>
+          <h1>{mode === 'new' ? '新規プロジェクト作成' : 'プロジェクト情報編集'}</h1>
         </div>
       </header>
 
@@ -215,6 +235,26 @@ export function ProjectEditor({
             required
           />
         </label>
+        <div className="form-grid">
+          <label>
+            <span>テスト期間 開始日</span>
+            <input
+              type="date"
+              value={form.planned_start_date}
+              disabled={submitting}
+              onChange={(event) => setForm({ ...form, planned_start_date: event.target.value })}
+            />
+          </label>
+          <label>
+            <span>テスト期間 終了日</span>
+            <input
+              type="date"
+              value={form.planned_end_date}
+              disabled={submitting}
+              onChange={(event) => setForm({ ...form, planned_end_date: event.target.value })}
+            />
+          </label>
+        </div>
 
         <div className="form-actions">
           <button className="primary-button" type="submit" disabled={submitting}>

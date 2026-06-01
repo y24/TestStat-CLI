@@ -94,6 +94,46 @@ class TestProjectCRUD(unittest.TestCase):
         updated = update_project(self.db, 3001, ProjectUpdate(name="新名称"))
         self.assertEqual(updated.name, "新名称")
 
+    def test_create_and_update_planned_dates(self):
+        from datetime import date
+
+        created = create_project(
+            self.db,
+            ProjectCreate(
+                testing_id=3003,
+                name="予定日あり",
+                planned_start_date=date(2026, 6, 1),
+                planned_end_date=date(2026, 6, 30),
+            ),
+        )
+
+        self.assertEqual(created.planned_start_date, date(2026, 6, 1))
+        self.assertEqual(created.planned_end_date, date(2026, 6, 30))
+
+        updated = update_project(self.db, 3003, ProjectUpdate(planned_start_date=None, planned_end_date=None))
+
+        self.assertIsNone(updated.planned_start_date)
+        self.assertIsNone(updated.planned_end_date)
+
+    def test_update_planned_dates_rejects_invalid_existing_range(self):
+        from datetime import date
+        from fastapi import HTTPException
+
+        create_project(
+            self.db,
+            ProjectCreate(
+                testing_id=3004,
+                name="予定日検証",
+                planned_start_date=date(2026, 6, 10),
+                planned_end_date=date(2026, 6, 30),
+            ),
+        )
+
+        with self.assertRaises(HTTPException) as ctx:
+            update_project(self.db, 3004, ProjectUpdate(planned_end_date=date(2026, 6, 1)))
+
+        self.assertEqual(ctx.exception.status_code, 422)
+
     def test_update_archived(self):
         create_project(self.db, ProjectCreate(testing_id=3002, name="アーカイブ対象"))
         updated = update_project(self.db, 3002, ProjectUpdate(archived=True))

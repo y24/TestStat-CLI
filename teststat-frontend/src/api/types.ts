@@ -90,6 +90,8 @@ export interface ProjectItem {
   testing_id: number
   name: string
   ticket_ref: string | null
+  planned_start_date: string | null
+  planned_end_date: string | null
   archived: boolean
   display_order: number
   created_at: string
@@ -108,11 +110,15 @@ export interface ProjectCreatePayload {
   testing_id: number
   name: string
   ticket_ref?: string | null
+  planned_start_date?: string | null
+  planned_end_date?: string | null
 }
 
 export interface ProjectUpdatePayload {
   name?: string
   ticket_ref?: string | null
+  planned_start_date?: string | null
+  planned_end_date?: string | null
   archived?: boolean
 }
 

@@ -13,6 +13,18 @@ from app.schemas.project import ProjectCreate, ProjectOrderUpdate, ProjectRespon
 ActualSummary = tuple[int, int, float, bool]
 
 
+def _validate_project_planned_date_range(project: Project) -> None:
+    if (
+        project.planned_start_date is not None
+        and project.planned_end_date is not None
+        and project.planned_start_date > project.planned_end_date
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="planned_start_date must be before or equal to planned_end_date",
+        )
+
+
 def _active_plan_count(db: Session, testing_id: int) -> int:
     return db.scalar(
         select(func.count()).select_from(Plan)
@@ -97,6 +109,8 @@ def _to_response(
         testing_id=project.testing_id,
         name=project.name,
         ticket_ref=project.ticket_ref,
+        planned_start_date=project.planned_start_date,
+        planned_end_date=project.planned_end_date,
         archived=project.archived,
         display_order=project.display_order,
         created_at=project.created_at,
@@ -177,6 +191,8 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
         testing_id=payload.testing_id,
         name=payload.name,
         ticket_ref=payload.ticket_ref,
+        planned_start_date=payload.planned_start_date,
+        planned_end_date=payload.planned_end_date,
         display_order=(max_display_order + 1) if max_display_order is not None else 0,
     )
     db.add(project)
@@ -198,8 +214,13 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
         project.name = payload.name
     if payload.ticket_ref is not None:
         project.ticket_ref = payload.ticket_ref
+    if "planned_start_date" in payload.model_fields_set:
+        project.planned_start_date = payload.planned_start_date
+    if "planned_end_date" in payload.model_fields_set:
+        project.planned_end_date = payload.planned_end_date
     if payload.archived is not None:
         project.archived = payload.archived
+    _validate_project_planned_date_range(project)
     project.updated_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
     return _to_response(

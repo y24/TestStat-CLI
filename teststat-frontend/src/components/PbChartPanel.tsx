@@ -342,12 +342,12 @@ function ProgressBreakdown({
       </section>
 
       <section className="breakdown-block" aria-label="ファイル別内訳">
-        <h3>ファイル別内訳</h3>
+        <h3>テスト別内訳</h3>
         <div className="breakdown-table-wrap">
           <table className="breakdown-table">
             <thead>
               <tr>
-                <th>ファイル</th>
+                <th>種別</th>
                 <th>環境</th>
                 <th>合計</th>
                 {resultKeys.map((key) => (

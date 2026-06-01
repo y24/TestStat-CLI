@@ -54,8 +54,8 @@ export function PlanListScreen({
             className="icon-button header-back-button"
             type="button"
             onClick={onBack}
-            aria-label="PB図に戻る"
-            title="PB図に戻る"
+            aria-label="戻る"
+            title="戻る"
           >
             <ArrowLeft aria-hidden="true" />
           </button>

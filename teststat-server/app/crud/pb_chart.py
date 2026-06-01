@@ -318,10 +318,13 @@ def get_pb_chart(
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
 
     # 不具合（label 非依存。Testing ID 単位で取得済みのスナップショットを使う）
+    # 不具合グラフは (全て) 表示（label=None）のときのみ描画するため、
+    # label 指定時は range 拡張も系列計算も行わない（表示中のグラフで期間を算出する）。
     bugs_present = _has_bugs(db, testing_id)
+    bugs_visible = bugs_present and label is None
     bugs_updated_at = get_bugs_updated_at(db, testing_id) if bugs_present else None
     bug_from = bug_to = None
-    if bugs_present:
+    if bugs_visible:
         bug_from, bug_to = get_bug_date_bounds(db, testing_id)
 
     # 日付レンジ
@@ -358,7 +361,7 @@ def get_pb_chart(
 
     date_list = _date_range(range_from, range_to)
     bug_cumulative = None
-    if bugs_present:
+    if bugs_visible:
         suspend_states = get_settings().azure_devops_bug_suspend_status_set
         bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)
     series = _build_series(

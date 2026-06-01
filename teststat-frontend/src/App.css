@@ -699,6 +699,16 @@
   height: 15px;
 }
 
+.layer-controls label.layer-disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.layer-controls label.layer-disabled input {
+  cursor: not-allowed;
+}
+
 .layer-controls-label {
   color: var(--muted);
   font-weight: 650;

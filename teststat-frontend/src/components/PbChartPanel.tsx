@@ -148,6 +148,8 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
   }, [project.testing_id, selectedLabel, layers.pastPlans, reloadKey])
 
   const label = selectedLabel || null
+  // 不具合グラフは表示対象が(全て)のときのみ表示する。
+  const bugsAllowed = selectedLabel === ''
   const isCurrentResult =
     result?.testingId === project.testing_id &&
     result.label === label &&
@@ -171,6 +173,8 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
     : '-'
   const notices = chart ? buildChartNotices(chart) : []
   const bugSummary = chart ? getBugSummary(chart) : null
+  // 表示対象が(全て)以外のときは不具合レイヤーを強制的にOFFにして描画する。
+  const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
 
   return (
     <section className="chart-section">
@@ -195,7 +199,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
           </select>
         </label>
         <span className="chart-period">表示期間: {rangeText}</span>
-        <ChartLayerControls layers={layers} onChange={setLayers} />
+        <ChartLayerControls layers={layers} onChange={setLayers} bugsAllowed={bugsAllowed} />
       </div>
 
       <div className="bug-bar">
@@ -209,6 +213,8 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
         </button>
         {bugSync.error ? (
           <span className="bug-meta error">取得失敗: {bugSync.error}</span>
+        ) : !bugsAllowed && chart?.has_bugs ? (
+          <span className="bug-meta">不具合グラフは表示対象が(全て)のときのみ表示されます</span>
         ) : bugSummary ? (
           <span className="bug-meta">
             不具合 <b>{bugSummary.total}</b> 件（未解消{' '}
@@ -241,7 +247,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
             </div>
           )}
           <div className="chart-wrap">
-            <PbChart chart={chart} layers={layers} />
+            <PbChart chart={chart} layers={effectiveLayers} />
           </div>
           <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
         </>
@@ -271,9 +277,11 @@ function getBugSummary(
 function ChartLayerControls({
   layers,
   onChange,
+  bugsAllowed,
 }: {
   layers: ChartLayers
   onChange: (layers: ChartLayers) => void
+  bugsAllowed: boolean
 }) {
   return (
     <div className="layer-controls">
@@ -310,10 +318,14 @@ function ChartLayerControls({
         />
         過去計画
       </label>
-      <label>
+      <label
+        className={bugsAllowed ? undefined : 'layer-disabled'}
+        title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
+      >
         <input
           type="checkbox"
-          checked={layers.bugs}
+          checked={bugsAllowed && layers.bugs}
+          disabled={!bugsAllowed}
           onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
         />
         不具合

@@ -1,5 +1,5 @@
 import type { ProjectItem } from '../api/types'
-import { formatDate, formatDateTime } from '../utils/date'
+import { formatDate, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
   type ProgressStatusLevel,
@@ -82,13 +82,13 @@ export function ProjectOverview({
       </header>
 
       <section className="summary-grid">
-        <StatusTile label="完了率(対全体)" value={formatRate(project.actual_completed_rate)} />
+        <StatusTile label="完了率(対全体)" value={formatCompletionRate(project)} />
         <StatusTile
           label="完了率(対計画)"
           value={formatRate(project.actual_vs_plan_rate)}
           statusLevel={planStatusLevel}
         />
-        <StatusTile label="最終更新" value={formatDateTime(project.actuals_updated_at)} />
+        <StatusTile label="最終更新" value={formatDateTimeWithRelative(project.actuals_updated_at)} />
       </section>
 
       <PbChartPanel key={project.testing_id} project={project} onPlans={onPlans} />
@@ -111,6 +111,14 @@ function formatRate(value: number | null | undefined) {
     return '-'
   }
   return `${value.toFixed(1)}%`
+}
+
+function formatCompletionRate(project: ProjectItem) {
+  const rate = formatRate(project.actual_completed_rate)
+  if (rate === '-') {
+    return rate
+  }
+  return `${rate} (${project.actual_completed}/${project.actual_available_cases})`
 }
 
 function StatusTile({

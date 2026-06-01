@@ -341,7 +341,7 @@ function ProgressBreakdown({
         </div>
       </section>
 
-      <section className="breakdown-block" aria-label="ファイル別内訳">
+      <section className="breakdown-block" aria-label="テスト別内訳">
         <h3>テスト別内訳</h3>
         <div className="breakdown-table-wrap">
           <table className="breakdown-table">

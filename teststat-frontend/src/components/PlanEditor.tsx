@@ -351,6 +351,8 @@ export function PlanEditor({
       error={result?.error}
       labels={labels}
       actualLabels={actualLabels}
+      availableCasesByLabel={availableCasesByLabel}
+      overallAvailableCases={overallAvailableCases}
       plans={plans}
       useOverallPlan={useOverallPlan}
       submitting={submitting}

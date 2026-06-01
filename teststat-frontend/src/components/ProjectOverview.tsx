@@ -36,6 +36,7 @@ export function ProjectOverview({
 
   const status = getProjectStatus(project)
   const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
+  const needsPlanInput = project.has_actuals && project.active_plan_count === 0
 
   return (
     <div className="content-shell project-overview">
@@ -55,9 +56,16 @@ export function ProjectOverview({
               <Pencil aria-hidden="true" />
             </button>
           </h1>
-          <div className={`project-status ${status.className}`}>
-            <span className="status-dot" aria-hidden="true" />
-            {status.label}
+          <div className="project-status-row">
+            <div className={`project-status ${status.className}`}>
+              <span className="status-dot" aria-hidden="true" />
+              {status.label}
+            </div>
+            {needsPlanInput && (
+              <span className="project-plan-missing-badge" title="テスト計画の入力が必要です。">
+                未計画
+              </span>
+            )}
           </div>
         </div>
         <div className="header-actions">

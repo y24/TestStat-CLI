@@ -5,6 +5,8 @@ import { displayLabel } from '../../utils/plans'
 export function PlanVersionTable({
   labels,
   actualLabels,
+  availableCasesByLabel,
+  overallAvailableCases,
   plans,
   useOverallPlan,
   submitting,
@@ -15,6 +17,8 @@ export function PlanVersionTable({
 }: {
   labels: string[]
   actualLabels: string[]
+  availableCasesByLabel: Record<string, number>
+  overallAvailableCases: number
   plans: PlanItem[]
   useOverallPlan: boolean
   submitting: boolean
@@ -57,8 +61,8 @@ export function PlanVersionTable({
                 <th>テスト種別</th>
                 <th>版</th>
                 <th>項目数</th>
+                <th>計画数</th>
                 <th>期間</th>
-                <th>日別合計</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -68,6 +72,12 @@ export function PlanVersionTable({
                   label === null ? plan.label === null : plan.label === label,
                 )
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
+                const actualAvailableCases =
+                  label === null ? overallAvailableCases : availableCasesByLabel[label]
+                const displayedTotalCases =
+                  activePlan?.planned_total_cases ?? actualAvailableCases ?? null
+                const hasPlanTotalMismatch =
+                  activePlan !== null && activePlan.planned_total_cases !== activePlan.daily_total
                 return (
                   <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
                     <td>
@@ -75,17 +85,39 @@ export function PlanVersionTable({
                       {label !== null && !actualLabelSet.has(label) && (
                         <span className="row-note">実績なし / 計画のみ</span>
                       )}
-                      {!activePlan && <span className="row-note">未計画</span>}
                       {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}
                     </td>
-                    <td>{activePlan ? `v${activePlan.version}` : '-'}</td>
-                    <td>{activePlan?.planned_total_cases ?? '-'}</td>
+                    <td>
+                      {activePlan ? (
+                        `v${activePlan.version}`
+                      ) : (
+                        <span className="plan-missing-badge" title="計画入力が必要です。">
+                          未計画
+                        </span>
+                      )}
+                    </td>
+                    <td>{displayedTotalCases ?? '-'}</td>
+                    <td>
+                      {activePlan ? (
+                        <span
+                          className={hasPlanTotalMismatch ? 'plan-total-mismatch' : undefined}
+                          title={
+                            hasPlanTotalMismatch
+                              ? '項目数と計画数が一致していません。日別計画の修正が必要です。'
+                              : undefined
+                          }
+                        >
+                          {activePlan.daily_total}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td>
                       {activePlan
                         ? `${formatDate(activePlan.start_date)} - ${formatDate(activePlan.end_date)}`
                         : '-'}
                     </td>
-                    <td>{activePlan?.daily_total ?? '-'}</td>
                     <td>
                       <div className="table-actions">
                         <button

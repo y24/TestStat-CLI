@@ -375,6 +375,13 @@
   font-size: 12px;
 }
 
+.project-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .project-status {
   display: inline-flex;
   align-items: center;
@@ -412,6 +419,20 @@
   border-radius: 999px;
   background: currentColor;
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.project-plan-missing-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-top: 6px;
+  border: 1px solid #f1c66d;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 4px 10px;
 }
 
 .header-actions {
@@ -1012,6 +1033,38 @@
 
 .active-plan-row {
   background: #f5f8ff;
+}
+
+.plan-total-mismatch {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #f0b8c2;
+  border-radius: 999px;
+  background: #fff1f3;
+  color: #b4234f;
+  font-weight: 750;
+  padding: 2px 8px;
+}
+
+.plan-total-mismatch::after {
+  content: '修正必要';
+  margin-left: 6px;
+  color: #b4234f;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.plan-missing-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #f1c66d;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #8a5a00;
+  font-weight: 750;
+  padding: 2px 8px;
 }
 
 .row-note {

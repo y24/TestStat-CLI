@@ -10,6 +10,8 @@ export function PlanListScreen({
   error,
   labels,
   actualLabels,
+  availableCasesByLabel,
+  overallAvailableCases,
   plans,
   useOverallPlan,
   submitting,
@@ -26,6 +28,8 @@ export function PlanListScreen({
   error: string | null | undefined
   labels: string[]
   actualLabels: string[]
+  availableCasesByLabel: Record<string, number>
+  overallAvailableCases: number
   plans: PlanItem[]
   useOverallPlan: boolean
   submitting: boolean
@@ -66,6 +70,8 @@ export function PlanListScreen({
         <PlanVersionTable
           labels={labels}
           actualLabels={actualLabels}
+          availableCasesByLabel={availableCasesByLabel}
+          overallAvailableCases={overallAvailableCases}
           plans={plans}
           useOverallPlan={useOverallPlan}
           submitting={submitting}

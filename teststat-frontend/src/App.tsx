@@ -4,6 +4,7 @@ import {
   fetchHealth,
   fetchProgressStatusThresholds,
   fetchProjects,
+  updateProjectOrder,
   updateProgressStatusThresholds,
 } from './api/client'
 import type { ProjectItem } from './api/types'
@@ -161,6 +162,28 @@ function AppContent() {
     setViewMode('overview')
   }
 
+  const handleProjectReorder = (orderedTestingIds: number[]) => {
+    const orderedIdSet = new Set(orderedTestingIds)
+    const reorderedProjects = orderedTestingIds
+      .map((testingId, index) => {
+        const project = projects.find((item) => item.testing_id === testingId)
+        return project ? { ...project, display_order: index } : null
+      })
+      .filter((project): project is ProjectItem => project !== null)
+    const remainingProjects = projects
+      .filter((project) => !orderedIdSet.has(project.testing_id))
+      .map((project, index) => ({ ...project, display_order: orderedTestingIds.length + index }))
+    const optimisticProjects = sortProjects([...reorderedProjects, ...remainingProjects])
+
+    setProjects(optimisticProjects)
+    updateProjectOrder({ testing_ids: optimisticProjects.map((project) => project.testing_id) })
+      .then(setProjects)
+      .catch((err) => {
+        setError(getErrorMessage(err))
+        loadProjects()
+      })
+  }
+
   const handleProgressStatusThresholdsChange = async (thresholds: ProgressStatusThresholds) => {
     const saved = await updateProgressStatusThresholds(thresholds)
     setProgressStatusThresholds(saved)
@@ -185,6 +208,7 @@ function AppContent() {
           void runAfterDiscardConfirmation(() => setViewMode('new'))
         }}
         onRefresh={loadProjects}
+        onReorder={handleProjectReorder}
         onSettings={() => {
           void runAfterDiscardConfirmation(() => setViewMode('settings'))
         }}

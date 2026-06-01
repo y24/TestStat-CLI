@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.plan import Plan, PlanDaily
 from app.models.progress import DailyProgress, FileProgress, Testing
 from app.models.project import Project
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectOrderUpdate, ProjectResponse, ProjectUpdate
 
 
 ActualSummary = tuple[int, int, float, bool]
@@ -98,6 +98,7 @@ def _to_response(
         name=project.name,
         ticket_ref=project.ticket_ref,
         archived=project.archived,
+        display_order=project.display_order,
         created_at=project.created_at,
         updated_at=project.updated_at,
         has_actuals=testing is not None,
@@ -116,7 +117,16 @@ def _get_testing(db: Session, testing_id: int) -> Testing | None:
 
 
 def list_projects(db: Session) -> list[ProjectResponse]:
-    projects = list(db.scalars(select(Project).order_by(Project.archived, Project.updated_at.desc())))
+    projects = list(
+        db.scalars(
+            select(Project).order_by(
+                Project.archived,
+                Project.display_order,
+                Project.updated_at.desc(),
+                Project.testing_id,
+            )
+        )
+    )
     if not projects:
         return []
     tids = [p.testing_id for p in projects]
@@ -162,10 +172,12 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Testing ID {payload.testing_id} は既に登録されています",
         )
+    max_display_order = db.scalar(select(func.max(Project.display_order)))
     project = Project(
         testing_id=payload.testing_id,
         name=payload.name,
         ticket_ref=payload.ticket_ref,
+        display_order=(max_display_order + 1) if max_display_order is not None else 0,
     )
     db.add(project)
     db.commit()
@@ -210,3 +222,20 @@ def delete_project(db: Session, testing_id: int) -> None:
         )
     db.delete(project)
     db.commit()
+
+
+def update_project_order(db: Session, payload: ProjectOrderUpdate) -> list[ProjectResponse]:
+    unique_ids = list(dict.fromkeys(payload.testing_ids))
+    projects = list(db.scalars(select(Project).where(Project.testing_id.in_(unique_ids))))
+    projects_by_id = {project.testing_id: project for project in projects}
+    missing_ids = [testing_id for testing_id in unique_ids if testing_id not in projects_by_id]
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"project not found: {missing_ids[0]}",
+        )
+
+    for index, testing_id in enumerate(unique_ids):
+        projects_by_id[testing_id].display_order = index
+    db.commit()
+    return list_projects(db)

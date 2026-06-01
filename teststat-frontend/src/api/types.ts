@@ -91,6 +91,7 @@ export interface ProjectItem {
   name: string
   ticket_ref: string | null
   archived: boolean
+  display_order: number
   created_at: string
   updated_at: string
   has_actuals: boolean
@@ -113,6 +114,10 @@ export interface ProjectUpdatePayload {
   name?: string
   ticket_ref?: string | null
   archived?: boolean
+}
+
+export interface ProjectOrderUpdatePayload {
+  testing_ids: number[]
 }
 
 export interface PlanItem {

@@ -6,7 +6,7 @@
   --muted: #7b8794;
   --accent: #2f6fed;
   --accent-soft: #eaf1ff;
-  --sidebar-w: 240px;
+  --sidebar-w: 260px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

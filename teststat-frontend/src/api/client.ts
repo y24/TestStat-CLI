@@ -6,6 +6,7 @@ import type {
   DailyProgressItem,
   ProjectCreatePayload,
   ProjectItem,
+  ProjectOrderUpdatePayload,
   ProjectUpdatePayload,
   PbChartResponse,
   PlanCreatePayload,
@@ -104,6 +105,13 @@ export const updateProject = (testing_id: number, payload: ProjectUpdatePayload)
     method: 'PATCH',
     body: JSON.stringify(payload),
   }).then(enrichProjectActuals)
+export const updateProjectOrder = async (payload: ProjectOrderUpdatePayload) => {
+  const projects = await request<ProjectItem[]>('/api/v1/projects/order', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return Promise.all(projects.map(enrichProjectActuals))
+}
 export const deleteProject = (testing_id: number) =>
   request<void>(`/api/v1/projects/${testing_id}`, {
     method: 'DELETE',

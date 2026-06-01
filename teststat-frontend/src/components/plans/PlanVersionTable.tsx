@@ -88,6 +88,15 @@ export function PlanVersionTable({
                     <td>{activePlan?.daily_total ?? '-'}</td>
                     <td>
                       <div className="table-actions">
+                        <button
+                          className="primary-button compact icon-text-button"
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => onCreate(label)}
+                        >
+                          <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />
+                          <span>作成</span>
+                        </button>
                         {versions.length > 0 && (
                           <button
                             className="secondary-button compact"
@@ -98,15 +107,6 @@ export function PlanVersionTable({
                             版の変更/削除
                           </button>
                         )}
-                        <button
-                          className="primary-button compact icon-text-button"
-                          type="button"
-                          disabled={submitting}
-                          onClick={() => onCreate(label)}
-                        >
-                          <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />
-                          <span>作成</span>
-                        </button>
                       </div>
                     </td>
                   </tr>

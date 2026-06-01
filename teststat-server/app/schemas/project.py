@@ -20,6 +20,7 @@ class ProjectResponse(BaseModel):
     name: str
     ticket_ref: str | None
     archived: bool
+    display_order: int
     created_at: datetime
     updated_at: datetime
     # 実績の有無（testings テーブルを参照）
@@ -34,3 +35,7 @@ class ProjectResponse(BaseModel):
     active_plan_count: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectOrderUpdate(BaseModel):
+    testing_ids: list[int] = Field(..., min_length=1)

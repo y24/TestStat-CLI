@@ -10,10 +10,10 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
-from app.crud.project import create_project, delete_project, get_project, list_projects, update_project  # noqa: E402
+from app.crud.project import create_project, delete_project, get_project, list_projects, update_project, update_project_order  # noqa: E402
 from app.database import Base  # noqa: E402
 from app.models import Project  # noqa: E402
-from app.schemas.project import ProjectCreate, ProjectUpdate  # noqa: E402
+from app.schemas.project import ProjectCreate, ProjectOrderUpdate, ProjectUpdate  # noqa: E402
 
 
 def make_session():
@@ -40,6 +40,33 @@ class TestProjectCRUD(unittest.TestCase):
         ids = {r.testing_id for r in result}
         self.assertIn(1001, ids)
         self.assertIn(1002, ids)
+
+    def test_create_assigns_append_display_order(self):
+        first = create_project(self.db, ProjectCreate(testing_id=1001, name="プロジェクトA"))
+        second = create_project(self.db, ProjectCreate(testing_id=1002, name="プロジェクトB"))
+
+        self.assertEqual(first.display_order, 0)
+        self.assertEqual(second.display_order, 1)
+        self.assertEqual([p.testing_id for p in list_projects(self.db)], [1001, 1002])
+
+    def test_update_project_order(self):
+        create_project(self.db, ProjectCreate(testing_id=1001, name="A"))
+        create_project(self.db, ProjectCreate(testing_id=1002, name="B"))
+        create_project(self.db, ProjectCreate(testing_id=1003, name="C"))
+
+        result = update_project_order(self.db, ProjectOrderUpdate(testing_ids=[1003, 1001, 1002]))
+
+        self.assertEqual([p.testing_id for p in result], [1003, 1001, 1002])
+        self.assertEqual([p.display_order for p in result], [0, 1, 2])
+
+    def test_update_project_order_missing_project_raises(self):
+        create_project(self.db, ProjectCreate(testing_id=1001, name="A"))
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            update_project_order(self.db, ProjectOrderUpdate(testing_ids=[1001, 9999]))
+
+        self.assertEqual(ctx.exception.status_code, 404)
 
     def test_create_duplicate_raises(self):
         create_project(self.db, ProjectCreate(testing_id=1001, name="A"))

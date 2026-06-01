@@ -170,49 +170,56 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
     ? `${formatDate(chart.range.from)} ～ ${formatDate(chart.range.to)}`
     : '-'
   const notices = chart ? buildChartNotices(chart) : []
+  const bugSummary = chart ? getBugSummary(chart) : null
 
   return (
     <section className="chart-section">
       <div className="chart-toolbar">
-        <div>
-          <h2>PB図</h2>
-          <div className="chart-meta">表示期間: {rangeText}</div>
-        </div>
-        <div className="chart-controls">
-          <label className="target-select">
-            <span>表示対象</span>
-            <select
-              value={selectedLabel}
-              disabled={loading && labels.length === 0}
-              onChange={(event) => setSelectedLabel(event.target.value)}
-            >
-              <option value="">(全て)</option>
-              {labels.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <ChartLayerControls layers={layers} onChange={setLayers} />
-          <div className="bug-sync">
-            <button
-              type="button"
-              className="bug-sync-button"
-              onClick={handleSyncBugs}
-              disabled={bugSync.loading}
-            >
-              {bugSync.loading ? '取得中...' : '不具合を取得'}
-            </button>
-            {bugSync.error ? (
-              <span className="bug-sync-meta error">取得失敗: {bugSync.error}</span>
-            ) : bugSync.message ? (
-              <span className="bug-sync-meta">{bugSync.message}</span>
-            ) : chart?.bugs_updated_at ? (
-              <span className="bug-sync-meta">不具合最終取得: {formatDateTime(chart.bugs_updated_at)}</span>
-            ) : null}
-          </div>
-        </div>
+        <h2>PB図</h2>
+      </div>
+
+      <div className="chart-controls">
+        <label className="target-select">
+          <span>表示対象</span>
+          <select
+            value={selectedLabel}
+            disabled={loading && labels.length === 0}
+            onChange={(event) => setSelectedLabel(event.target.value)}
+          >
+            <option value="">(全て)</option>
+            {labels.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="chart-period">表示期間: {rangeText}</span>
+        <ChartLayerControls layers={layers} onChange={setLayers} />
+      </div>
+
+      <div className="bug-bar">
+        <button
+          type="button"
+          className="bug-sync-button"
+          onClick={handleSyncBugs}
+          disabled={bugSync.loading}
+        >
+          {bugSync.loading ? '取得中...' : '不具合数を取得'}
+        </button>
+        {bugSync.error ? (
+          <span className="bug-meta error">取得失敗: {bugSync.error}</span>
+        ) : bugSummary ? (
+          <span className="bug-meta">
+            不具合 <b>{bugSummary.total}</b> 件（未解消{' '}
+            <b className="open">{bugSummary.open}</b> / 見送り{' '}
+            <b className="suspended">{bugSummary.suspended}</b> / 完了{' '}
+            <b className="resolved">{bugSummary.resolved}</b>）
+            {chart?.bugs_updated_at ? `・最終取得: ${formatDateTime(chart.bugs_updated_at)}` : ''}
+          </span>
+        ) : (
+          <span className="bug-meta">不具合データ未取得</span>
+        )}
       </div>
 
       {loading && <div className="chart-state">PB図を読み込み中...</div>}
@@ -233,12 +240,32 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
               ))}
             </div>
           )}
-          <PbChart chart={chart} layers={layers} />
+          <div className="chart-wrap">
+            <PbChart chart={chart} layers={layers} />
+          </div>
           <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
         </>
       )}
     </section>
   )
+}
+
+function getBugSummary(
+  chart: PbChartResponse,
+): { open: number; suspended: number; resolved: number; total: number } | null {
+  if (!chart.has_bugs) {
+    return null
+  }
+  for (let i = chart.series.length - 1; i >= 0; i--) {
+    const point = chart.series[i]
+    if (point.bug_open != null || point.bug_suspended != null || point.bug_resolved != null) {
+      const open = point.bug_open ?? 0
+      const suspended = point.bug_suspended ?? 0
+      const resolved = point.bug_resolved ?? 0
+      return { open, suspended, resolved, total: open + suspended + resolved }
+    }
+  }
+  return { open: 0, suspended: 0, resolved: 0, total: 0 }
 }
 
 function ChartLayerControls({
@@ -250,6 +277,7 @@ function ChartLayerControls({
 }) {
   return (
     <div className="layer-controls">
+      <span className="layer-controls-label">表示:</span>
       <label>
         <input
           type="checkbox"

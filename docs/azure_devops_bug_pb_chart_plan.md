@@ -42,7 +42,7 @@
 
 ```
 [ブラウザ / teststat-frontend]
-   PB図パネル：「不具合を取得」ボタン押下
+   PB図パネル：「不具合数を取得」ボタン押下
         │  POST /api/v1/projects/{testing_id}/bugs/sync
         ▼
 [teststat-server / FastAPI]
@@ -388,7 +388,7 @@ export const syncAzureDevOpsBugs = (testing_id: number) =>
 
 ### 5.4 取得ボタン（`PbChartPanel.tsx`）
 
-- ツールバーに「**不具合を取得**」ボタン。押下で `syncAzureDevOpsBugs(testing_id)` → 完了後に PB図を再取得（`fetchPbChart`）。
+- ツールバーに「**不具合数を取得**」ボタン。押下で `syncAzureDevOpsBugs(testing_id)` → 完了後に PB図を再取得（`fetchPbChart`）。
 - ローディング表示（「取得中...」）、結果トースト/メタ（例: 「不具合 6 件（未解消 2 / 見送り 1 / 完了 3）」）、`bugs_updated_at` を「不具合最終取得」として表示。
 - 失敗時は `getErrorMessage` でメッセージ表示（503: 未設定 / 404: 親不在 / 502: 接続失敗）。
 - 編集モード等は不要。PB図パネル内に閉じる。
@@ -426,7 +426,7 @@ PB図（右軸・積み上げエリア、下→上）:
 - **ルーター**: `bugs/sync` の例外→HTTP（404/503/502）と成功レスポンス。
 
 ### フロントエンド
-- 「不具合を取得」押下 → sync → 再取得 → 右軸エリア描画。レイヤートグルで表示/非表示。`has_bugs=false` 時にエリアが出ない。
+- 「不具合数を取得」押下 → sync → 再取得 → 右軸エリア描画。レイヤートグルで表示/非表示。`has_bugs=false` 時にエリアが出ない。
 
 ---
 

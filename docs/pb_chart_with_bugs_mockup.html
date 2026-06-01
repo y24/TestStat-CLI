@@ -7,7 +7,7 @@
 <!-- 注意: これは設計イメージ用の静的モックです。実装は React + ECharts を想定。
      データはサンプル（ハードコード）。実際は GET /api/v1/projects/{testing_id}/pb-chart から取得し、
      バーンダウン系列（計画/実績）と、不具合の累積（bug_open / bug_resolved）を同一レスポンスで受け取ります。
-     不具合は「不具合を取得」ボタン → POST /api/v1/projects/{testing_id}/bugs/sync で Azure DevOps から洗替取得 → DB 記録。
+     不具合は「不具合数を取得」ボタン → POST /api/v1/projects/{testing_id}/bugs/sync で Azure DevOps から洗替取得 → DB 記録。
      詳細: docs/azure_devops_bug_pb_chart_plan.md -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
@@ -102,7 +102,7 @@
     </div>
 
     <div class="bug-bar">
-      <button class="bug-btn" id="btn-bug" title="Azure DevOps から子チケット(Bug)を取得して洗替">不具合を取得</button>
+      <button class="bug-btn" id="btn-bug" title="Azure DevOps から子チケット(Bug)を取得して洗替">不具合数を取得</button>
       <span class="bug-meta" id="bug-meta">
         不具合 <b>8</b> 件（未解消 <b class="open">3</b> / 見送り <b class="suspended">2</b> / 完了 <b class="resolved">3</b>）・最終取得: 2026/05/20 18:42
       </span>

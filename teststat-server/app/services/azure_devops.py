@@ -36,6 +36,10 @@ class AzureDevOpsAuthError(AzureDevOpsError):
     """認証・認可エラー（401/403）。"""
 
 
+class WorkItemTypeMismatch(AzureDevOpsError):
+    """Work Item Type が期待値と一致しない。"""
+
+
 @dataclass
 class WorkItemInfo:
     work_item_id: int
@@ -61,6 +65,35 @@ def fetch_work_item(work_item_id: int, settings: Settings | None = None) -> Work
     return _fetch_work_item_remote(work_item_id, settings)
 
 
+def fetch_work_item_type(work_item_id: int, settings: Settings | None = None) -> str:
+    """Work Item の WorkItemType を返す。"""
+    settings = settings or get_settings()
+    if settings.azure_devops_use_mock:
+        return _mock_work_item_type(work_item_id, settings)
+    return _fetch_work_item_type_remote(work_item_id, settings)
+
+
+def validate_work_item_type(work_item_id: int, settings: Settings | None = None) -> None:
+    """testing_id の Work Item Type を確認し、期待値と異なれば WorkItemTypeMismatch を送出する。
+
+    Azure DevOps が未設定（PAT/Organization 未入力かつ mock 無効）の場合はチェックをスキップする。
+    AZURE_DEVOPS_TESTING_WIT が空文字の場合もスキップ。
+    """
+    settings = settings or get_settings()
+    if not settings.azure_devops_use_mock and (
+        not settings.azure_devops_pat or not settings.azure_devops_organization
+    ):
+        return
+    expected = settings.azure_devops_testing_wit
+    if not expected:
+        return
+    actual = fetch_work_item_type(work_item_id, settings)
+    if actual != expected:
+        raise WorkItemTypeMismatch(
+            f"Work Item {work_item_id} のタイプは '{actual}' です（期待: '{expected}'）"
+        )
+
+
 # --- モック ---------------------------------------------------------------
 
 
@@ -74,6 +107,12 @@ def _mock_work_item(work_item_id: int) -> WorkItemInfo:
         start_date=date(2026, 5, 1),
         end_date=date(2026, 6, 30),
     )
+
+
+def _mock_work_item_type(work_item_id: int, settings: Settings) -> str:
+    if work_item_id <= 0:
+        raise WorkItemNotFound(f"Work Item {work_item_id} は存在しません（mock）")
+    return settings.azure_devops_testing_wit
 
 
 # --- 実接続 ---------------------------------------------------------------
@@ -143,6 +182,15 @@ def _fetch_work_item_remote(work_item_id: int, settings: Settings) -> WorkItemIn
         start_date=_parse_date(fields.get(settings.azure_devops_start_date_field)),
         end_date=_parse_date(fields.get(settings.azure_devops_end_date_field)),
     )
+
+
+def _fetch_work_item_type_remote(work_item_id: int, settings: Settings) -> str:
+    params = {
+        "api-version": settings.azure_devops_api_version,
+        "fields": "System.WorkItemType",
+    }
+    response = _request(f"workitems/{work_item_id}", params, settings)
+    return response.json().get("fields", {}).get("System.WorkItemType") or ""
 
 
 def _configured_fields(settings: Settings) -> list[str]:

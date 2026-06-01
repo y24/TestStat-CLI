@@ -22,6 +22,8 @@ class Settings(BaseSettings):
         "Microsoft.VSTS.Scheduling.FinishDate", alias="AZURE_DEVOPS_END_DATE_FIELD"
     )
 
+    azure_devops_testing_wit: str = Field("Testing", alias="AZURE_DEVOPS_TESTING_WIT")
+
     # === Azure DevOps バグ取得 ===
     azure_devops_bug_wit: str = Field("Bug", alias="AZURE_DEVOPS_BUG_WIT")
     azure_devops_bug_ignore_status: str = Field("", alias="AZURE_DEVOPS_BUG_IGNORE_STATUS")

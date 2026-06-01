@@ -71,7 +71,7 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
   'N/A': 'na',
 }
 
-export function PbChartPanel({ project }: { project: ProjectItem }) {
+export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPlans?: () => void }) {
   const [result, setResult] = useState<ChartResult | null>(null)
   const [selectedLabel, setSelectedLabel] = useState<string>('')
   const [layers, setLayers] = useState<ChartLayers>({
@@ -229,18 +229,25 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
       {error && <div className="chart-state error">PB図を取得できませんでした: {error}</div>}
       {!loading && !error && chart && chart.series.length === 0 && (
         <div className="chart-state">
-          {selectedLabel
-            ? `${selectedLabel} の計画または実績データがまだありません。`
-            : '計画または実績データがまだありません。'}
+          <p>
+            {selectedLabel
+              ? `${selectedLabel} の計画または実績データがまだありません。`
+              : '計画または実績データがまだありません。'}
+          </p>
+          {onPlans && (
+            <button className="primary-button" type="button" onClick={onPlans}>
+              テスト計画入力
+            </button>
+          )}
         </div>
       )}
       {!loading && !error && chart && chart.series.length > 0 && (
-        <>
-          <div className="chart-wrap">
-            <PbChart chart={chart} layers={effectiveLayers} />
-          </div>
-          <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
-        </>
+        <div className="chart-wrap">
+          <PbChart chart={chart} layers={effectiveLayers} />
+        </div>
+      )}
+      {!loading && !error && (
+        <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
       )}
     </section>
   )

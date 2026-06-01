@@ -91,7 +91,7 @@ export function ProjectOverview({
         <StatusTile label="最終更新" value={formatDateTime(project.actuals_updated_at)} />
       </section>
 
-      <PbChartPanel key={project.testing_id} project={project} />
+      <PbChartPanel key={project.testing_id} project={project} onPlans={onPlans} />
     </div>
   )
 }

@@ -20,7 +20,7 @@ import {
 import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
-import { ClipboardList } from 'lucide-react'
+import { Bug, ClipboardList } from 'lucide-react'
 import { formatDate, formatDateTime } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 
@@ -209,6 +209,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
           onClick={handleSyncBugs}
           disabled={bugSync.loading || !bugsAllowed}
         >
+          <Bug className="bug-sync-icon" aria-hidden="true" />
           {bugSync.loading ? '取得中...' : '不具合数を取得'}
         </button>
         {bugSync.error ? (

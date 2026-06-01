@@ -4,8 +4,10 @@
   --border: #e3e6ea;
   --text: #1f2933;
   --muted: #7b8794;
-  --accent: #2f6fed;
-  --accent-soft: #eaf1ff;
+  --accent: #274c77;
+  --accent-hover: #1d3f66;
+  --accent-border: #9bb4d1;
+  --accent-soft: #eaf2fb;
   --sidebar-w: 260px;
 }
 

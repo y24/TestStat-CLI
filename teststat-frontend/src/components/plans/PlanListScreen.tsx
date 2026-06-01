@@ -42,6 +42,10 @@ export function PlanListScreen({
   onSaveModal: (changes: PlanVersionModalChanges) => void
   onCloseModal: () => void
 }) {
+  const modalResetKey = `${modalLabel ?? 'overall'}:${selectedModalPlans
+    .map((plan) => `${plan.id}:${plan.is_active}`)
+    .join(',')}`
+
   return (
     <div className="content-shell plan-screen">
       <header className="content-header">
@@ -83,6 +87,7 @@ export function PlanListScreen({
       )}
       {modalLabel !== undefined && (
         <PlanVersionModal
+          key={modalResetKey}
           label={modalLabel}
           plans={selectedModalPlans}
           submitting={submitting}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { PlanItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
 import { displayLabel } from '../../utils/plans'
@@ -26,11 +26,6 @@ export function PlanVersionModal({
   const initialActivePlanId = useMemo(() => plans.find((plan) => plan.is_active)?.id ?? null, [plans])
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(initialActivePlanId)
   const [deletedPlanIds, setDeletedPlanIds] = useState<number[]>([])
-
-  useEffect(() => {
-    setSelectedPlanId(initialActivePlanId)
-    setDeletedPlanIds([])
-  }, [initialActivePlanId, plans])
 
   const deletedPlanIdSet = new Set(deletedPlanIds)
   const visiblePlans = plans.filter((plan) => !deletedPlanIdSet.has(plan.id))

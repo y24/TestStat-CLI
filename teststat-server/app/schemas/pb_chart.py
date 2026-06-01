@@ -18,6 +18,9 @@ class PbChartSeriesItem(BaseModel):
     actual_remaining: int | None
     planned_completed_daily: int | None
     actual_completed_daily: int | None
+    bug_open: int | None = None          # 未解消（赤エリアの高さ）
+    bug_suspended: int | None = None     # 対応見送り累積（黄エリアの高さ）
+    bug_resolved: int | None = None      # 完了累積（緑エリアの高さ）
 
 
 class PastPlanSeriesItem(BaseModel):
@@ -44,3 +47,5 @@ class PbChartResponse(BaseModel):
     planned_total_cases: int | None  # 有効計画の planned_total_cases 合計（None = 計画なし）
     series: list[PbChartSeriesItem]
     past_plans: list[PastPlanSeries]
+    has_bugs: bool = False           # 1件でも bug_snapshots があるか
+    bugs_updated_at: datetime | None = None  # max(fetched_at)

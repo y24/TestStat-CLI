@@ -10,11 +10,17 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { fetchPbChart, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
+import {
+  fetchPbChart,
+  fetchPlans,
+  fetchProgressDaily,
+  fetchProgressFiles,
+  syncAzureDevOpsBugs,
+} from '../api/client'
 import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
 import { buildChartNotices, buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
-import { formatDate } from '../utils/date'
+import { formatDate, formatDateTime } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 
 echarts.use([
@@ -73,7 +79,31 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
     actualLine: true,
     dailyBars: true,
     pastPlans: false,
+    bugs: true,
   })
+  const [reloadKey, setReloadKey] = useState(0)
+  const [bugSync, setBugSync] = useState<{ loading: boolean; message: string | null; error: string | null }>({
+    loading: false,
+    message: null,
+    error: null,
+  })
+
+  const handleSyncBugs = () => {
+    setBugSync({ loading: true, message: null, error: null })
+    syncAzureDevOpsBugs(project.testing_id)
+      .then((res) => {
+        setBugSync({
+          loading: false,
+          message: `不具合 ${res.fetched} 件（未解消 ${res.open_count} / 見送り ${res.suspended_count} / 完了 ${res.resolved_count}）`,
+          error: null,
+        })
+        setLayers((prev) => ({ ...prev, bugs: true }))
+        setReloadKey((key) => key + 1)
+      })
+      .catch((err) => {
+        setBugSync({ loading: false, message: null, error: getErrorMessage(err) })
+      })
+  }
 
   useEffect(() => {
     let ignore = false
@@ -115,7 +145,7 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
     return () => {
       ignore = true
     }
-  }, [project.testing_id, selectedLabel, layers.pastPlans])
+  }, [project.testing_id, selectedLabel, layers.pastPlans, reloadKey])
 
   const label = selectedLabel || null
   const isCurrentResult =
@@ -165,6 +195,23 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
             </select>
           </label>
           <ChartLayerControls layers={layers} onChange={setLayers} />
+          <div className="bug-sync">
+            <button
+              type="button"
+              className="bug-sync-button"
+              onClick={handleSyncBugs}
+              disabled={bugSync.loading}
+            >
+              {bugSync.loading ? '取得中...' : '不具合を取得'}
+            </button>
+            {bugSync.error ? (
+              <span className="bug-sync-meta error">取得失敗: {bugSync.error}</span>
+            ) : bugSync.message ? (
+              <span className="bug-sync-meta">{bugSync.message}</span>
+            ) : chart?.bugs_updated_at ? (
+              <span className="bug-sync-meta">不具合最終取得: {formatDateTime(chart.bugs_updated_at)}</span>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -234,6 +281,14 @@ function ChartLayerControls({
           onChange={(event) => onChange({ ...layers, pastPlans: event.target.checked })}
         />
         過去計画
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={layers.bugs}
+          onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
+        />
+        不具合
       </label>
     </div>
   )

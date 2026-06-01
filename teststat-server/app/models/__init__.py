@@ -3,6 +3,7 @@ from app.models.project import Project
 from app.models.plan import Plan, PlanDaily
 from app.models.holiday import Holiday
 from app.models.setting import ProgressStatusSetting
+from app.models.bug import BugSnapshot
 
 __all__ = [
     "Testing",
@@ -14,4 +15,5 @@ __all__ = [
     "PlanDaily",
     "Holiday",
     "ProgressStatusSetting",
+    "BugSnapshot",
 ]

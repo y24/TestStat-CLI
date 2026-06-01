@@ -699,6 +699,43 @@
   height: 15px;
 }
 
+.bug-sync {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bug-sync-button {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--accent, #2f6fed);
+  border-radius: 6px;
+  background: var(--accent, #2f6fed);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.bug-sync-button:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.bug-sync-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bug-sync-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.bug-sync-meta.error {
+  color: #9d2145;
+}
+
 .pb-chart {
   width: 100%;
   height: 460px;

@@ -1,4 +1,5 @@
 from app.schemas.azure_devops import WorkItemResponse
+from app.schemas.bug import BugSyncResponse
 from app.schemas.progress import (
     DailyProgressItem,
     FileProgressItem,
@@ -9,6 +10,7 @@ from app.schemas.progress import (
 )
 
 __all__ = [
+    "BugSyncResponse",
     "DailyProgressItem",
     "FileProgressItem",
     "ProgressPostResponse",

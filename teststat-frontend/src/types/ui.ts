@@ -7,4 +7,5 @@ export interface ChartLayers {
   actualLine: boolean
   dailyBars: boolean
   pastPlans: boolean
+  bugs: boolean
 }

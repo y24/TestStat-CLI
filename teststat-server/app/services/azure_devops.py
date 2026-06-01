@@ -44,6 +44,15 @@ class WorkItemInfo:
     end_date: date | None
 
 
+@dataclass
+class BugWorkItem:
+    work_item_id: int
+    title: str
+    state: str                  # 見送り/完了の判定に使う（Suspend 等）
+    created_date: date | None   # 起票日
+    finish_date: date | None    # 完了日／見送り確定日（None=未解消）
+
+
 def fetch_work_item(work_item_id: int, settings: Settings | None = None) -> WorkItemInfo:
     """Work Item を取得し、タイトル・開始日・終了日を返す。"""
     settings = settings or get_settings()
@@ -75,8 +84,19 @@ def _build_client() -> httpx.Client:
     return httpx.Client(timeout=_HTTP_TIMEOUT)
 
 
-def _request(path: str, params: dict[str, str], settings: Settings) -> httpx.Response:
-    """Azure DevOps REST API を GET で呼ぶ共通ヘルパ（読み取り専用）。"""
+def _request(
+    path: str,
+    params: dict[str, str],
+    settings: Settings,
+    *,
+    method: str = "GET",
+    json: object | None = None,
+) -> httpx.Response:
+    """Azure DevOps REST API を呼ぶ共通ヘルパ（読み取り専用）。
+
+    GET（Work Item 取得）に加え、WIQL の POST も同じ認証・URL 構築・エラー変換で扱える。
+    POST 時は `json=` を渡すと httpx が Content-Type: application/json を自動付与する。
+    """
     if not settings.azure_devops_pat or not settings.azure_devops_organization:
         raise AzureDevOpsNotConfigured(
             "AZURE_DEVOPS_PAT と AZURE_DEVOPS_ORGANIZATION を設定してください"
@@ -92,7 +112,7 @@ def _request(path: str, params: dict[str, str], settings: Settings) -> httpx.Res
 
     try:
         with _build_client() as client:
-            response = client.get(url, params=params, headers=headers)
+            response = client.request(method, url, params=params, headers=headers, json=json)
     except httpx.HTTPError as exc:  # タイムアウト・接続不可など
         raise AzureDevOpsError(f"Azure DevOps への接続に失敗しました: {exc}") from exc
 
@@ -150,3 +170,126 @@ def _parse_date(value: object) -> date | None:
             return date.fromisoformat(value[:10])
         except ValueError:
             return None
+
+
+# --- 子チケット（Bug）取得 -------------------------------------------------
+
+# workitems?ids= は 1 リクエストあたり最大 200 件。
+_WORKITEMS_BATCH = 200
+
+
+def fetch_child_bugs(work_item_id: int, settings: Settings | None = None) -> list[BugWorkItem]:
+    """Work Item の子チケットのうち Bug を取得する。
+
+    IGNORE 対象 State は除外する。Suspend（見送り）対象 State は除外せず、State を保持して返す
+    （完了/見送りの振り分けは集計側で行う）。
+    """
+    settings = settings or get_settings()
+    if settings.azure_devops_use_mock:
+        return _mock_child_bugs(work_item_id, settings)
+    return _fetch_child_bugs_remote(work_item_id, settings)
+
+
+def _configured_bug_fields(settings: Settings) -> list[str]:
+    """取得するフィールド参照名（空文字は除外、順序維持で重複排除）。"""
+    candidates = [
+        settings.azure_devops_title_field,
+        settings.azure_devops_bug_state_field,
+        settings.azure_devops_bug_created_date_field,
+        settings.azure_devops_bug_finish_date_field,
+    ]
+    result: list[str] = []
+    for name in candidates:
+        if name and name not in result:
+            result.append(name)
+    return result
+
+
+def _wiql_child_bug_query(work_item_id: int, settings: Settings) -> str:
+    bug_wit = settings.azure_devops_bug_wit.replace("'", "''")
+    return (
+        "SELECT [System.Id] FROM WorkItems "
+        f"WHERE [System.Parent] = {work_item_id} "
+        f"AND [System.WorkItemType] = '{bug_wit}'"
+    )
+
+
+def _fetch_child_bugs_remote(work_item_id: int, settings: Settings) -> list[BugWorkItem]:
+    params = {"api-version": settings.azure_devops_api_version}
+
+    # ① WIQL で子 Bug の ID 一覧を取得（fields と $expand の併用不可制約を回避）。
+    wiql_response = _request(
+        "wiql",
+        params,
+        settings,
+        method="POST",
+        json={"query": _wiql_child_bug_query(work_item_id, settings)},
+    )
+    ids = [item["id"] for item in wiql_response.json().get("workItems", []) if "id" in item]
+    if not ids:
+        return []
+
+    # ② フィールドを 200 件ずつ一括取得。
+    field_names = _configured_bug_fields(settings)
+    bugs: list[BugWorkItem] = []
+    ignore_states = settings.azure_devops_bug_ignore_status_set
+    for start in range(0, len(ids), _WORKITEMS_BATCH):
+        batch = ids[start : start + _WORKITEMS_BATCH]
+        batch_params = {
+            "api-version": settings.azure_devops_api_version,
+            "ids": ",".join(str(i) for i in batch),
+        }
+        if field_names:
+            batch_params["fields"] = ",".join(field_names)
+        response = _request("workitems", batch_params, settings)
+        for item in response.json().get("value", []):
+            bug = _build_bug(item, settings)
+            if bug.state in ignore_states:  # Removed 等は完全除外
+                continue
+            bugs.append(bug)
+    return bugs
+
+
+def _build_bug(item: dict, settings: Settings) -> BugWorkItem:
+    fields = item.get("fields", {})
+    return BugWorkItem(
+        work_item_id=item.get("id", 0),
+        title=fields.get(settings.azure_devops_title_field) or "",
+        state=fields.get(settings.azure_devops_bug_state_field) or "",
+        created_date=_parse_date(fields.get(settings.azure_devops_bug_created_date_field)),
+        finish_date=_parse_date(fields.get(settings.azure_devops_bug_finish_date_field)),
+    )
+
+
+def _mock_child_bugs(work_item_id: int, settings: Settings) -> list[BugWorkItem]:
+    """動作確認用。実レスポンスの構造を模した決定的なサンプルを返す。
+
+    未解消・完了・対応見送り（Suspend）・除外対象（Removed）を含み、
+    IGNORE フィルタはモードに依らず適用する（Suspend は残す）。
+    """
+    if work_item_id <= 0:
+        raise WorkItemNotFound(f"Work Item {work_item_id} は存在しません（mock）")
+
+    samples = [
+        (9001, "ログイン不可", "Closed", date(2025, 1, 29), date(2025, 2, 5)),
+        (9002, "表示崩れ", "Active", date(2025, 1, 31), None),
+        (9006, "計算誤り", "Closed", date(2025, 2, 3), date(2025, 2, 14)),
+        (9007, "仕様調整中", "Suspend", date(2025, 2, 6), date(2025, 2, 12)),
+        (9003, "帳票印字ずれ", "Closed", date(2025, 2, 10), date(2025, 2, 24)),
+        (9004, "タイムアウト", "Active", date(2025, 2, 13), None),
+        (9008, "次期対応", "Suspend", date(2025, 2, 18), date(2025, 3, 6)),
+        (9009, "軽微な文言", "Active", date(2025, 3, 3), None),
+        (9005, "重複起票", "Removed", date(2025, 2, 20), None),
+    ]
+    ignore_states = settings.azure_devops_bug_ignore_status_set
+    return [
+        BugWorkItem(
+            work_item_id=wid,
+            title=title,
+            state=state,
+            created_date=created,
+            finish_date=finish,
+        )
+        for wid, title, state, created, finish in samples
+        if state not in ignore_states
+    ]

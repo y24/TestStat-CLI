@@ -22,6 +22,18 @@ class Settings(BaseSettings):
         "Microsoft.VSTS.Scheduling.FinishDate", alias="AZURE_DEVOPS_END_DATE_FIELD"
     )
 
+    # === Azure DevOps バグ取得 ===
+    azure_devops_bug_wit: str = Field("Bug", alias="AZURE_DEVOPS_BUG_WIT")
+    azure_devops_bug_ignore_status: str = Field("", alias="AZURE_DEVOPS_BUG_IGNORE_STATUS")
+    azure_devops_bug_suspend_status: str = Field("", alias="AZURE_DEVOPS_BUG_SUSPEND_STATUS")
+    azure_devops_bug_created_date_field: str = Field(
+        "System.CreatedDate", alias="AZURE_DEVOPS_BUG_CREATED_DATE_FIELD"
+    )
+    azure_devops_bug_finish_date_field: str = Field(
+        "Microsoft.VSTS.Common.ClosedDate", alias="AZURE_DEVOPS_BUG_FINISH_DATE_FIELD"
+    )
+    azure_devops_bug_state_field: str = Field("System.State", alias="AZURE_DEVOPS_BUG_STATE_FIELD")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
@@ -29,6 +41,19 @@ class Settings(BaseSettings):
         if self.allowed_origins.strip() == "*":
             return ["*"]
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    @staticmethod
+    def _csv_set(value: str) -> set[str]:
+        return {item.strip() for item in value.split(",") if item.strip()}
+
+    @property
+    def azure_devops_bug_ignore_status_set(self) -> set[str]:
+        return self._csv_set(self.azure_devops_bug_ignore_status)
+
+    @property
+    def azure_devops_bug_suspend_status_set(self) -> set[str]:
+        # IGNORE と重複した State は除外を優先（見送り集合からは外す）。
+        return self._csv_set(self.azure_devops_bug_suspend_status) - self.azure_devops_bug_ignore_status_set
 
 
 @lru_cache

@@ -176,6 +176,9 @@ export interface PbChartSeries {
   actual_remaining: number | null
   planned_completed_daily: number | null
   actual_completed_daily: number | null
+  bug_open: number | null
+  bug_suspended: number | null
+  bug_resolved: number | null
 }
 
 export interface PbChartPastPlan {
@@ -196,4 +199,15 @@ export interface PbChartResponse {
   planned_total_cases: number | null
   series: PbChartSeries[]
   past_plans: PbChartPastPlan[]
+  has_bugs: boolean
+  bugs_updated_at: string | null
+}
+
+export interface BugSyncResult {
+  testing_id: number
+  fetched: number
+  open_count: number
+  suspended_count: number
+  resolved_count: number
+  fetched_at: string
 }

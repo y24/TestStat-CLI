@@ -5,6 +5,13 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
+from app.crud.bug import (
+    get_bug_cumulative,
+    get_bug_date_bounds,
+    get_bugs_updated_at,
+    has_bugs as _has_bugs,
+)
 from app.models.plan import Plan, PlanDaily
 from app.models.progress import FileProgress, DailyProgress, Testing
 from app.models.project import Project
@@ -132,10 +139,12 @@ def _build_series(
     plan_daily: dict[date, int],
     actual_remaining_sparse: dict[date, int],
     actual_daily: dict[date, int],
+    bug_cumulative: dict[date, tuple[int, int, int]] | None = None,
 ) -> list[PbChartSeriesItem]:
     """
     全日付に対して系列エントリを生成。
     actual_remaining は実績データ日のみ持つ sparse dict → 前の値を引き継いで補完。
+    bug_cumulative は {date: (open, suspended, resolved)}。None のときは不具合系列を None で埋める。
     """
     last_actual_remaining: int | None = None
     last_actual_date: date | None = max(actual_remaining_sparse) if actual_remaining_sparse else None
@@ -156,12 +165,19 @@ def _build_series(
 
         ad: int | None = actual_daily.get(d)
 
+        bug_open = bug_suspended = bug_resolved = None
+        if bug_cumulative is not None:
+            bug_open, bug_suspended, bug_resolved = bug_cumulative.get(d, (0, 0, 0))
+
         items.append(PbChartSeriesItem(
             date=d,
             planned_remaining=pr,
             actual_remaining=ar,
             planned_completed_daily=pd,
             actual_completed_daily=ad,
+            bug_open=bug_open,
+            bug_suspended=bug_suspended,
+            bug_resolved=bug_resolved,
         ))
     return items
 
@@ -301,6 +317,13 @@ def get_pb_chart(
     has_actuals = bool(actual_daily_map) and available_cases > 0
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
 
+    # 不具合（label 非依存。Testing ID 単位で取得済みのスナップショットを使う）
+    bugs_present = _has_bugs(db, testing_id)
+    bugs_updated_at = get_bugs_updated_at(db, testing_id) if bugs_present else None
+    bug_from = bug_to = None
+    if bugs_present:
+        bug_from, bug_to = get_bug_date_bounds(db, testing_id)
+
     # 日付レンジ
     range_from: date | None = None
     range_to: date | None = None
@@ -312,6 +335,11 @@ def get_pb_chart(
         actual_max = max(actual_daily_map)
         range_from = min(range_from, actual_min) if range_from else actual_min
         range_to = max(range_to, actual_max) if range_to else actual_max
+    # バグエリアが途中で切れないよう、起票日/完了日も range に含める。
+    if bug_from is not None:
+        range_from = min(range_from, bug_from) if range_from else bug_from
+    if bug_to is not None:
+        range_to = max(range_to, bug_to) if range_to else bug_to
 
     if range_from is None or range_to is None:
         # データが一切ない
@@ -324,11 +352,18 @@ def get_pb_chart(
             planned_total_cases=None,
             series=[],
             past_plans=[],
+            has_bugs=bugs_present,
+            bugs_updated_at=bugs_updated_at,
         )
 
     date_list = _date_range(range_from, range_to)
+    bug_cumulative = None
+    if bugs_present:
+        suspend_states = get_settings().azure_devops_bug_suspend_status_set
+        bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)
     series = _build_series(
-        date_list, plan_remaining_map, plan_d_map, actual_remaining_sparse, actual_daily_map
+        date_list, plan_remaining_map, plan_d_map, actual_remaining_sparse, actual_daily_map,
+        bug_cumulative,
     )
 
     past_plans = _compute_past_plans(db, testing_id, label) if include_past_plans else []
@@ -342,4 +377,6 @@ def get_pb_chart(
         planned_total_cases=planned_total,
         series=series,
         past_plans=past_plans,
+        has_bugs=bugs_present,
+        bugs_updated_at=bugs_updated_at,
     )

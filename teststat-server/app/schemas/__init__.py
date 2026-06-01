@@ -1,3 +1,4 @@
+from app.schemas.azure_devops import WorkItemResponse
 from app.schemas.progress import (
     DailyProgressItem,
     FileProgressItem,
@@ -14,4 +15,5 @@ __all__ = [
     "ProgressRequest",
     "ProgressSummaryResponse",
     "TestingItem",
+    "WorkItemResponse",
 ]

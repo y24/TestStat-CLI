@@ -16,6 +16,7 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
 ]
 
 [tool.setuptools]
@@ -25,4 +26,5 @@ packages = [
     "app.schemas",
     "app.crud",
     "app.routers",
+    "app.services",
 ]

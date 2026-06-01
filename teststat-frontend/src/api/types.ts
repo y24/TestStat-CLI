@@ -84,6 +84,15 @@ export interface ProgressStatusThresholds {
   warning: number
 }
 
+// === Azure DevOps 連携 ===
+
+export interface AzureDevOpsWorkItem {
+  work_item_id: number
+  name: string
+  start_date: string | null
+  end_date: string | null
+}
+
 // === 計画系（フロント新設バックエンド。Phase B1〜B3 で実装後に使う） ===
 
 export interface ProjectItem {

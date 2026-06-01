@@ -4,7 +4,7 @@ import { activatePlan, createPlan, deletePlan, fetchHolidays, fetchPlans, fetchP
 import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
 import { getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
-import { buildEvenDaily, parseDailyCsv } from '../utils/plans'
+import { buildEvenDaily, countBusinessDays, parseDailyCsv } from '../utils/plans'
 import { useConfirmDialog } from './confirmDialogContext'
 import { PlanCreateScreen } from './plans/PlanCreateScreen'
 import { PlanListScreen } from './plans/PlanListScreen'
@@ -201,19 +201,23 @@ export function PlanEditor({
         : null
     const initialDateRange = projectDateRange ?? actualDateRange
     const initialForm = createInitialPlanForm()
+    const plannedTotal =
+      label === null
+        ? overallAvailableCases > 0
+          ? String(overallAvailableCases)
+          : ''
+        : availableCasesByLabel[label] !== undefined
+          ? String(availableCasesByLabel[label])
+          : ''
+    const startDate = initialDateRange?.start_date ?? initialForm.start_date
+    const endDate = initialDateRange?.end_date ?? initialForm.end_date
     const nextForm = {
       ...initialForm,
       label: label ?? '',
-      planned_total_cases:
-        label === null
-          ? overallAvailableCases > 0
-            ? String(overallAvailableCases)
-            : ''
-          : availableCasesByLabel[label] !== undefined
-            ? String(availableCasesByLabel[label])
-            : '',
-      start_date: initialDateRange?.start_date ?? initialForm.start_date,
-      end_date: initialDateRange?.end_date ?? initialForm.end_date,
+      planned_total_cases: plannedTotal,
+      daily_count_per_day: calculateDailyCountText(plannedTotal, startDate, endDate, holidayDates),
+      start_date: startDate,
+      end_date: endDate,
     }
     setFormError(null)
     setForm(nextForm)
@@ -413,6 +417,7 @@ function createInitialPlanForm(): PlanFormState {
     label: '',
     reason: '',
     planned_total_cases: '',
+    daily_count_per_day: '',
     start_date: today,
     end_date: today,
     activate: true,
@@ -426,6 +431,7 @@ function isSamePlanForm(left: PlanFormState, right: PlanFormState): boolean {
     left.label === right.label &&
     left.reason === right.reason &&
     left.planned_total_cases === right.planned_total_cases &&
+    left.daily_count_per_day === right.daily_count_per_day &&
     left.start_date === right.start_date &&
     left.end_date === right.end_date &&
     left.activate === right.activate &&
@@ -473,4 +479,28 @@ function minString(values: string[]): string {
 
 function maxString(values: string[]): string {
   return values.reduce((max, value) => (value > max ? value : max))
+}
+
+function calculateDailyCountText(
+  plannedTotalText: string,
+  startDate: string,
+  endDate: string,
+  holidays: Set<string>,
+) {
+  const plannedTotal = Number(plannedTotalText)
+  if (!Number.isFinite(plannedTotal) || plannedTotal <= 0 || !startDate || !endDate || startDate > endDate) {
+    return ''
+  }
+  const businessDays = countBusinessDays(startDate, endDate, holidays)
+  if (businessDays === 0) {
+    return ''
+  }
+  return formatDailyCount(plannedTotal / businessDays)
+}
+
+function formatDailyCount(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+  return value.toFixed(1)
 }

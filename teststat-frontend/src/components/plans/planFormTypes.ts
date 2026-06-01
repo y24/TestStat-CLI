@@ -4,6 +4,7 @@ export interface PlanFormState {
   label: string
   reason: string
   planned_total_cases: string
+  daily_count_per_day: string
   start_date: string
   end_date: string
   activate: boolean

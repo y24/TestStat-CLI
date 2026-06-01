@@ -1,7 +1,13 @@
 import { useMemo } from 'react'
 import type { FormEvent } from 'react'
-import { enumerateDates, formatDate } from '../../utils/date'
-import { buildEvenDaily, displayLabel, parseDailyCsv } from '../../utils/plans'
+import { enumerateDates } from '../../utils/date'
+import {
+  buildEvenDaily,
+  calculateEndDateByDailyCount,
+  countBusinessDays,
+  displayLabel,
+  parseDailyCsv,
+} from '../../utils/plans'
 import type { PlanFormState, PlanInputMode } from './planFormTypes'
 
 export function PlanCreateForm({
@@ -26,6 +32,38 @@ export function PlanCreateForm({
   onSubmit: (event: FormEvent) => void
 }) {
   const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
+  const handlePlannedTotalChange = (value: string) => {
+    onFormChange(syncDailyCountFromDates({ ...form, planned_total_cases: value }, holidays))
+  }
+  const handleDailyCountChange = (value: string) => {
+    const nextForm = { ...form, daily_count_per_day: value }
+    const plannedTotal = Number(nextForm.planned_total_cases)
+    const dailyCount = Number(value)
+    const endDate =
+      Number.isFinite(plannedTotal) && Number.isFinite(dailyCount) && nextForm.start_date
+        ? calculateEndDateByDailyCount(nextForm.start_date, plannedTotal, dailyCount, holidays)
+        : ''
+    onFormChange(endDate ? { ...nextForm, end_date: endDate } : nextForm)
+  }
+  const handleStartDateChange = (value: string) => {
+    const nextForm = { ...form, start_date: value }
+    const syncedForm = syncDailyCountFromDates(nextForm, holidays)
+    if (syncedForm.daily_count_per_day || !nextForm.daily_count_per_day) {
+      onFormChange(syncedForm)
+      return
+    }
+
+    const plannedTotal = Number(nextForm.planned_total_cases)
+    const dailyCount = Number(nextForm.daily_count_per_day)
+    const endDate =
+      Number.isFinite(plannedTotal) && Number.isFinite(dailyCount) && value
+        ? calculateEndDateByDailyCount(value, plannedTotal, dailyCount, holidays)
+        : ''
+    onFormChange(endDate ? { ...nextForm, end_date: endDate } : nextForm)
+  }
+  const handleEndDateChange = (value: string) => {
+    onFormChange(syncDailyCountFromDates({ ...form, end_date: value }, holidays))
+  }
 
   return (
     <form className="editor-form plan-form wide" onSubmit={onSubmit}>
@@ -43,8 +81,20 @@ export function PlanCreateForm({
             min="1"
             value={form.planned_total_cases}
             disabled={submitting}
-            onChange={(event) => onFormChange({ ...form, planned_total_cases: event.target.value })}
+            onChange={(event) => handlePlannedTotalChange(event.target.value)}
             required
+          />
+        </label>
+        <label>
+          <span>1日あたり項目数</span>
+          <input
+            type="number"
+            min="0.1"
+            step="0.1"
+            value={form.daily_count_per_day}
+            disabled={submitting}
+            onChange={(event) => handleDailyCountChange(event.target.value)}
+            placeholder="12項目/d"
           />
         </label>
         <label>
@@ -68,7 +118,7 @@ export function PlanCreateForm({
             type="date"
             value={form.start_date}
             disabled={submitting}
-            onChange={(event) => onFormChange({ ...form, start_date: event.target.value })}
+            onChange={(event) => handleStartDateChange(event.target.value)}
             required
           />
         </label>
@@ -78,7 +128,7 @@ export function PlanCreateForm({
             type="date"
             value={form.end_date}
             disabled={submitting}
-            onChange={(event) => onFormChange({ ...form, end_date: event.target.value })}
+            onChange={(event) => handleEndDateChange(event.target.value)}
             required
           />
         </label>
@@ -135,12 +185,13 @@ function PlanPreview({ preview }: { preview: PreviewState }) {
   }
 
   const width = 720
-  const height = 220
-  const padding = { top: 18, right: 20, bottom: 34, left: 46 }
+  const height = 240
+  const padding = { top: 18, right: 20, bottom: 52, left: 46 }
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const maxValue = Math.max(preview.plannedTotal, ...preview.points.map((point) => point.remaining), 1)
   const xStep = preview.points.length > 1 ? plotWidth / (preview.points.length - 1) : 0
+  const xTicks = buildDateTicks(preview.points)
   const path = preview.points
     .map((point, index) => {
       const x = padding.left + xStep * index
@@ -155,13 +206,9 @@ function PlanPreview({ preview }: { preview: PreviewState }) {
       <div className="plan-preview-header">
         <div>
           <div className="panel-title">計画線プレビュー</div>
-          <div className="panel-subtitle">
-            {formatDate(preview.points[0].date)} - {formatDate(preview.points.at(-1)?.date ?? preview.points[0].date)}
-          </div>
         </div>
         <div className="preview-stats">
-          <span>合計 {preview.dailyTotal}</span>
-          <span>日数 {preview.points.length}</span>
+          <span>{preview.businessDayCount} 営業日</span>
         </div>
       </div>
       <svg className="preview-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="計画線プレビュー">
@@ -178,6 +225,17 @@ function PlanPreview({ preview }: { preview: PreviewState }) {
         <text x={padding.left - 8} y={padding.top + plotHeight + 4} textAnchor="end">
           0
         </text>
+        {xTicks.map((tick) => {
+          const x = padding.left + xStep * tick.index
+          return (
+            <g key={`${tick.date}-${tick.index}`} className="preview-x-tick">
+              <line x1={x} y1={padding.top + plotHeight} x2={x} y2={padding.top + plotHeight + 5} />
+              <text x={x} y={padding.top + plotHeight + 22} textAnchor="middle">
+                {formatTickDate(tick.date)}
+              </text>
+            </g>
+          )
+        })}
         <path className="preview-area" d={areaPath} />
         <path className="preview-line" d={path} />
         {preview.points.map((point, index) => {
@@ -201,17 +259,27 @@ interface PreviewPoint {
 interface PreviewState {
   points: PreviewPoint[]
   plannedTotal: number
-  dailyTotal: number
+  businessDayCount: number
   error: string | null
 }
 
 function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState {
   const total = Number(form.planned_total_cases)
   if (!Number.isInteger(total) || total <= 0 || !form.start_date || !form.end_date) {
-    return { points: [], plannedTotal: 0, dailyTotal: 0, error: '項目数と期間を入力するとプレビューを表示します。' }
+    return {
+      points: [],
+      plannedTotal: 0,
+      businessDayCount: 0,
+      error: '項目数と期間を入力するとプレビューを表示します。',
+    }
   }
   if (form.start_date > form.end_date) {
-    return { points: [], plannedTotal: total, dailyTotal: 0, error: '開始日と終了日を正しい順序で入力してください。' }
+    return {
+      points: [],
+      plannedTotal: total,
+      businessDayCount: 0,
+      error: '開始日と終了日を正しい順序で入力してください。',
+    }
   }
 
   try {
@@ -220,6 +288,7 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
         ? buildEvenDaily(form.start_date, form.end_date, total, holidays)
         : parseDailyCsv(form.dailyText)
     const dates = enumerateDates(form.start_date, form.end_date)
+    const businessDayCount = countBusinessDays(form.start_date, form.end_date, holidays)
     const dailyMap = new Map(daily.map((item) => [item.date, item.planned_count]))
     let consumed = 0
     const points = dates.map((date) => {
@@ -229,15 +298,60 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
     return {
       points,
       plannedTotal: total,
-      dailyTotal: daily.reduce((sum, item) => sum + item.planned_count, 0),
+      businessDayCount,
       error: points.length === 0 ? '期間内の日付がありません。' : null,
     }
   } catch (err) {
     return {
       points: [],
       plannedTotal: total,
-      dailyTotal: 0,
+      businessDayCount: 0,
       error: err instanceof Error ? err.message : 'プレビューを作成できません。',
     }
   }
+}
+
+function buildDateTicks(points: PreviewPoint[]) {
+  if (points.length <= 6) {
+    return points.map((point, index) => ({ date: point.date, index }))
+  }
+
+  const lastIndex = points.length - 1
+  const tickIndexes = new Set<number>()
+  for (let i = 0; i < 6; i += 1) {
+    tickIndexes.add(Math.round((lastIndex * i) / 5))
+  }
+  return [...tickIndexes].sort((a, b) => a - b).map((index) => ({ date: points[index].date, index }))
+}
+
+function formatTickDate(value: string) {
+  const [, month, day] = value.split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+
+function syncDailyCountFromDates(form: PlanFormState, holidays: Set<string>) {
+  const plannedTotal = Number(form.planned_total_cases)
+  if (
+    !Number.isFinite(plannedTotal) ||
+    plannedTotal <= 0 ||
+    !form.start_date ||
+    !form.end_date ||
+    form.start_date > form.end_date
+  ) {
+    return { ...form, daily_count_per_day: '' }
+  }
+
+  const businessDays = countBusinessDays(form.start_date, form.end_date, holidays)
+  if (businessDays === 0) {
+    return { ...form, daily_count_per_day: '' }
+  }
+
+  return { ...form, daily_count_per_day: formatDailyCount(plannedTotal / businessDays) }
+}
+
+function formatDailyCount(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+  return value.toFixed(1)
 }

@@ -20,6 +20,7 @@ import {
 import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
+import { ClipboardList } from 'lucide-react'
 import { formatDate, formatDateTime } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 
@@ -235,8 +236,9 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
               : '計画または実績データがまだありません。'}
           </p>
           {onPlans && (
-            <button className="primary-button" type="button" onClick={onPlans}>
-              テスト計画入力
+            <button className="primary-button icon-text-button" type="button" onClick={onPlans}>
+              <ClipboardList className="button-icon" aria-hidden="true" strokeWidth={2.2} />
+              <span>テスト計画入力</span>
             </button>
           )}
         </div>

@@ -37,17 +37,16 @@ export function countBusinessDays(start: string, end: string, holidays: Set<stri
   return enumerateDates(start, end).filter((date) => isBusinessDay(date, holidays)).length
 }
 
-export function calculateEndDateByDailyCount(
+export function calculateEndDateByBusinessDays(
   start: string,
-  total: number,
-  dailyCount: number,
+  businessDays: number,
   holidays: Set<string>,
 ) {
-  if (!start || !Number.isFinite(total) || !Number.isFinite(dailyCount) || total <= 0 || dailyCount <= 0) {
+  if (!start || !Number.isFinite(businessDays) || businessDays <= 0) {
     return ''
   }
 
-  let remainingBusinessDays = Math.ceil(total / dailyCount)
+  let remainingBusinessDays = Math.ceil(businessDays)
   const current = new Date(`${start}T00:00:00`)
   while (remainingBusinessDays > 0) {
     const date = toDateInputValue(current)
@@ -60,6 +59,19 @@ export function calculateEndDateByDailyCount(
     current.setDate(current.getDate() + 1)
   }
   return start
+}
+
+export function calculateEndDateByDailyCount(
+  start: string,
+  total: number,
+  dailyCount: number,
+  holidays: Set<string>,
+) {
+  if (!start || !Number.isFinite(total) || !Number.isFinite(dailyCount) || total <= 0 || dailyCount <= 0) {
+    return ''
+  }
+
+  return calculateEndDateByBusinessDays(start, Math.ceil(total / dailyCount), holidays)
 }
 
 export function parseDailyCsv(text: string) {

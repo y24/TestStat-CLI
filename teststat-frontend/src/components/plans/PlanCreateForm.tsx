@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { enumerateDates } from '../../utils/date'
 import {
   buildEvenDaily,
+  calculateEndDateByBusinessDays,
   calculateEndDateByDailyCount,
   countBusinessDays,
   displayLabel,
@@ -33,21 +34,52 @@ export function PlanCreateForm({
 }) {
   const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
   const handlePlannedTotalChange = (value: string) => {
-    onFormChange(syncDailyCountFromDates({ ...form, planned_total_cases: value }, holidays))
+    onFormChange(syncDerivedFromDates({ ...form, planned_total_cases: value }, holidays))
   }
   const handleDailyCountChange = (value: string) => {
     const nextForm = { ...form, daily_count_per_day: value }
     const plannedTotal = Number(nextForm.planned_total_cases)
     const dailyCount = Number(value)
-    const endDate =
-      Number.isFinite(plannedTotal) && Number.isFinite(dailyCount) && nextForm.start_date
-        ? calculateEndDateByDailyCount(nextForm.start_date, plannedTotal, dailyCount, holidays)
-        : ''
-    onFormChange(endDate ? { ...nextForm, end_date: endDate } : nextForm)
+    if (
+      !Number.isFinite(plannedTotal) ||
+      plannedTotal <= 0 ||
+      !Number.isFinite(dailyCount) ||
+      dailyCount <= 0 ||
+      !nextForm.start_date
+    ) {
+      onFormChange(nextForm)
+      return
+    }
+    const businessDays = Math.ceil(plannedTotal / dailyCount)
+    const endDate = calculateEndDateByBusinessDays(nextForm.start_date, businessDays, holidays)
+    onFormChange(
+      endDate
+        ? { ...nextForm, end_date: endDate, business_days: String(businessDays) }
+        : nextForm,
+    )
+  }
+  const handleBusinessDaysChange = (value: string) => {
+    const nextForm = { ...form, business_days: value }
+    const businessDays = Number(value)
+    if (!Number.isFinite(businessDays) || businessDays <= 0 || !nextForm.start_date) {
+      onFormChange(nextForm)
+      return
+    }
+    const endDate = calculateEndDateByBusinessDays(nextForm.start_date, businessDays, holidays)
+    if (!endDate) {
+      onFormChange(nextForm)
+      return
+    }
+    const plannedTotal = Number(nextForm.planned_total_cases)
+    const dailyCount =
+      Number.isFinite(plannedTotal) && plannedTotal > 0
+        ? formatDailyCount(plannedTotal / businessDays)
+        : nextForm.daily_count_per_day
+    onFormChange({ ...nextForm, end_date: endDate, daily_count_per_day: dailyCount })
   }
   const handleStartDateChange = (value: string) => {
     const nextForm = { ...form, start_date: value }
-    const syncedForm = syncDailyCountFromDates(nextForm, holidays)
+    const syncedForm = syncDerivedFromDates(nextForm, holidays)
     if (syncedForm.daily_count_per_day || !nextForm.daily_count_per_day) {
       onFormChange(syncedForm)
       return
@@ -59,10 +91,19 @@ export function PlanCreateForm({
       Number.isFinite(plannedTotal) && Number.isFinite(dailyCount) && value
         ? calculateEndDateByDailyCount(value, plannedTotal, dailyCount, holidays)
         : ''
-    onFormChange(endDate ? { ...nextForm, end_date: endDate } : nextForm)
+    if (!endDate) {
+      onFormChange(nextForm)
+      return
+    }
+    const businessDays = countBusinessDays(value, endDate, holidays)
+    onFormChange({
+      ...nextForm,
+      end_date: endDate,
+      business_days: businessDays > 0 ? String(businessDays) : '',
+    })
   }
   const handleEndDateChange = (value: string) => {
-    onFormChange(syncDailyCountFromDates({ ...form, end_date: value }, holidays))
+    onFormChange(syncDerivedFromDates({ ...form, end_date: value }, holidays))
   }
 
   return (
@@ -73,30 +114,47 @@ export function PlanCreateForm({
         </div>
       </div>
       {formError && <div className="form-error">{formError}</div>}
+      <fieldset className="plan-calc-group">
+        <legend>計画ボリューム（自動計算）</legend>
+        <div className="plan-calc-grid">
+          <label>
+            <span>項目数</span>
+            <input
+              type="number"
+              min="1"
+              value={form.planned_total_cases}
+              disabled={submitting}
+              onChange={(event) => handlePlannedTotalChange(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            <span>営業日数</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={form.business_days}
+              disabled={submitting}
+              onChange={(event) => handleBusinessDaysChange(event.target.value)}
+              placeholder="20日"
+            />
+          </label>
+          <label>
+            <span>1日あたり項目数</span>
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={form.daily_count_per_day}
+              disabled={submitting}
+              onChange={(event) => handleDailyCountChange(event.target.value)}
+              placeholder="12項目/d"
+            />
+          </label>
+        </div>
+      </fieldset>
       <div className="form-grid">
-        <label>
-          <span>項目数</span>
-          <input
-            type="number"
-            min="1"
-            value={form.planned_total_cases}
-            disabled={submitting}
-            onChange={(event) => handlePlannedTotalChange(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          <span>1日あたり項目数</span>
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            value={form.daily_count_per_day}
-            disabled={submitting}
-            onChange={(event) => handleDailyCountChange(event.target.value)}
-            placeholder="12項目/d"
-          />
-        </label>
         <label>
           <span>入力方法</span>
           <select
@@ -207,9 +265,6 @@ function PlanPreview({ preview }: { preview: PreviewState }) {
         <div>
           <div className="panel-title">計画線プレビュー</div>
         </div>
-        <div className="preview-stats">
-          <span>{preview.businessDayCount} 営業日</span>
-        </div>
       </div>
       <svg className="preview-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="計画線プレビュー">
         <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} />
@@ -259,7 +314,6 @@ interface PreviewPoint {
 interface PreviewState {
   points: PreviewPoint[]
   plannedTotal: number
-  businessDayCount: number
   error: string | null
 }
 
@@ -269,7 +323,6 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
     return {
       points: [],
       plannedTotal: 0,
-      businessDayCount: 0,
       error: '項目数と期間を入力するとプレビューを表示します。',
     }
   }
@@ -277,7 +330,6 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
     return {
       points: [],
       plannedTotal: total,
-      businessDayCount: 0,
       error: '開始日と終了日を正しい順序で入力してください。',
     }
   }
@@ -288,7 +340,6 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
         ? buildEvenDaily(form.start_date, form.end_date, total, holidays)
         : parseDailyCsv(form.dailyText)
     const dates = enumerateDates(form.start_date, form.end_date)
-    const businessDayCount = countBusinessDays(form.start_date, form.end_date, holidays)
     const dailyMap = new Map(daily.map((item) => [item.date, item.planned_count]))
     let consumed = 0
     const points = dates.map((date) => {
@@ -298,14 +349,12 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
     return {
       points,
       plannedTotal: total,
-      businessDayCount,
       error: points.length === 0 ? '期間内の日付がありません。' : null,
     }
   } catch (err) {
     return {
       points: [],
       plannedTotal: total,
-      businessDayCount: 0,
       error: err instanceof Error ? err.message : 'プレビューを作成できません。',
     }
   }
@@ -329,24 +378,19 @@ function formatTickDate(value: string) {
   return `${Number(month)}/${Number(day)}`
 }
 
-function syncDailyCountFromDates(form: PlanFormState, holidays: Set<string>) {
-  const plannedTotal = Number(form.planned_total_cases)
-  if (
-    !Number.isFinite(plannedTotal) ||
-    plannedTotal <= 0 ||
-    !form.start_date ||
-    !form.end_date ||
-    form.start_date > form.end_date
-  ) {
-    return { ...form, daily_count_per_day: '' }
-  }
-
+function syncDerivedFromDates(form: PlanFormState, holidays: Set<string>) {
   const businessDays = countBusinessDays(form.start_date, form.end_date, holidays)
-  if (businessDays === 0) {
-    return { ...form, daily_count_per_day: '' }
+  const businessDaysText = businessDays > 0 ? String(businessDays) : ''
+  const plannedTotal = Number(form.planned_total_cases)
+  if (!Number.isFinite(plannedTotal) || plannedTotal <= 0 || businessDays === 0) {
+    return { ...form, business_days: businessDaysText, daily_count_per_day: '' }
   }
 
-  return { ...form, daily_count_per_day: formatDailyCount(plannedTotal / businessDays) }
+  return {
+    ...form,
+    business_days: businessDaysText,
+    daily_count_per_day: formatDailyCount(plannedTotal / businessDays),
+  }
 }
 
 function formatDailyCount(value: number) {

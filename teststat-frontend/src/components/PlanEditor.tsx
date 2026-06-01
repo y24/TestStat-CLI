@@ -216,6 +216,7 @@ export function PlanEditor({
       label: label ?? '',
       planned_total_cases: plannedTotal,
       daily_count_per_day: calculateDailyCountText(plannedTotal, startDate, endDate, holidayDates),
+      business_days: calculateBusinessDaysText(startDate, endDate, holidayDates),
       start_date: startDate,
       end_date: endDate,
     }
@@ -418,6 +419,7 @@ function createInitialPlanForm(): PlanFormState {
     reason: '',
     planned_total_cases: '',
     daily_count_per_day: '',
+    business_days: '',
     start_date: today,
     end_date: today,
     activate: true,
@@ -432,6 +434,7 @@ function isSamePlanForm(left: PlanFormState, right: PlanFormState): boolean {
     left.reason === right.reason &&
     left.planned_total_cases === right.planned_total_cases &&
     left.daily_count_per_day === right.daily_count_per_day &&
+    left.business_days === right.business_days &&
     left.start_date === right.start_date &&
     left.end_date === right.end_date &&
     left.activate === right.activate &&
@@ -496,6 +499,11 @@ function calculateDailyCountText(
     return ''
   }
   return formatDailyCount(plannedTotal / businessDays)
+}
+
+function calculateBusinessDaysText(startDate: string, endDate: string, holidays: Set<string>) {
+  const businessDays = countBusinessDays(startDate, endDate, holidays)
+  return businessDays > 0 ? String(businessDays) : ''
 }
 
 function formatDailyCount(value: number) {

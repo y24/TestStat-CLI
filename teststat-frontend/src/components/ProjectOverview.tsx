@@ -1,5 +1,5 @@
 import type { ProjectItem } from '../api/types'
-import { formatDateTime } from '../utils/date'
+import { formatDate, formatDateTime } from '../utils/date'
 import {
   getProgressStatusLevel,
   type ProgressStatusLevel,
@@ -37,6 +37,10 @@ export function ProjectOverview({
   const status = getProjectStatus(project)
   const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
   const needsPlanInput = project.has_actuals && project.active_plan_count === 0
+  const plannedPeriod =
+    project.planned_start_date && project.planned_end_date
+      ? `${formatDate(project.planned_start_date)} ~ ${formatDate(project.planned_end_date)}`
+      : null
 
   return (
     <div className="content-shell project-overview">
@@ -56,6 +60,7 @@ export function ProjectOverview({
               <Pencil aria-hidden="true" />
             </button>
           </h1>
+          {plannedPeriod && <div className="project-planned-period">予定期間: {plannedPeriod}</div>}
           <div className="project-status-row">
             <div className={`project-status ${status.className}`}>
               <span className="status-dot" aria-hidden="true" />

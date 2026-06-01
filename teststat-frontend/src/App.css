@@ -352,6 +352,13 @@
   overflow-wrap: anywhere;
 }
 
+.project-planned-period {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .project-edit-button {
   width: 30px;
   min-width: 30px;

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { createProject, deleteProject, fetchProgressSummary, updateProject } from '../api/client'
+import {
+  createProject,
+  deleteProject,
+  fetchAzureDevOpsWorkItem,
+  fetchProgressSummary,
+  updateProject,
+} from '../api/client'
 import type { ProjectItem } from '../api/types'
 import { getErrorMessage } from '../utils/errors'
 import { useConfirmDialog } from './confirmDialogContext'
@@ -49,8 +55,11 @@ export function ProjectEditor({
       : emptyForm,
   )
   const [submitting, setSubmitting] = useState(false)
+  const [adoLoading, setAdoLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
+  const testingIdValue = Number(form.testing_id)
+  const testingIdValid = Number.isInteger(testingIdValue) && testingIdValue > 0
   const deleteDisabledReason = project?.archived ? 'アーカイブ済みのプロジェクトは削除できません。' : null
 
   useEffect(() => {
@@ -113,6 +122,27 @@ export function ProjectEditor({
       window.clearTimeout(timeoutId)
     }
   }, [form.testing_id, mode])
+
+  const handleAzureFetch = () => {
+    if (!testingIdValid) {
+      setFormError('Testing ID は正の整数で入力してください')
+      return
+    }
+    setAdoLoading(true)
+    setFormError(null)
+    fetchAzureDevOpsWorkItem(testingIdValue)
+      .then((workItem) => {
+        autoFilledNameRef.current = workItem.name
+        setForm((current) => ({
+          ...current,
+          name: workItem.name,
+          planned_start_date: workItem.start_date ?? '',
+          planned_end_date: workItem.end_date ?? '',
+        }))
+      })
+      .catch((err) => setFormError(getErrorMessage(err)))
+      .finally(() => setAdoLoading(false))
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -206,17 +236,29 @@ export function ProjectEditor({
         {formError && <div className="form-error">{formError}</div>}
         <label>
           <span>Testing ID</span>
-          <input
-            type="number"
-            min="1"
-            value={form.testing_id}
-            disabled={mode === 'edit' || submitting}
-            onChange={(event) => {
-              autoFilledNameRef.current = null
-              setForm({ ...form, testing_id: event.target.value })
-            }}
-            required
-          />
+          <div className="ado-fetch-row">
+            <input
+              type="number"
+              min="1"
+              value={form.testing_id}
+              disabled={mode === 'edit' || submitting}
+              onChange={(event) => {
+                autoFilledNameRef.current = null
+                setForm({ ...form, testing_id: event.target.value })
+              }}
+              required
+            />
+            {mode === 'new' && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleAzureFetch}
+                disabled={submitting || adoLoading || !testingIdValid}
+              >
+                {adoLoading ? '取得中...' : 'Azure DevOps から取得'}
+              </button>
+            )}
+          </div>
         </label>
         <label>
           <span>表示名</span>
@@ -257,10 +299,10 @@ export function ProjectEditor({
         </div>
 
         <div className="form-actions">
-          <button className="primary-button" type="submit" disabled={submitting}>
+          <button className="primary-button" type="submit" disabled={submitting || adoLoading}>
             {submitting ? '保存中...' : '保存'}
           </button>
-          <button className="secondary-button" type="button" onClick={onCancel} disabled={submitting}>
+          <button className="secondary-button" type="button" onClick={onCancel} disabled={submitting || adoLoading}>
             キャンセル
           </button>
           {mode === 'edit' && (

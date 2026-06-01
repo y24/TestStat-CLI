@@ -351,6 +351,8 @@ export function PlanEditor({
         holidays={holidayDates}
         showReason={isCreatingNewVersion}
         submitting={submitting}
+        projectStartDate={project.planned_start_date}
+        projectEndDate={project.planned_end_date}
         onFormChange={setForm}
         onCancel={cancelCreate}
         onSubmit={submitPlan}

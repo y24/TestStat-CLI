@@ -1201,6 +1201,12 @@
   white-space: nowrap;
 }
 
+.project-date-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -4px;
+}
+
 .plan-preview {
   border: 1px solid var(--border);
   border-radius: 7px;

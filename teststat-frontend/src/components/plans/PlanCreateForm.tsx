@@ -18,6 +18,8 @@ export function PlanCreateForm({
   holidays,
   showReason,
   submitting,
+  projectStartDate,
+  projectEndDate,
   onFormChange,
   onCancel,
   onSubmit,
@@ -28,6 +30,8 @@ export function PlanCreateForm({
   holidays: Set<string>
   showReason: boolean
   submitting: boolean
+  projectStartDate: string | null
+  projectEndDate: string | null
   onFormChange: (form: PlanFormState) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
@@ -191,6 +195,11 @@ export function PlanCreateForm({
           />
         </label>
       </div>
+      {projectStartDate && projectEndDate && (
+        <div className="project-date-hint">
+          予定期間: {formatHintDate(projectStartDate)} ~ {formatHintDate(projectEndDate)}
+        </div>
+      )}
       {form.inputMode === 'csv' && (
         <label>
           <span>日別計画</span>
@@ -391,6 +400,10 @@ function syncDerivedFromDates(form: PlanFormState, holidays: Set<string>) {
     business_days: businessDaysText,
     daily_count_per_day: formatDailyCount(plannedTotal / businessDays),
   }
+}
+
+function formatHintDate(value: string) {
+  return value.replaceAll('-', '/')
 }
 
 function formatDailyCount(value: number) {

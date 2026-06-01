@@ -12,6 +12,8 @@ export function PlanCreateScreen({
   holidays,
   showReason,
   submitting,
+  projectStartDate,
+  projectEndDate,
   onFormChange,
   onCancel,
   onSubmit,
@@ -24,6 +26,8 @@ export function PlanCreateScreen({
   holidays: Set<string>
   showReason: boolean
   submitting: boolean
+  projectStartDate: string | null
+  projectEndDate: string | null
   onFormChange: (form: PlanFormState) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
@@ -60,6 +64,8 @@ export function PlanCreateScreen({
           holidays={holidays}
           showReason={showReason}
           submitting={submitting}
+          projectStartDate={projectStartDate}
+          projectEndDate={projectEndDate}
           onFormChange={onFormChange}
           onCancel={onCancel}
           onSubmit={onSubmit}

@@ -1,5 +1,5 @@
 param(
-    [string]$SourceDir = (Join-Path $PSScriptRoot "teststat-cli"),
+    [string]$SourceDir = $PSScriptRoot,
     [string]$DistDir = (Join-Path $PSScriptRoot "dist"),
     [string]$ZipName = "TestStat-CLI.zip"
 )

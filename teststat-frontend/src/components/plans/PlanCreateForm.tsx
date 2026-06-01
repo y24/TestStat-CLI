@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { FormEvent } from 'react'
+import { WandSparkles } from 'lucide-react'
 import { enumerateDates } from '../../utils/date'
 import {
   buildEvenDaily,
@@ -119,7 +120,12 @@ export function PlanCreateForm({
       </div>
       {formError && <div className="form-error">{formError}</div>}
       <fieldset className="plan-calc-group">
-        <legend>計画ボリューム（自動計算）</legend>
+        <legend>
+          <span className="plan-calc-legend">
+            <WandSparkles className="plan-calc-icon" aria-hidden="true" />
+            <span>計画ボリューム</span>
+          </span>
+        </legend>
         <div className="plan-calc-grid">
           <label>
             <span>項目数</span>

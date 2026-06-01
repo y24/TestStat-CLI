@@ -1346,17 +1346,41 @@
 }
 
 .plan-calc-group {
-  border: 1px solid var(--border);
+  border: 1px solid #b9cff8;
   border-radius: 7px;
-  padding: 6px 14px 14px;
+  padding: 8px 14px 14px;
   margin: 0;
+  background:
+    linear-gradient(135deg, rgb(234 241 255 / 92%), rgb(255 248 230 / 68%)),
+    #f8fbff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 78%), 0 8px 18px rgb(47 111 237 / 8%);
 }
 
 .plan-calc-group legend {
-  padding: 0 6px;
+  padding: 0 7px;
   font-size: 12px;
-  font-weight: 650;
-  color: var(--muted);
+  font-weight: 750;
+  color: #2756b3;
+}
+
+.plan-calc-legend {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #b9cff8;
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px 9px 3px 7px;
+  box-shadow: 0 4px 12px rgb(47 111 237 / 10%);
+}
+
+.plan-calc-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: #d18a00;
+  stroke-width: 2.2;
 }
 
 .plan-calc-grid {

@@ -20,28 +20,6 @@ export type PbChartOption = ComposeOption<
   | TooltipComponentOption
 >
 
-export function buildChartNotices(chart: PbChartResponse) {
-  const notices: string[] = []
-  const hasPlan = chart.planned_total_cases !== null
-  const hasActuals = chart.available_cases > 0 && chart.series.some((item) => item.actual_remaining !== null)
-  const hasNegativeDaily = chart.series.some(
-    (item) =>
-      (item.actual_completed_daily !== null && item.actual_completed_daily < 0) ||
-      (item.planned_completed_daily !== null && item.planned_completed_daily < 0),
-  )
-
-  if (!hasPlan) {
-    notices.push('計画未作成')
-  }
-  if (!hasActuals) {
-    notices.push('実績未受信')
-  }
-  if (hasNegativeDaily) {
-    notices.push('負の日別値あり')
-  }
-  return notices
-}
-
 // 不具合の右軸スケールは段階的に: 30 → 50 → 70 → 90 …（少件数で全体を占有しないように）。
 function steppedBugMax(peak: number): number {
   if (peak <= 30) return 30

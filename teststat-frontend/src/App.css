@@ -794,6 +794,7 @@
   font-size: 13px;
   text-align: center;
   padding: 18px;
+  margin-top: 8px;
 }
 
 .chart-state.error {
@@ -802,22 +803,6 @@
   border-color: #f1bfd0;
 }
 
-.chart-notices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0 4px;
-}
-
-.chart-notices span {
-  min-height: 22px;
-  border: 1px solid #d8dee8;
-  border-radius: 999px;
-  background: #f7f9fb;
-  color: #5f6b7a;
-  font-size: 12px;
-  padding: 2px 8px;
-}
 
 .empty-state p {
   margin: 0;

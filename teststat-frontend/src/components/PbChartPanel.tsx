@@ -18,7 +18,7 @@ import {
   syncAzureDevOpsBugs,
 } from '../api/client'
 import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
-import { buildChartNotices, buildPbChartOption } from '../charts/pbChartOptions'
+import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { formatDate, formatDateTime } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
@@ -171,7 +171,6 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
   const rangeText = chart?.range
     ? `${formatDate(chart.range.from)} ～ ${formatDate(chart.range.to)}`
     : '-'
-  const notices = chart ? buildChartNotices(chart) : []
   const bugSummary = chart ? getBugSummary(chart) : null
   // 表示対象が(全て)以外のときは不具合レイヤーを強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
@@ -207,15 +206,13 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
           type="button"
           className="bug-sync-button"
           onClick={handleSyncBugs}
-          disabled={bugSync.loading}
+          disabled={bugSync.loading || !bugsAllowed}
         >
           {bugSync.loading ? '取得中...' : '不具合数を取得'}
         </button>
         {bugSync.error ? (
           <span className="bug-meta error">取得失敗: {bugSync.error}</span>
-        ) : !bugsAllowed && chart?.has_bugs ? (
-          <span className="bug-meta">不具合グラフは表示対象が(全て)のときのみ表示されます</span>
-        ) : bugSummary ? (
+        ) : !bugsAllowed ? null : bugSummary ? (
           <span className="bug-meta">
             不具合 <b>{bugSummary.total}</b> 件（未解消{' '}
             <b className="open">{bugSummary.open}</b> / 見送り{' '}
@@ -239,13 +236,6 @@ export function PbChartPanel({ project }: { project: ProjectItem }) {
       )}
       {!loading && !error && chart && chart.series.length > 0 && (
         <>
-          {notices.length > 0 && (
-            <div className="chart-notices">
-              {notices.map((notice) => (
-                <span key={notice}>{notice}</span>
-              ))}
-            </div>
-          )}
           <div className="chart-wrap">
             <PbChart chart={chart} layers={effectiveLayers} />
           </div>

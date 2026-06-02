@@ -1,6 +1,6 @@
 import { ChartLine } from 'lucide-react'
 import type { PlanItem } from '../../api/types'
-import { displayLabel } from '../../utils/plans'
+import { countBusinessDays, displayLabel } from '../../utils/plans'
 
 export function PlanVersionTable({
   labels,
@@ -8,6 +8,7 @@ export function PlanVersionTable({
   availableCasesByLabel,
   overallAvailableCases,
   plans,
+  holidays,
   useOverallPlan,
   submitting,
   onToggleOverall,
@@ -20,6 +21,7 @@ export function PlanVersionTable({
   availableCasesByLabel: Record<string, number>
   overallAvailableCases: number
   plans: PlanItem[]
+  holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
   onToggleOverall: (checked: boolean) => void
@@ -34,7 +36,7 @@ export function PlanVersionTable({
     <div className="plan-list-panel">
       <div className="plan-panel-header">
         <div>
-          <div className="panel-title">テスト計画一覧</div>
+          <div className="panel-title">計画一覧</div>
           <div className="panel-subtitle">
             {useOverallPlan ? '全体計画を1つだけ管理します。' : '実績データのテスト種別ごとに計画を管理します。'}
           </div>
@@ -59,9 +61,10 @@ export function PlanVersionTable({
             <thead>
               <tr>
                 <th>テスト種別</th>
-                <th>版</th>
-                <th>項目数</th>
-                <th>計画数</th>
+                <th className="plan-table-centered-value">版</th>
+                <th className="plan-table-centered-value">項目数</th>
+                <th className="plan-table-centered-value">営業日数</th>
+                <th className="plan-table-centered-value">1日あたり項目数</th>
                 <th>期間</th>
                 <th>操作</th>
               </tr>
@@ -76,8 +79,13 @@ export function PlanVersionTable({
                   label === null ? overallAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
                   activePlan?.planned_total_cases ?? actualAvailableCases ?? null
-                const hasPlanTotalMismatch =
-                  activePlan !== null && activePlan.planned_total_cases !== activePlan.daily_total
+                const businessDays = activePlan
+                  ? countBusinessDays(activePlan.start_date, activePlan.end_date, holidays)
+                  : 0
+                const dailyCases =
+                  activePlan && businessDays > 0
+                    ? formatDailyCount(activePlan.planned_total_cases / businessDays)
+                    : '-'
                 return (
                   <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
                     <td>
@@ -87,7 +95,7 @@ export function PlanVersionTable({
                       )}
                       {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}
                     </td>
-                    <td>
+                    <td className="plan-table-centered-value">
                       {activePlan ? (
                         `v${activePlan.version}`
                       ) : (
@@ -96,22 +104,14 @@ export function PlanVersionTable({
                         </span>
                       )}
                     </td>
-                    <td>{displayedTotalCases ?? '-'}</td>
-                    <td>
-                      {activePlan ? (
-                        <span
-                          className={hasPlanTotalMismatch ? 'plan-total-mismatch' : undefined}
-                          title={
-                            hasPlanTotalMismatch
-                              ? '項目数と計画数が一致していません。日別計画の修正が必要です。'
-                              : undefined
-                          }
-                        >
-                          {activePlan.daily_total}
-                        </span>
-                      ) : (
-                        '-'
-                      )}
+                    <td className="plan-table-centered-value">
+                      {displayedTotalCases !== null ? `${displayedTotalCases} 項目` : '-'}
+                    </td>
+                    <td className="plan-table-centered-value">
+                      {activePlan && businessDays > 0 ? `${businessDays} 日` : '-'}
+                    </td>
+                    <td className="plan-table-centered-value">
+                      {dailyCases !== '-' ? `${dailyCases} 項目/d` : '-'}
                     </td>
                     <td>
                       {activePlan
@@ -150,4 +150,11 @@ export function PlanVersionTable({
       )}
     </div>
   )
+}
+
+function formatDailyCount(value: number) {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+  return value.toFixed(1)
 }

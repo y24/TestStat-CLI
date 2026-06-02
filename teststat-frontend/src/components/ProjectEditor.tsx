@@ -248,16 +248,14 @@ export function ProjectEditor({
               }}
               required
             />
-            {mode === 'new' && (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleAzureFetch}
-                disabled={submitting || adoLoading || !testingIdValid}
-              >
-                {adoLoading ? '取得中...' : 'Azure DevOps から取得'}
-              </button>
-            )}
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleAzureFetch}
+              disabled={submitting || adoLoading || !testingIdValid}
+            >
+              {adoLoading ? '取得中...' : 'Azure DevOps から取得'}
+            </button>
           </div>
         </label>
         <label>

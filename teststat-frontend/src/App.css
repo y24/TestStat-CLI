@@ -1141,6 +1141,11 @@
   white-space: nowrap;
 }
 
+.plan-table th.plan-table-centered-value,
+.plan-table td.plan-table-centered-value {
+  text-align: center;
+}
+
 .active-plan-row {
   background: #f5f8ff;
 }

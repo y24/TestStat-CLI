@@ -13,6 +13,7 @@ export function PlanListScreen({
   availableCasesByLabel,
   overallAvailableCases,
   plans,
+  holidays,
   useOverallPlan,
   submitting,
   modalLabel,
@@ -31,6 +32,7 @@ export function PlanListScreen({
   availableCasesByLabel: Record<string, number>
   overallAvailableCases: number
   plans: PlanItem[]
+  holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
   modalLabel: string | null | undefined
@@ -77,6 +79,7 @@ export function PlanListScreen({
           availableCasesByLabel={availableCasesByLabel}
           overallAvailableCases={overallAvailableCases}
           plans={plans}
+          holidays={holidays}
           useOverallPlan={useOverallPlan}
           submitting={submitting}
           onToggleOverall={onToggleOverall}

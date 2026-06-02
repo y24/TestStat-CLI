@@ -178,8 +178,8 @@ export function PlanEditor({
     const confirmed = await confirm({
       title: '計画の切り替え',
       message: checked
-        ? '全体計画に切り替えるため、入力済みの個別計画をすべて削除します。続行しますか。'
-        : '個別計画に切り替えるため、入力済みの全体計画を削除します。続行しますか。',
+        ? '全体計画に切り替えると、入力済みの個別計画はすべて削除されます。続行しますか。'
+        : '個別計画に切り替えると、入力済みの全体計画は削除されます。続行しますか。',
       confirmLabel: '削除して切り替え',
       danger: true,
     })
@@ -369,6 +369,7 @@ export function PlanEditor({
       availableCasesByLabel={availableCasesByLabel}
       overallAvailableCases={overallAvailableCases}
       plans={plans}
+      holidays={holidayDates}
       useOverallPlan={useOverallPlan}
       submitting={submitting}
       modalLabel={modalLabel}

@@ -20,6 +20,9 @@ export type PbChartOption = ComposeOption<
   | TooltipComponentOption
 >
 
+const chartFontFamily =
+  '"Yu Gothic", "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif'
+
 // 不具合の右軸スケールは段階的に: 30 → 50 → 70 → 90 …（少件数で全体を占有しないように）。
 function steppedBugMax(peak: number): number {
   if (peak <= 30) return 30
@@ -189,6 +192,9 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
   return {
     animationDuration: 250,
     color: ['#8a94a6', '#2f6fed'],
+    textStyle: {
+      fontFamily: chartFontFamily,
+    },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },

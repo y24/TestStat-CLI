@@ -1,7 +1,6 @@
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts'
 import type { ComposeOption } from 'echarts/core'
 import type {
-  DataZoomComponentOption,
   GridComponentOption,
   LegendComponentOption,
   TooltipComponentOption,
@@ -14,7 +13,6 @@ import { displayLabel } from '../utils/plans'
 export type PbChartOption = ComposeOption<
   | BarSeriesOption
   | LineSeriesOption
-  | DataZoomComponentOption
   | GridComponentOption
   | LegendComponentOption
   | TooltipComponentOption
@@ -208,14 +206,14 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
       type: 'scroll',
       data: legendData,
     },
-    grid: { left: 58, right: showBugs ? 52 : 24, top: 42, bottom: 58 },
+    grid: { left: 58, right: showBugs ? 52 : 24, top: 42, bottom: 18 },
     xAxis: {
       type: 'category',
       data: dates,
       boundaryGap: true,
-      axisLabel: { formatter: (value: string) => value.slice(5).replace('-', '/') },
-      axisLine: { lineStyle: { color: '#c8d0da' } },
-      axisTick: { alignWithLabel: true },
+      axisLabel: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false },
     },
     yAxis: showBugs
       ? [
@@ -247,10 +245,6 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
           splitLine: { lineStyle: { color: '#e8ebef' } },
           axisLabel: { color: '#687386' },
         },
-    dataZoom: [
-      { type: 'inside' },
-      { type: 'slider', height: 18, bottom: 20 },
-    ],
     series,
   }
 }

@@ -105,13 +105,13 @@ export function PlanVersionTable({
                       )}
                     </td>
                     <td className="plan-table-centered-value">
-                      {displayedTotalCases !== null ? `${displayedTotalCases} 項目` : '-'}
+                      {displayedTotalCases !== null ? `${displayedTotalCases}` : '-'}
                     </td>
                     <td className="plan-table-centered-value">
-                      {activePlan && businessDays > 0 ? `${businessDays} 日` : '-'}
+                      {activePlan && businessDays > 0 ? `${businessDays}` : '-'}
                     </td>
                     <td className="plan-table-centered-value">
-                      {dailyCases !== '-' ? `${dailyCases} 項目/d` : '-'}
+                      {dailyCases !== '-' ? `${dailyCases}` : '-'}
                     </td>
                     <td>
                       {activePlan

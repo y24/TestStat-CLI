@@ -39,7 +39,8 @@ export function PlanCreateForm({
 }) {
   const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
   const handlePlannedTotalChange = (value: string) => {
-    onFormChange(syncDerivedFromDates({ ...form, planned_total_cases: value }, holidays))
+    const nextForm = syncDerivedFromDates({ ...form, planned_total_cases: value }, holidays)
+    onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
   }
   const handleDailyCountChange = (value: string) => {
     const nextForm = { ...form, daily_count_per_day: value }
@@ -52,27 +53,26 @@ export function PlanCreateForm({
       dailyCount <= 0 ||
       !nextForm.start_date
     ) {
-      onFormChange(nextForm)
+      onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
       return
     }
     const businessDays = Math.ceil(plannedTotal / dailyCount)
     const endDate = calculateEndDateByBusinessDays(nextForm.start_date, businessDays, holidays)
-    onFormChange(
-      endDate
-        ? { ...nextForm, end_date: endDate, business_days: String(businessDays) }
-        : nextForm,
-    )
+    const updatedForm = endDate
+      ? { ...nextForm, end_date: endDate, business_days: String(businessDays) }
+      : nextForm
+    onFormChange(syncGeneratedDailyText(form, updatedForm, holidays))
   }
   const handleBusinessDaysChange = (value: string) => {
     const nextForm = { ...form, business_days: value }
     const businessDays = Number(value)
     if (!Number.isFinite(businessDays) || businessDays <= 0 || !nextForm.start_date) {
-      onFormChange(nextForm)
+      onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
       return
     }
     const endDate = calculateEndDateByBusinessDays(nextForm.start_date, businessDays, holidays)
     if (!endDate) {
-      onFormChange(nextForm)
+      onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
       return
     }
     const plannedTotal = Number(nextForm.planned_total_cases)
@@ -80,13 +80,19 @@ export function PlanCreateForm({
       Number.isFinite(plannedTotal) && plannedTotal > 0
         ? formatDailyCount(plannedTotal / businessDays)
         : nextForm.daily_count_per_day
-    onFormChange({ ...nextForm, end_date: endDate, daily_count_per_day: dailyCount })
+    onFormChange(
+      syncGeneratedDailyText(
+        form,
+        { ...nextForm, end_date: endDate, daily_count_per_day: dailyCount },
+        holidays,
+      ),
+    )
   }
   const handleStartDateChange = (value: string) => {
     const nextForm = { ...form, start_date: value }
     const syncedForm = syncDerivedFromDates(nextForm, holidays)
     if (syncedForm.daily_count_per_day || !nextForm.daily_count_per_day) {
-      onFormChange(syncedForm)
+      onFormChange(syncGeneratedDailyText(form, syncedForm, holidays))
       return
     }
 
@@ -97,18 +103,29 @@ export function PlanCreateForm({
         ? calculateEndDateByDailyCount(value, plannedTotal, dailyCount, holidays)
         : ''
     if (!endDate) {
-      onFormChange(nextForm)
+      onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
       return
     }
     const businessDays = countBusinessDays(value, endDate, holidays)
-    onFormChange({
-      ...nextForm,
-      end_date: endDate,
-      business_days: businessDays > 0 ? String(businessDays) : '',
-    })
+    onFormChange(
+      syncGeneratedDailyText(
+        form,
+        {
+          ...nextForm,
+          end_date: endDate,
+          business_days: businessDays > 0 ? String(businessDays) : '',
+        },
+        holidays,
+      ),
+    )
   }
   const handleEndDateChange = (value: string) => {
-    onFormChange(syncDerivedFromDates({ ...form, end_date: value }, holidays))
+    const nextForm = syncDerivedFromDates({ ...form, end_date: value }, holidays)
+    onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
+  }
+  const handleInputModeChange = (value: PlanInputMode) => {
+    const nextForm = { ...form, inputMode: value }
+    onFormChange(value === 'csv' ? syncGeneratedDailyText(form, nextForm, holidays) : nextForm)
   }
 
   return (
@@ -171,7 +188,7 @@ export function PlanCreateForm({
             value={form.inputMode}
             disabled={submitting}
             onChange={(event) =>
-              onFormChange({ ...form, inputMode: event.target.value as PlanInputMode })
+              handleInputModeChange(event.target.value as PlanInputMode)
             }
           >
             <option value="even">均等配分</option>
@@ -405,6 +422,46 @@ function syncDerivedFromDates(form: PlanFormState, holidays: Set<string>) {
     ...form,
     business_days: businessDaysText,
     daily_count_per_day: formatDailyCount(plannedTotal / businessDays),
+  }
+}
+
+function syncGeneratedDailyText(
+  previousForm: PlanFormState,
+  nextForm: PlanFormState,
+  holidays: Set<string>,
+) {
+  if (nextForm.inputMode !== 'csv') {
+    return nextForm
+  }
+
+  const previousGeneratedText = buildDailyText(previousForm, holidays)
+  const shouldSync =
+    previousForm.inputMode !== 'csv' ||
+    previousForm.dailyText.trim() === '' ||
+    (previousGeneratedText !== null && previousForm.dailyText === previousGeneratedText)
+
+  if (!shouldSync) {
+    return nextForm
+  }
+
+  const nextGeneratedText = buildDailyText(nextForm, holidays)
+  return nextGeneratedText === null ? nextForm : { ...nextForm, dailyText: nextGeneratedText }
+}
+
+function buildDailyText(form: PlanFormState, holidays: Set<string>) {
+  const total = Number(form.planned_total_cases)
+  if (!Number.isInteger(total) || total <= 0 || !form.start_date || !form.end_date || form.start_date > form.end_date) {
+    return null
+  }
+
+  try {
+    const daily = buildEvenDaily(form.start_date, form.end_date, total, holidays)
+    return [
+      'date,planned_count',
+      ...daily.map((item) => `${item.date},${item.planned_count}`),
+    ].join('\n')
+  } catch {
+    return null
   }
 }
 

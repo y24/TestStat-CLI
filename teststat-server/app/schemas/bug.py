@@ -10,3 +10,10 @@ class BugSyncResponse(BaseModel):
     suspended_count: int    # うち対応見送り（黄）
     resolved_count: int     # うち完了（緑）
     fetched_at: datetime
+
+
+class OpenBugItem(BaseModel):
+    work_item_id: int
+    title: str | None
+    state: str | None
+    url: str | None

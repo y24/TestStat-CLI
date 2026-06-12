@@ -12,12 +12,20 @@ import {
 import { CanvasRenderer } from 'echarts/renderers'
 import {
   fetchPbChart,
+  fetchOpenBugs,
   fetchPlans,
   fetchProgressDaily,
   fetchProgressFiles,
   syncAzureDevOpsBugs,
 } from '../api/client'
-import type { DailyProgressItem, FileProgressItem, PbChartResponse, PlanItem, ProjectItem } from '../api/types'
+import type {
+  DailyProgressItem,
+  FileProgressItem,
+  OpenBugItem,
+  PbChartResponse,
+  PlanItem,
+  ProjectItem,
+} from '../api/types'
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { Bug, ClipboardList } from 'lucide-react'
@@ -43,6 +51,7 @@ interface ChartResult {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
   plans: PlanItem[]
+  openBugs: OpenBugItem[]
   error: string | null
 }
 
@@ -114,8 +123,9 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
       fetchPlans(project.testing_id).catch(() => [] as PlanItem[]),
+      fetchOpenBugs(project.testing_id).catch(() => [] as OpenBugItem[]),
     ])
-      .then(([data, files, daily, plans]) => {
+      .then(([data, files, daily, plans, openBugs]) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
@@ -125,6 +135,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
             files,
             daily,
             plans,
+            openBugs,
             error: null,
           })
         }
@@ -139,6 +150,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
             files: [],
             daily: [],
             plans: [],
+            openBugs: [],
             error: getErrorMessage(err),
           })
         }
@@ -160,6 +172,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
   const files = isCurrentResult ? result.files : []
   const daily = isCurrentResult ? result.daily : []
   const plans = isCurrentResult ? result.plans : []
+  const openBugs = isCurrentResult ? result.openBugs : []
   const labels = Array.from(
     new Set(
       [
@@ -250,7 +263,13 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
         </div>
       )}
       {!loading && !error && (
-        <ProgressBreakdown files={files} daily={daily} selectedLabel={label} />
+        <ProgressBreakdown
+          files={files}
+          daily={daily}
+          selectedLabel={label}
+          openBugs={bugsAllowed ? openBugs : []}
+          bugDataFetched={Boolean(bugsAllowed && chart?.has_bugs)}
+        />
       )}
     </section>
   )
@@ -365,13 +384,17 @@ function ProgressBreakdown({
   files,
   daily,
   selectedLabel,
+  openBugs,
+  bugDataFetched,
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
   selectedLabel: string | null
+  openBugs: OpenBugItem[]
+  bugDataFetched: boolean
 }) {
   const rows = buildBreakdownRows(files, daily, selectedLabel)
-  if (rows.length === 0) {
+  if (rows.length === 0 && !bugDataFetched && openBugs.length === 0) {
     return null
   }
 
@@ -438,40 +461,90 @@ function ProgressBreakdown({
 
       <section className="breakdown-block" aria-label="テスト別内訳">
         <h3>テスト別内訳</h3>
+        {rows.length > 0 ? (
+          <div className="breakdown-table-wrap">
+            <table className="breakdown-table">
+              <thead>
+                <tr>
+                  <th>種別</th>
+                  <th>環境</th>
+                  <th>合計</th>
+                  {resultKeys.map((key) => (
+                    <th key={key}>
+                      <ResultHeader result={key} />
+                    </th>
+                  ))}
+                  <th>未実施</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="breakdown-file-cell" title={row.file}>
+                      {row.file}
+                    </td>
+                    <td>{row.env}</td>
+                    <td>{row.total}</td>
+                    {resultKeys.map((key) => (
+                      <td key={key}>{row.results[key]}</td>
+                    ))}
+                    <td>{row.notRun}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="breakdown-empty">テスト別内訳データがありません。</div>
+        )}
+      </section>
+
+      <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} />
+    </div>
+  )
+}
+
+function OpenBugList({ bugs, bugDataFetched }: { bugs: OpenBugItem[]; bugDataFetched: boolean }) {
+  return (
+    <section className="breakdown-block" aria-label="未解決の不具合チケット一覧">
+      <h3>未解決Bugチケット一覧</h3>
+      {bugs.length > 0 ? (
         <div className="breakdown-table-wrap">
-          <table className="breakdown-table">
+          <table className="breakdown-table open-bug-table">
             <thead>
               <tr>
-                <th>種別</th>
-                <th>環境</th>
-                <th>合計</th>
-                {resultKeys.map((key) => (
-                  <th key={key}>
-                    <ResultHeader result={key} />
-                  </th>
-                ))}
-                <th>未実施</th>
+                <th>ID</th>
+                <th>Title</th>
+                <th>State</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.key}>
-                  <td className="breakdown-file-cell" title={row.file}>
-                    {row.file}
+              {bugs.map((bug) => (
+                <tr key={bug.work_item_id}>
+                  <td className="open-bug-id-cell">
+                    {bug.url ? (
+                      <a href={bug.url} target="_blank" rel="noreferrer">
+                        {bug.work_item_id}
+                      </a>
+                    ) : (
+                      bug.work_item_id
+                    )}
                   </td>
-                  <td>{row.env}</td>
-                  <td>{row.total}</td>
-                  {resultKeys.map((key) => (
-                    <td key={key}>{row.results[key]}</td>
-                  ))}
-                  <td>{row.notRun}</td>
+                  <td className="open-bug-title-cell" title={bug.title ?? ''}>
+                    {bug.title || '-'}
+                  </td>
+                  <td className="open-bug-state-cell">{bug.state || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
+      ) : (
+        <div className="breakdown-empty">
+          {bugDataFetched ? '未解決の不具合チケットはありません' : '不具合データ未取得です'}
+        </div>
+      )}
+    </section>
   )
 }
 

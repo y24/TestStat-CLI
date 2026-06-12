@@ -1,10 +1,12 @@
 from datetime import date, datetime
+from urllib.parse import quote
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.models.bug import BugSnapshot
-from app.schemas.bug import BugSyncResponse
+from app.schemas.bug import BugSyncResponse, OpenBugItem
 from app.services.azure_devops import BugWorkItem
 
 
@@ -113,3 +115,30 @@ def get_bug_date_bounds(db: Session, testing_id: int) -> tuple[date | None, date
     )
     max_date = max((d for d in (max_created, max_finish) if d is not None), default=None)
     return min_created, max_date
+
+
+def get_open_bugs(db: Session, testing_id: int, settings: Settings) -> list[OpenBugItem]:
+    rows = db.execute(
+        select(BugSnapshot.bug_work_item_id, BugSnapshot.title, BugSnapshot.state)
+        .where(BugSnapshot.testing_id == testing_id, BugSnapshot.finish_date.is_(None))
+        .order_by(BugSnapshot.bug_work_item_id)
+    ).all()
+    return [
+        OpenBugItem(
+            work_item_id=work_item_id,
+            title=title,
+            state=state,
+            url=build_work_item_url(work_item_id, settings),
+        )
+        for work_item_id, title, state in rows
+    ]
+
+
+def build_work_item_url(work_item_id: int, settings: Settings) -> str | None:
+    if not settings.azure_devops_organization:
+        return None
+    org = quote(settings.azure_devops_organization.strip("/"), safe="")
+    project = settings.azure_devops_project.strip("/")
+    if project:
+        return f"https://dev.azure.com/{org}/{quote(project, safe='')}/_workitems/edit/{work_item_id}"
+    return f"https://dev.azure.com/{org}/_workitems/edit/{work_item_id}"

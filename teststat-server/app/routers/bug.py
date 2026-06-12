@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.crud.bug import replace_bugs
+from app.crud.bug import get_open_bugs, replace_bugs
 from app.crud.project import get_project
 from app.database import get_db
-from app.schemas.bug import BugSyncResponse
+from app.schemas.bug import BugSyncResponse, OpenBugItem
 from app.services.azure_devops import (
     AzureDevOpsAuthError,
     AzureDevOpsError,
@@ -55,3 +55,9 @@ def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse
     except Exception:
         db.rollback()
         raise
+
+
+@router.get("/projects/{testing_id}/bugs/open", response_model=list[OpenBugItem])
+def list_open_bugs(testing_id: int, db: Session = Depends(get_db)) -> list[OpenBugItem]:
+    get_project(db, testing_id)
+    return get_open_bugs(db, testing_id, get_settings())

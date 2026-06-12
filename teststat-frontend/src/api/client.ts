@@ -18,6 +18,7 @@ import type {
   ProgressStatusThresholds,
   AzureDevOpsWorkItem,
   BugSyncResult,
+  OpenBugItem,
 } from './types'
 
 // 開発時は vite.config のプロキシ経由で localhost:18000 へ転送される。
@@ -171,6 +172,9 @@ export const fetchAzureDevOpsWorkItem = (work_item_id: number) =>
 // Azure DevOps 連携: 子チケット(Bug)を取得して洗替（Testing ID 単位）
 export const syncAzureDevOpsBugs = (testing_id: number) =>
   request<BugSyncResult>(`/api/v1/projects/${testing_id}/bugs/sync`, { method: 'POST' })
+
+export const fetchOpenBugs = (testing_id: number) =>
+  get<OpenBugItem[]>(`/api/v1/projects/${testing_id}/bugs/open`)
 
 // 設定: 進捗状態しきい値
 export const fetchProgressStatusThresholds = () =>

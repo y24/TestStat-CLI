@@ -12,11 +12,12 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, event  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
 import app.models  # noqa: F401,E402
 import app.services.azure_devops as ado  # noqa: E402
 from app.config import Settings  # noqa: E402
-from app.crud.bug import get_bug_cumulative, replace_bugs  # noqa: E402
+from app.crud.bug import build_work_item_url, get_bug_cumulative, get_open_bugs, replace_bugs  # noqa: E402
 from app.crud.pb_chart import get_pb_chart  # noqa: E402
 from app.crud.project import create_project  # noqa: E402
 from app.database import Base  # noqa: E402
@@ -45,7 +46,11 @@ def make_settings(**overrides) -> Settings:
 
 
 def make_session():
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
     @event.listens_for(engine, "connect")
     def set_fk(conn, _):
@@ -198,6 +203,22 @@ class TestCrud(unittest.TestCase):
         self.assertEqual(cum[date(2026, 5, 11)], (1, 1, 1))    # 9007 見送り当日
         self.assertEqual(cum[date(2026, 5, 20)], (1, 1, 1))
 
+    def test_get_open_bugs_returns_unfinished_with_links(self):
+        replace_bugs(self.db, 1001, self._bugs(), {"Suspend"}, datetime(2026, 5, 20, 12, 0))
+        bugs = get_open_bugs(
+            self.db,
+            1001,
+            make_settings(AZURE_DEVOPS_ORGANIZATION="my-org", AZURE_DEVOPS_PROJECT="my-project"),
+        )
+        self.assertEqual(len(bugs), 1)
+        self.assertEqual(bugs[0].work_item_id, 9002)
+        self.assertEqual(bugs[0].title, "b")
+        self.assertEqual(bugs[0].state, "Active")
+        self.assertEqual(bugs[0].url, "https://dev.azure.com/my-org/my-project/_workitems/edit/9002")
+
+    def test_build_work_item_url_without_organization(self):
+        self.assertIsNone(build_work_item_url(9002, make_settings(AZURE_DEVOPS_ORGANIZATION="")))
+
 
 class TestPbChartIntegration(unittest.TestCase):
     def setUp(self):
@@ -289,6 +310,23 @@ class TestRouter(unittest.TestCase):
 
         self._patch_fetch(raise_nf)
         self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 404)
+
+    def test_list_open_bugs(self):
+        self._patch_fetch(
+            lambda wid: [
+                BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
+                BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
+            ]
+        )
+        self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 200)
+        res = self.client.get("/api/v1/projects/1001/bugs/open")
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["work_item_id"], 9002)
+        self.assertEqual(body[0]["title"], "open")
+        self.assertEqual(body[0]["state"], "Active")
+        self.assertEqual(body[0]["url"], "https://dev.azure.com/my-org/_workitems/edit/9002")
 
 
 if __name__ == "__main__":

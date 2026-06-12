@@ -211,3 +211,10 @@ export interface BugSyncResult {
   resolved_count: number
   fetched_at: string
 }
+
+export interface OpenBugItem {
+  work_item_id: number
+  title: string | null
+  state: string | null
+  url: string | null
+}

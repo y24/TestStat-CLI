@@ -1193,6 +1193,21 @@
   white-space: nowrap;
 }
 
+.plan-only-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plan-only-note-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  color: #d18a00;
+  fill: #fff4bf;
+  stroke-width: 2.4;
+}
+
 .active-plan-radio {
   width: 16px;
   height: 16px;

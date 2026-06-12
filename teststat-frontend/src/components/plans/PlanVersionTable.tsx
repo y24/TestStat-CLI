@@ -1,4 +1,4 @@
-import { ChartLine } from 'lucide-react'
+import { ChartLine, TriangleAlert } from 'lucide-react'
 import type { PlanItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
@@ -38,7 +38,7 @@ export function PlanVersionTable({
         <div>
           <div className="panel-title">計画一覧</div>
           <div className="panel-subtitle">
-            {useOverallPlan ? '全体計画を1つだけ管理します。' : '実績データのテスト種別ごとに計画を管理します。'}
+            {useOverallPlan ? '全体計画を1つだけ管理します。' : '識別子ごとに計画を管理します。'}
           </div>
         </div>
         <label className="switch-row">
@@ -53,14 +53,14 @@ export function PlanVersionTable({
         </label>
       </div>
       {!useOverallPlan && labels.length === 0 && (
-        <div className="muted-block">実績データのテスト種別がまだありません。</div>
+        <div className="muted-block">送信されたデータがまだありません。</div>
       )}
       {(useOverallPlan || labels.length > 0) && (
         <div className="plan-table-wrap">
           <table className="plan-table">
             <thead>
               <tr>
-                <th>テスト種別</th>
+                <th>識別子(label)</th>
                 <th className="plan-table-centered-value">版</th>
                 <th className="plan-table-centered-value">項目数</th>
                 <th className="plan-table-centered-value">営業日数</th>
@@ -79,6 +79,7 @@ export function PlanVersionTable({
                   label === null ? overallAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
                   activePlan?.planned_total_cases ?? actualAvailableCases ?? null
+                const isPlanOnly = label !== null && !actualLabelSet.has(label)
                 const businessDays = activePlan
                   ? countBusinessDays(activePlan.start_date, activePlan.end_date, holidays)
                   : 0
@@ -90,8 +91,11 @@ export function PlanVersionTable({
                   <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
                     <td>
                       <strong>{displayLabel(label)}</strong>
-                      {label !== null && !actualLabelSet.has(label) && (
-                        <span className="row-note">実績なし / 計画のみ</span>
+                      {isPlanOnly && (
+                        <span className="row-note plan-only-note">
+                          <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+                          <span>データがありません</span>
+                        </span>
                       )}
                       {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}
                     </td>
@@ -123,7 +127,8 @@ export function PlanVersionTable({
                         <button
                           className="primary-button compact icon-text-button"
                           type="button"
-                          disabled={submitting}
+                          disabled={submitting || isPlanOnly}
+                          title={isPlanOnly ? '実績がないテスト種別には追加の計画線を作成できません。' : undefined}
                           onClick={() => onCreate(label)}
                         >
                           <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />

@@ -125,7 +125,8 @@ class ProgressCrudTests(unittest.TestCase):
         self.assertEqual(get_progress_summary(self.db, 1001).results.pass_count, 2)
         self.assertEqual(get_progress_summary(self.db, 2002).results.pass_count, 8)
 
-    def test_replace_progress_keeps_test_result_bug_snapshots_by_test_result_date(self):
+    def test_replace_progress_stores_detected_and_current_states_by_date(self):
+        # 単一取込。detected = その日の検出数(Fail+Suspend+Fixed)、suspend/fixed は現在値。
         payload = make_payload(
             testing_id=1001,
             pass_count=4,
@@ -153,22 +154,56 @@ class ProgressCrudTests(unittest.TestCase):
         ).all()
 
         self.assertEqual([row.snapshot_date.isoformat() for row in rows], ["2026-05-01", "2026-05-02"])
-        self.assertEqual([(row.fail_count, row.suspend_count, row.fixed_count) for row in rows], [(1, 0, 1), (0, 1, 2)])
+        # 05-01: 検出=Fail1+Fixed1=2, 見送り0, 完了1 / 05-02: 検出=Suspend1+Fixed2=3, 見送り1, 完了2
+        self.assertEqual(
+            [(row.detected_count, row.suspend_count, row.fixed_count) for row in rows],
+            [(2, 0, 1), (3, 1, 2)],
+        )
 
-    def test_replace_progress_replaces_all_test_result_bug_snapshots_for_testing_id(self):
+    def test_replace_progress_keeps_detection_history_when_result_date_moves(self):
+        # 1回目: 2026-05-01 に Fail1/Fixed1（検出2件）。
         replace_progress(self.db, make_payload(testing_id=1001, pass_count=4))
+        # 2回目: 結果が変わり日付も移動し、2026-05-02 のみが入る（2026-05-01 はファイルから消える）。
         replacement = make_payload(testing_id=1001, pass_count=2, daily_date="2026-05-02")
         replacement.files[0].daily[0].fail = 0
         replacement.files[0].daily[0].fixed = 2
         replace_progress(self.db, replacement)
 
         rows = self.db.scalars(
-            select(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == 1001)
+            select(TestResultBugSnapshot)
+            .where(TestResultBugSnapshot.testing_id == 1001)
+            .order_by(TestResultBugSnapshot.snapshot_date)
         ).all()
 
+        # 検出履歴(05-01 の検出2)は残り、完了は現在値(05-02 の Fixed2)へ移動する。
+        self.assertEqual([row.snapshot_date.isoformat() for row in rows], ["2026-05-01", "2026-05-02"])
+        self.assertEqual(
+            [(row.detected_count, row.suspend_count, row.fixed_count) for row in rows],
+            [(2, 0, 0), (0, 0, 2)],
+        )
+
+    def test_replace_progress_detected_high_water_does_not_double_count(self):
+        # 同じデータを再取込しても検出は二重計上されない。
+        replace_progress(self.db, make_payload(testing_id=1001, pass_count=4))
+        replace_progress(self.db, make_payload(testing_id=1001, pass_count=4))
+
+        rows = self.db.scalars(
+            select(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == 1001)
+        ).all()
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0].snapshot_date.isoformat(), "2026-05-02")
-        self.assertEqual((rows[0].fail_count, rows[0].suspend_count, rows[0].fixed_count), (0, 0, 2))
+        self.assertEqual((rows[0].detected_count, rows[0].suspend_count, rows[0].fixed_count), (2, 0, 1))
+
+        # 不具合が消えても（Fail0/Fixed0）、検出累積(ハイウォーターマーク)は減らさない。
+        lower = make_payload(testing_id=1001, pass_count=6)
+        lower.files[0].daily[0].fail = 0
+        lower.files[0].daily[0].fixed = 0
+        replace_progress(self.db, lower)
+
+        rows = self.db.scalars(
+            select(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == 1001)
+        ).all()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0].detected_count, rows[0].suspend_count, rows[0].fixed_count), (2, 0, 0))
 
     def test_validation_failure_does_not_delete_existing_rows(self):
         replace_progress(self.db, make_payload())

@@ -249,7 +249,7 @@ class TestPbChart(unittest.TestCase):
         self.assertIsNone(result.planned_total_cases)
         self.assertEqual(result.available_cases, 0)
 
-    def test_test_result_bug_source_uses_fail_suspend_fixed(self):
+    def test_test_result_bug_source_burndown(self):
         from app.crud.project import update_project
         from app.models.progress import TestResultBugSnapshot, Testing
         from app.schemas.project import ProjectUpdate
@@ -260,12 +260,13 @@ class TestPbChart(unittest.TestCase):
         if not self.db.scalar(select(Testing).where(Testing.testing_id == 1001)):
             self.db.add(Testing(testing_id=1001, project_name="P1001", updated_at=datetime(2026, 5, 3, 12, 0)))
             self.db.flush()
+        # detected = 検出増分, suspend/fixed = 現在値。
         self.db.add_all(
             [
                 TestResultBugSnapshot(
                     testing_id=1001,
                     snapshot_date=date(2026, 5, 1),
-                    fail_count=2,
+                    detected_count=3,
                     suspend_count=1,
                     fixed_count=0,
                     sent_at=datetime(2026, 5, 1, 10, 0),
@@ -273,7 +274,7 @@ class TestPbChart(unittest.TestCase):
                 TestResultBugSnapshot(
                     testing_id=1001,
                     snapshot_date=date(2026, 5, 3),
-                    fail_count=1,
+                    detected_count=1,
                     suspend_count=1,
                     fixed_count=2,
                     sent_at=datetime(2026, 5, 3, 10, 0),
@@ -286,9 +287,13 @@ class TestPbChart(unittest.TestCase):
 
         self.assertTrue(result.has_bugs)
         self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-03"})
+        # 未解消 = 検出累積 − 見送り累積 − 完了累積。
+        # 5/1: 検出3 見送り1 完了0 → (open2, susp1, res0)
+        # 5/2: 前日引き継ぎ → (2, 1, 0)
+        # 5/3: 検出4 見送り2 完了2 → (open0, susp2, res2)
         self.assertEqual(
             [(item.bug_open, item.bug_suspended, item.bug_resolved) for item in result.series],
-            [(2, 1, 0), (2, 1, 0), (1, 1, 2)],
+            [(2, 1, 0), (2, 1, 0), (0, 2, 2)],
         )
 
     # ---- 存在しないプロジェクト ----

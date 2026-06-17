@@ -73,11 +73,11 @@ def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> di
 
 
 def _get_test_result_bug_daily_map(db: Session, testing_id: int) -> dict[date, tuple[int, int, int]]:
-    """取り込み日ごとのテスト結果由来の (Fail, Suspend, Fixed) スナップショットを返す。"""
+    """日付ごとのテスト結果由来の (検出増分, 見送り件数, 完了件数) スナップショットを返す。"""
     rows = db.execute(
         select(
             TestResultBugSnapshot.snapshot_date,
-            TestResultBugSnapshot.fail_count,
+            TestResultBugSnapshot.detected_count,
             TestResultBugSnapshot.suspend_count,
             TestResultBugSnapshot.fixed_count,
         )
@@ -158,16 +158,23 @@ def _compute_test_result_bug_series(
     date_range: list[date],
     daily_map: dict[date, tuple[int, int, int]],
 ) -> dict[date, tuple[int, int, int]]:
-    """テスト結果由来の不具合系列を date_range に補完する。
+    """テスト結果由来の不具合バーンダウン系列を date_range に補完する。
 
-    DailyProgress は結果ステータスのその日時点の件数として扱い、データがない日は直前値を引き継ぐ。
+    daily_map は日付ごとの (検出増分, 見送り件数, 完了件数)。Azure DevOps と同じ考え方で、
+    各日について 未解消(open) = 検出累積 − 見送り累積 − 完了累積 を算出する。
+    一度検出した不具合（検出累積）は減らないが、完了・見送りが増えると未解消は減る。
+    戻り値: {date: (open, suspended, resolved)}。データがない日は直前の累積を引き継ぐ。
     """
     result: dict[date, tuple[int, int, int]] = {}
-    last = (0, 0, 0)
+    cum_detected = cum_suspended = cum_resolved = 0
     for d in date_range:
         if d in daily_map:
-            last = daily_map[d]
-        result[d] = last
+            detected, suspended, resolved = daily_map[d]
+            cum_detected += detected
+            cum_suspended += suspended
+            cum_resolved += resolved
+        open_count = max(cum_detected - cum_suspended - cum_resolved, 0)
+        result[d] = (open_count, cum_suspended, cum_resolved)
     return result
 
 

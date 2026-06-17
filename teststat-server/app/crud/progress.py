@@ -49,7 +49,6 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
     db.execute(delete(FileProgress).where(FileProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyProgress).where(DailyProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyPersonProgress).where(DailyPersonProgress.testing_id == payload.testing_id))
-    db.execute(delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == payload.testing_id))
 
     file_rows: list[FileProgress] = []
     daily_rows: list[DailyProgress] = []
@@ -121,17 +120,8 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
                 )
 
     db.add_all(file_rows + daily_rows + person_rows)
-    db.add_all(
-        TestResultBugSnapshot(
-            testing_id=payload.testing_id,
-            snapshot_date=snapshot_date,
-            fail_count=counts[0],
-            suspend_count=counts[1],
-            fixed_count=counts[2],
-            sent_at=payload.sent_at,
-        )
-        for snapshot_date, counts in bug_counts_by_date.items()
-    )
+
+    _merge_test_result_bug_snapshots(db, payload.testing_id, bug_counts_by_date, payload.sent_at)
     db.commit()
 
     return ProgressPostResponse(
@@ -139,6 +129,61 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
         inserted_files=len(file_rows),
         inserted_daily_rows=len(daily_rows),
         inserted_person_rows=len(person_rows),
+    )
+
+
+def _merge_test_result_bug_snapshots(
+    db: Session,
+    testing_id: int,
+    new_counts_by_date: dict[date, list[int]],
+    sent_at: datetime,
+) -> None:
+    """テスト結果由来の不具合スナップショットをバーンダウン用に蓄積する。
+
+    new_counts_by_date: {date: [fail, suspend, fixed]} … 今回取り込みの日付別件数。
+
+    detected_count（検出増分）は「総不具合数(Fail+Suspend+Fixed)累積の最大値（ハイウォーターマーク）」
+    として保持し、再取込で減らさない（= 検出履歴を残す。結果が変わって日付が移動しても消えない）。
+    suspend_count / fixed_count は今回取り込みの現在値で置き換える（状態が変われば見送り／完了から外れる）。
+    """
+    existing = db.scalars(
+        select(TestResultBugSnapshot)
+        .where(TestResultBugSnapshot.testing_id == testing_id)
+        .order_by(TestResultBugSnapshot.snapshot_date)
+    ).all()
+    old_detected_by_date = {row.snapshot_date: row.detected_count for row in existing}
+
+    new_total_by_date = {d: c[0] + c[1] + c[2] for d, c in new_counts_by_date.items()}
+    new_suspend_by_date = {d: c[1] for d, c in new_counts_by_date.items()}
+    new_fixed_by_date = {d: c[2] for d, c in new_counts_by_date.items()}
+
+    all_dates = sorted(set(old_detected_by_date) | set(new_counts_by_date))
+
+    # ハイウォーターマージ: 検出累積(d) = max(既存検出累積(d), 今回総数累積(d))。
+    # 同一不具合が日付移動しても二重計上せず、検出済み件数は減らない。
+    old_cum = new_cum = prev_hw = 0
+    merged: dict[date, tuple[int, int, int]] = {}
+    for d in all_dates:
+        old_cum += old_detected_by_date.get(d, 0)
+        new_cum += new_total_by_date.get(d, 0)
+        hw = max(old_cum, new_cum)
+        merged[d] = (hw - prev_hw, new_suspend_by_date.get(d, 0), new_fixed_by_date.get(d, 0))
+        prev_hw = hw
+
+    # 既存の検出累積は merged に畳み込み済みなので全件入れ替え。
+    # 何も寄与しない行（検出0・見送り0・完了0）は保存しない。
+    db.execute(delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == testing_id))
+    db.add_all(
+        TestResultBugSnapshot(
+            testing_id=testing_id,
+            snapshot_date=d,
+            detected_count=detected,
+            suspend_count=suspend,
+            fixed_count=fixed,
+            sent_at=sent_at,
+        )
+        for d, (detected, suspend, fixed) in merged.items()
+        if detected or suspend or fixed
     )
 
 

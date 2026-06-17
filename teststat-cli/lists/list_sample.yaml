@@ -27,3 +27,9 @@ project:
     subtask_id: 87
   - label: TEST003
     path: input_sample/sample3.xlsx
+  # SharePoint共有URLを指定する例（事前に `az login` が必要）。
+  # 実行時に一時フォルダへダウンロードして集計します。
+  # - label: SharePointテスト
+  #   path: "https://contoso.sharepoint.com/:x:/s/yoursite/EabcdEFGH123..."
+  #   target_sheets:
+  #     - テスト項目

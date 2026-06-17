@@ -27,10 +27,19 @@ For a custom configuration:
 tstat --json --config <config.json> <xlsx-file-or-directory>
 ```
 
+## SharePoint URLs in project lists
+
+A YAML project list may set `files[].path` to a SharePoint share URL (`http://` / `https://`).
+TestStat-CLI downloads such files to a temporary folder via Microsoft Graph and aggregates them.
+
+- This requires Azure CLI (`az`) to be installed and `az login` already done; the token is obtained via `az`.
+- A `403` warning usually means the logged-in account lacks `Files.Read.All` / `Sites.Read.All` scope.
+- Direct URL arguments (`tstat https://...`) are not supported; URLs must be inside a `--list` YAML.
+
 ## Workflow
 
 1. Identify whether the user provided an `.xlsx` file, a directory, or a YAML project list.
-2. Confirm the path exists before running `tstat` when the shell environment allows it.
+2. Confirm the path exists before running `tstat` when the shell environment allows it (skip this for SharePoint URLs).
 3. Run `tstat` with `--json` and the relevant path or `--list` option.
 4. Parse the JSON result.
 5. Summarize the results in user-facing language.

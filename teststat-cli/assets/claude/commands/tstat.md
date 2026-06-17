@@ -27,6 +27,12 @@ If a custom config file is needed, use:
 tstat --json --config <config.json> <xlsx-file-or-directory>
 ```
 
+## SharePoint URLs
+
+A `--list` YAML may contain SharePoint share URLs in `files[].path`; `tstat` downloads them to a
+temp folder via Microsoft Graph (requires Azure CLI and a prior `az login`). A `403` warning usually
+means the account lacks `Files.Read.All` / `Sites.Read.All` scope. Direct URL arguments are not supported.
+
 ## Agent instructions
 
 1. Resolve the user's target path relative to the current workspace.

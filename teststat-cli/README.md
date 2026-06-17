@@ -403,7 +403,7 @@ project:
 | 項目 | 必須 | 説明 |
 | --- | --- | --- |
 | `label` | 必須 | ファイルを識別する任意のラベル。出力時の表示名として使用されます。 |
-| `path` | 必須 | 処理対象の `.xlsx` ファイル、または `.xlsx` を含むディレクトリのパス。 |
+| `path` | 必須 | 処理対象の `.xlsx` ファイル、または `.xlsx` を含むディレクトリのパス。`http://` / `https://` で始まる SharePoint の共有 URL も指定でき、実行時に一時フォルダへダウンロードして集計します（後述「SharePoint連携機能」参照）。 |
 | `subtask_id` | 任意 | API連携で更新対象にするサブタスクID。未指定の場合、そのファイルのAPI連携はスキップされます。 |
 | `target_sheets` | 任意 | 集計対象シート名を検索するキーワードリスト。指定すると `config.json` の `read_definition.target_sheets` を上書きします。空リストの場合は全シートが対象です。 |
 | `ignore_sheets` | 任意 | 集計対象から除外するシート名キーワードリスト。`target_sheets` に一致しても、このキーワードを含むシートは除外されます。 |
@@ -504,6 +504,75 @@ project:
 
 - `progress_percent`: 完了数 / 実施対象数 × 100 で算出された整数値。
 - `actual_start_date`: Excelから取得された最も古い実施日（存在する場合のみ送信）。
+
+## SharePoint連携機能
+
+リストファイル（YAML）の `files[].path` に SharePoint の共有 URL を指定すると、
+実行時に Microsoft Graph API 経由でファイルを一時フォルダへダウンロードして集計します。
+集計が完了すると一時ファイルは自動的に削除されるため、ローカルにファイルを置く必要がありません。
+
+### 前提条件
+
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) がインストールされていること
+- `az login` でログイン済みであること（アクセストークンの取得に使用します）
+- ログインアカウントに対象ファイルへの読み取り権限があること
+
+### 使い方
+
+「リンクのコピー」で取得した共有 URL を `path` に指定します。
+
+```yaml
+project:
+  project_name: サンプルプロジェクト
+  testing_id: 1001
+  files:
+    - label: シナリオテスト
+      path: "https://contoso.sharepoint.com/:x:/s/yoursite/EabcdEFGH123..."  # SharePoint共有URL
+      target_sheets:
+        - テスト項目
+    - label: 性能テスト
+      path: input_sample/sample2.xlsx   # 従来どおりローカルパスも併用可
+```
+
+```bash
+# 事前に Azure CLI でログイン
+az login
+
+# リストファイルを指定して実行（URLのファイルは自動ダウンロード）
+tstat -l project_list.yaml
+```
+
+### config.json の設定
+
+`sharepoint` セクションで動作を制御できます（省略時は下記がデフォルト）。
+
+```json
+{
+  "sharepoint": {
+    "enabled": true,
+    "auth_method": "az_cli",
+    "graph_endpoint": "https://graph.microsoft.com/v1.0",
+    "timeout_sec": 60,
+    "temp_dir": null,
+    "cleanup": true
+  }
+}
+```
+
+- `enabled`: `false` にすると URL 指定のファイルはスキップされます。
+- `graph_endpoint`: Microsoft Graph のエンドポイント。
+- `timeout_sec`: Graph API 呼び出し・ダウンロードのタイムアウト秒数。
+- `temp_dir`: ダウンロード先の一時フォルダ。`null` の場合は OS の一時フォルダを使用します。
+- `cleanup`: `false` にすると一時ファイルを削除せず残します（デバッグ用）。
+
+### 注意事項
+
+- 共有 URL は「リンクのコピー」で得られる URL（`:x:/s/...` 形式）を使用してください。
+  Excel の「発行」や埋め込みで得られる `_layouts/15/Doc.aspx?sourcedoc={GUID}...` 形式の URL は解決できないことがあります。
+- `403` エラーが発生する場合、`az login` のトークンに `Files.Read.All` / `Sites.Read.All` 相当の
+  スコープが付与されていない可能性があります。適切なスコープを持つアカウントでのログイン、
+  または管理者同意が必要です。
+- 位置引数での URL 直接指定（`tstat https://...`）には対応していません。リストファイル経由で指定してください。
 
 ## Excelファイル形式
 

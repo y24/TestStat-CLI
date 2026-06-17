@@ -96,5 +96,13 @@
         "enabled": true,
         "base_url": "http://localhost:18000",
         "sender": null
+    },
+    "sharepoint": {
+        "enabled": true,
+        "auth_method": "az_cli",
+        "graph_endpoint": "https://graph.microsoft.com/v1.0",
+        "timeout_sec": 60,
+        "temp_dir": null,
+        "cleanup": true
     }
 }

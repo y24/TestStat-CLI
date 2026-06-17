@@ -1,6 +1,8 @@
 import os
 import yaml
 
+from utils import RemoteSource
+
 # YAMLライブラリのインポート確認
 try:
     import yaml
@@ -60,11 +62,19 @@ def read_yaml_project_list(list_file_path):
         if "path" not in file_info or "label" not in file_info:
             raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'または'label'キーが見つかりません")
         
-        file_path = os.path.normpath(file_info["path"])
-        item = {
-            "path": file_path,
-            "label": file_info["label"]
-        }
+        # リモート URL は normpath を適用せず、そのまま保持する
+        if RemoteSource.is_remote_path(file_info["path"]):
+            item = {
+                "path": file_info["path"].strip(),
+                "label": file_info["label"],
+                "is_remote": True
+            }
+        else:
+            item = {
+                "path": os.path.normpath(file_info["path"]),
+                "label": file_info["label"],
+                "is_remote": False
+            }
         
         # オプション設定の追加
         if "target_sheets" in file_info:

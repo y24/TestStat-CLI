@@ -2,6 +2,7 @@ import json
 import copy
 import sys
 import argparse
+import atexit
 import os
 import pkgutil
 import traceback
@@ -14,6 +15,7 @@ from utils.ClipboardWriter import ClipboardWriter
 from utils import ProjectList
 from utils import FileScanner
 from utils import ConsoleFormatter
+from utils import RemoteSource
 
 def get_script_root_dir():
     """スクリプトのルートディレクトリのパスを返す"""
@@ -348,16 +350,33 @@ def main():
     tasks = []
     project_info = None
     execution_warnings = []
+    remote_mgr = None  # SharePoint等からの一時ダウンロード管理（必要時のみ生成）
 
     if args.list:
         try:
             project_info = ProjectList.read_project_list_file(args.list)
             for file_info in project_info["files"]:
-                target_path = file_info["path"]
-                if not os.path.exists(target_path):
-                    execution_warnings.append(f"指定されたパスが存在しません: {target_path}")
-                    continue
-                
+                # リモートURL（SharePoint共有URL等）は一時フォルダへダウンロードして集計する
+                if file_info.get("is_remote") or RemoteSource.is_remote_path(file_info["path"]):
+                    sp_config = settings.get("sharepoint", {})
+                    if not sp_config.get("enabled", True):
+                        execution_warnings.append(f"SharePoint連携が無効のためスキップします: {file_info['path']}")
+                        continue
+                    try:
+                        if remote_mgr is None:
+                            remote_mgr = RemoteSource.RemoteFileManager(sp_config, verbose_logger)
+                            if remote_mgr.cleanup_enabled:
+                                atexit.register(remote_mgr.cleanup)
+                        target_path = remote_mgr.fetch(file_info["path"])
+                    except RemoteSource.RemoteSourceError as e:
+                        execution_warnings.append(f"SharePointダウンロードに失敗しました: {file_info['path']} ({e})")
+                        continue
+                else:
+                    target_path = file_info["path"]
+                    if not os.path.exists(target_path):
+                        execution_warnings.append(f"指定されたパスが存在しません: {target_path}")
+                        continue
+
                 is_valid_search, found_files = FileScanner.find_excel_files(target_path)
                 if is_valid_search:
                     for f in found_files:
@@ -391,6 +410,11 @@ def main():
             print("ERROR: パスまたはプロジェクトリストファイルを指定してください", file=sys.stderr)
             sys.exit(1)
         for target_path in args.path:
+            if RemoteSource.is_remote_path(target_path):
+                execution_warnings.append(
+                    f"URLの直接指定には未対応です。リストファイル(-l)のpathに指定してください: {target_path}"
+                )
+                continue
             if not os.path.exists(target_path):
                 execution_warnings.append(f"指定されたパスが存在しません: {target_path}")
                 continue

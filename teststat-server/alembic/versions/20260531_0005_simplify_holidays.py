@@ -16,8 +16,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_column("holidays", "updated_at")
-    op.drop_column("holidays", "source")
+    existing_columns = {
+        column["name"] for column in sa.inspect(op.get_bind()).get_columns("holidays")
+    }
+    if "updated_at" in existing_columns:
+        op.drop_column("holidays", "updated_at")
+    if "source" in existing_columns:
+        op.drop_column("holidays", "source")
     op.execute("DELETE FROM holidays WHERE date < '2025-01-01'")
 
 

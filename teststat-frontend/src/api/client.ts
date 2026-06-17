@@ -21,10 +21,9 @@ import type {
   OpenBugItem,
 } from './types'
 
-// 開発時は vite.config のプロキシ経由で localhost:18000 へ転送される。
-// 本番では同一オリジン配信のため "" でよい。VITE_API_BASE_URL は未使用になるが
-// 将来の別オリジン配信を想定して env ファイルに残す。
-const BASE = ''
+// 本番では IIS の /tstat 配下で同一オリジン配信し、/tstat/api と /tstat/health を
+// バックエンドへリバースプロキシする。開発時も vite.config の proxy が同じパスを転送する。
+const BASE = (import.meta.env.VITE_API_BASE_PATH || '').replace(/\/$/, '')
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)

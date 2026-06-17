@@ -259,7 +259,7 @@ export function ProjectEditor({
               onClick={handleAzureFetch}
               disabled={submitting || adoLoading || !testingIdValid}
             >
-              {adoLoading ? '取得中...' : 'Azure DevOps から取得'}
+              {adoLoading ? '取得中...' : 'AzureDevOpsから情報取得'}
             </button>
           </div>
         </label>
@@ -301,7 +301,7 @@ export function ProjectEditor({
           </label>
         </div>
         <label>
-          <span>不具合数の取得先</span>
+          <span>不具合件数ソース</span>
           <select
             value={form.bug_count_source}
             disabled={submitting}
@@ -312,8 +312,8 @@ export function ProjectEditor({
               })
             }
           >
-            <option value="azure_devops">Azure DevOps</option>
-            <option value="test_result">テスト結果</option>
+            <option value="azure_devops">Azure DevOps - Testing IDの子Bugチケットのステータスを参照</option>
+            <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照</option>
           </select>
         </label>
 

@@ -50,15 +50,6 @@ export function ProjectOverview({
             <FolderKanban className="title-icon" aria-hidden="true" />
             {project.archived && <LockIcon />}
             <span>{project.name}</span>
-            <button
-              className="icon-button project-edit-button"
-              type="button"
-              onClick={onEdit}
-              aria-label="プロジェクト情報を編集"
-              title="プロジェクト情報を編集"
-            >
-              <Pencil aria-hidden="true" />
-            </button>
           </h1>
           {plannedPeriod && <div className="project-planned-period">予定期間: {plannedPeriod}</div>}
           <div className="project-status-row">
@@ -74,6 +65,10 @@ export function ProjectOverview({
           </div>
         </div>
         <div className="header-actions">
+          <button className="secondary-button icon-text-button" type="button" onClick={onEdit}>
+            <Pencil className="button-icon" aria-hidden="true" />
+            <span>プロジェクト情報編集</span>
+          </button>
           <button className="primary-button icon-text-button" type="button" onClick={onPlans}>
             <ClipboardList className="button-icon" aria-hidden="true" strokeWidth={2.2} />
             <span>テスト計画入力</span>

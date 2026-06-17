@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
@@ -26,7 +26,7 @@ def _get_or_create_testing(db: Session, testing_id: int, project_name: str) -> T
         db.flush()
     else:
         testing.project_name = project_name
-        testing.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        testing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     return testing
 
 

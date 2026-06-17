@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -221,7 +221,7 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
     if payload.archived is not None:
         project.archived = payload.archived
     _validate_project_planned_date_range(project)
-    project.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    project.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     return _to_response(
         project,

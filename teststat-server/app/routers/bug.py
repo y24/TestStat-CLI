@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse
     suspend_states = get_settings().azure_devops_bug_suspend_status_set
     try:
         return replace_bugs(
-            db, testing_id, bugs, suspend_states, datetime.now(UTC).replace(tzinfo=None)
+            db, testing_id, bugs, suspend_states, datetime.now(timezone.utc).replace(tzinfo=None)
         )
     except Exception:
         db.rollback()

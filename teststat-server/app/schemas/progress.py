@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,7 +51,7 @@ class ProgressRequest(BaseModel):
     testing_id: int = Field(..., description="YAML project.testing_id")
     project_name: str = Field(..., min_length=1, max_length=255)
     sender: str | None = Field(None, max_length=255)
-    sent_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
+    sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     files: list[FileProgressIn]
 
 

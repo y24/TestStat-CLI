@@ -44,6 +44,10 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
     : 0
   const plannedLineColor = '#8a94a6'
   const pastPlanLineColor = 'rgba(95, 107, 126, 0.42)'
+  const bugLegendNames =
+    chart.bug_count_source === 'test_result'
+      ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
+      : { resolved: '完了不具合(累積)', suspended: '対応見送り(累積)', open: '未解消不具合' }
   const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
   const today = getTodayString()
   const showTodayLine = dates.includes(today)
@@ -60,7 +64,7 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
   if (showBugs) {
     // 下から 緑(完了)→黄(対応見送り)→赤(未解消) の積み上げエリア。右軸・バーンダウン線より背面。
     series.push({
-      name: '完了不具合(累積)',
+      name: bugLegendNames.resolved,
       type: 'line',
       yAxisIndex: 1,
       data: chart.series.map((item) => item.bug_resolved),
@@ -72,7 +76,7 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
       z: 0,
     })
     series.push({
-      name: '対応見送り(累積)',
+      name: bugLegendNames.suspended,
       type: 'line',
       yAxisIndex: 1,
       data: chart.series.map((item) => item.bug_suspended),
@@ -84,7 +88,7 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
       z: 0,
     })
     series.push({
-      name: '未解消不具合',
+      name: bugLegendNames.open,
       type: 'line',
       yAxisIndex: 1,
       data: chart.series.map((item) => item.bug_open),

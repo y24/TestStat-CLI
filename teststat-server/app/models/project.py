@@ -15,6 +15,7 @@ class Project(Base):
     ticket_ref: Mapped[str | None] = mapped_column(String(500))
     planned_start_date: Mapped[date | None] = mapped_column(Date)
     planned_end_date: Mapped[date | None] = mapped_column(Date)
+    bug_count_source: Mapped[str] = mapped_column(String(32), nullable=False, default="azure_devops")
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

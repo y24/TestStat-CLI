@@ -1,6 +1,9 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+BugCountSource = Literal["azure_devops", "test_result"]
 
 
 class ProjectCreate(BaseModel):
@@ -9,6 +12,7 @@ class ProjectCreate(BaseModel):
     ticket_ref: str | None = Field(None, max_length=500)
     planned_start_date: date | None = None
     planned_end_date: date | None = None
+    bug_count_source: BugCountSource = "azure_devops"
 
     @model_validator(mode="after")
     def validate_planned_date_range(self) -> "ProjectCreate":
@@ -26,6 +30,7 @@ class ProjectUpdate(BaseModel):
     ticket_ref: str | None = Field(None, max_length=500)
     planned_start_date: date | None = None
     planned_end_date: date | None = None
+    bug_count_source: BugCountSource | None = None
     archived: bool | None = None
 
     @model_validator(mode="after")
@@ -45,6 +50,7 @@ class ProjectResponse(BaseModel):
     ticket_ref: str | None
     planned_start_date: date | None
     planned_end_date: date | None
+    bug_count_source: BugCountSource
     archived: bool
     display_order: int
     created_at: datetime

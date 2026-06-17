@@ -3,6 +3,9 @@ import sys
 import unittest
 
 from sqlalchemy import create_engine
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
 
 SERVER_ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, SERVER_ROOT)
@@ -93,6 +96,17 @@ class TestProjectCRUD(unittest.TestCase):
         create_project(self.db, ProjectCreate(testing_id=3001, name="旧名称"))
         updated = update_project(self.db, 3001, ProjectUpdate(name="新名称"))
         self.assertEqual(updated.name, "新名称")
+
+    def test_create_and_update_bug_count_source(self):
+        created = create_project(
+            self.db,
+            ProjectCreate(testing_id=3005, name="不具合取得元P", bug_count_source="test_result"),
+        )
+        self.assertEqual(created.bug_count_source, "test_result")
+
+        updated = update_project(self.db, 3005, ProjectUpdate(bug_count_source="azure_devops"))
+
+        self.assertEqual(updated.bug_count_source, "azure_devops")
 
     def test_create_and_update_planned_dates(self):
         from datetime import date
@@ -310,6 +324,51 @@ class TestProjectCRUD(unittest.TestCase):
 
         self.assertEqual(p.actual_completed_rate, 40)
         self.assertEqual(p.actual_vs_plan_rate, 100)
+
+class TestProjectRouter(unittest.TestCase):
+    def setUp(self):
+        from app.database import get_db
+        from app.routers.project import router as project_router
+        import app.routers.project as project_mod
+
+        self.engine = create_engine(
+            "sqlite+pysqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        self.db = Session()
+        self.app = FastAPI()
+        self.app.include_router(project_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.client = TestClient(self.app)
+        self._original_validate = project_mod.validate_work_item_type
+        project_mod.validate_work_item_type = lambda work_item_id, settings: None
+
+    def tearDown(self):
+        import app.routers.project as project_mod
+
+        project_mod.validate_work_item_type = self._original_validate
+        self.db.close()
+        Base.metadata.drop_all(self.engine)
+        self.engine.dispose()
+
+    def test_patch_bug_count_source_persists_and_is_returned(self):
+        res = self.client.post("/api/v1/projects", json={"testing_id": 9001, "name": "P"})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["bug_count_source"], "azure_devops")
+
+        patch = self.client.patch(
+            "/api/v1/projects/9001",
+            json={"name": "P", "bug_count_source": "test_result"},
+        )
+
+        self.assertEqual(patch.status_code, 200)
+        self.assertEqual(patch.json()["bug_count_source"], "test_result")
+        reread = self.client.get("/api/v1/projects/9001")
+        self.assertEqual(reread.status_code, 200)
+        self.assertEqual(reread.json()["bug_count_source"], "test_result")
 
 
 if __name__ == "__main__":

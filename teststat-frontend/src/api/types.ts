@@ -101,6 +101,7 @@ export interface ProjectItem {
   ticket_ref: string | null
   planned_start_date: string | null
   planned_end_date: string | null
+  bug_count_source: 'azure_devops' | 'test_result'
   archived: boolean
   display_order: number
   created_at: string
@@ -121,6 +122,7 @@ export interface ProjectCreatePayload {
   ticket_ref?: string | null
   planned_start_date?: string | null
   planned_end_date?: string | null
+  bug_count_source?: 'azure_devops' | 'test_result'
 }
 
 export interface ProjectUpdatePayload {
@@ -128,6 +130,7 @@ export interface ProjectUpdatePayload {
   ticket_ref?: string | null
   planned_start_date?: string | null
   planned_end_date?: string | null
+  bug_count_source?: 'azure_devops' | 'test_result'
   archived?: boolean
 }
 
@@ -193,6 +196,7 @@ export interface PbChartPastPlan {
 export interface PbChartResponse {
   testing_id: number
   label: string | null
+  bug_count_source: 'azure_devops' | 'test_result'
   range: { from: string; to: string } | null
   actuals_updated_at: string | null
   available_cases: number

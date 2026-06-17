@@ -17,6 +17,7 @@ interface ProjectFormState {
   name: string
   planned_start_date: string
   planned_end_date: string
+  bug_count_source: 'azure_devops' | 'test_result'
 }
 
 const emptyForm: ProjectFormState = {
@@ -24,6 +25,7 @@ const emptyForm: ProjectFormState = {
   name: '',
   planned_start_date: '',
   planned_end_date: '',
+  bug_count_source: 'azure_devops',
 }
 
 export function ProjectEditor({
@@ -51,6 +53,7 @@ export function ProjectEditor({
           name: project.name,
           planned_start_date: project.planned_start_date ?? '',
           planned_end_date: project.planned_end_date ?? '',
+          bug_count_source: project.bug_count_source,
         }
       : emptyForm,
   )
@@ -72,7 +75,8 @@ export function ProjectEditor({
         : project !== null &&
           (form.name !== project.name ||
             form.planned_start_date !== (project.planned_start_date ?? '') ||
-            form.planned_end_date !== (project.planned_end_date ?? ''))
+            form.planned_end_date !== (project.planned_end_date ?? '') ||
+            form.bug_count_source !== project.bug_count_source)
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
 
@@ -166,6 +170,7 @@ export function ProjectEditor({
     const plannedDates = {
       planned_start_date: form.planned_start_date || null,
       planned_end_date: form.planned_end_date || null,
+      bug_count_source: form.bug_count_source,
     }
     const request =
       mode === 'new'
@@ -295,6 +300,22 @@ export function ProjectEditor({
             />
           </label>
         </div>
+        <label>
+          <span>不具合数の取得先</span>
+          <select
+            value={form.bug_count_source}
+            disabled={submitting}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                bug_count_source: event.target.value as ProjectFormState['bug_count_source'],
+              })
+            }
+          >
+            <option value="azure_devops">Azure DevOps</option>
+            <option value="test_result">テスト結果</option>
+          </select>
+        </label>
 
         <div className="form-actions">
           <button className="primary-button" type="submit" disabled={submitting || adoLoading}>

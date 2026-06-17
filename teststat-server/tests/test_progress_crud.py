@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -12,11 +13,33 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 from app.crud.progress import get_daily_progress, get_file_progress, get_progress_summary, replace_progress  # noqa: E402
 from app.database import Base  # noqa: E402
 from app.models.project import Project  # noqa: E402
-from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress  # noqa: E402
+from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot  # noqa: E402
 from app.schemas.progress import ProgressRequest  # noqa: E402
 
 
-def make_payload(testing_id=1001, file_name="sample1.xlsx", pass_count=4, available_cases=8):
+def make_payload(
+    testing_id=1001,
+    file_name="sample1.xlsx",
+    pass_count=4,
+    available_cases=8,
+    daily_date="2026-05-01",
+    extra_daily=None,
+):
+    daily_rows = [
+        {
+            "date": daily_date,
+            "Pass": pass_count,
+            "Fixed": 1,
+            "Fail": 1,
+            "Blocked": 0,
+            "Suspend": 0,
+            "N/A": 0,
+            "completed": 5,
+            "executed": 6,
+            "planned": None,
+        }
+    ]
+    daily_rows.extend(extra_daily or [])
     return ProgressRequest.model_validate(
         {
             "testing_id": testing_id,
@@ -46,23 +69,10 @@ def make_payload(testing_id=1001, file_name="sample1.xlsx", pass_count=4, availa
                         "Suspend": 0,
                         "N/A": 0,
                     },
-                    "daily": [
-                        {
-                            "date": "2026-05-01",
-                            "Pass": pass_count,
-                            "Fixed": 1,
-                            "Fail": 1,
-                            "Blocked": 0,
-                            "Suspend": 0,
-                            "N/A": 0,
-                            "completed": 5,
-                            "executed": 6,
-                            "planned": None,
-                        }
-                    ],
+                    "daily": daily_rows,
                     "by_person": [
-                        {"date": "2026-05-01", "person": "Alice", "count": 3},
-                        {"date": "2026-05-01", "person": "Bob", "count": 3},
+                        {"date": daily_date, "person": "Alice", "count": 3},
+                        {"date": daily_date, "person": "Bob", "count": 3},
                     ],
                 }
             ],
@@ -114,6 +124,51 @@ class ProgressCrudTests(unittest.TestCase):
         self.assertEqual([row.file_name for row in testing_2002_files], ["other.xlsx"])
         self.assertEqual(get_progress_summary(self.db, 1001).results.pass_count, 2)
         self.assertEqual(get_progress_summary(self.db, 2002).results.pass_count, 8)
+
+    def test_replace_progress_keeps_test_result_bug_snapshots_by_test_result_date(self):
+        payload = make_payload(
+            testing_id=1001,
+            pass_count=4,
+            extra_daily=[
+                {
+                    "date": "2026-05-02",
+                    "Pass": 3,
+                    "Fixed": 2,
+                    "Fail": 0,
+                    "Blocked": 0,
+                    "Suspend": 1,
+                    "N/A": 0,
+                    "completed": 6,
+                    "executed": 6,
+                    "planned": None,
+                }
+            ],
+        )
+        replace_progress(self.db, payload.model_copy(update={"sent_at": datetime(2026, 6, 1, 10, 0)}))
+
+        rows = self.db.scalars(
+            select(TestResultBugSnapshot)
+            .where(TestResultBugSnapshot.testing_id == 1001)
+            .order_by(TestResultBugSnapshot.snapshot_date)
+        ).all()
+
+        self.assertEqual([row.snapshot_date.isoformat() for row in rows], ["2026-05-01", "2026-05-02"])
+        self.assertEqual([(row.fail_count, row.suspend_count, row.fixed_count) for row in rows], [(1, 0, 1), (0, 1, 2)])
+
+    def test_replace_progress_replaces_all_test_result_bug_snapshots_for_testing_id(self):
+        replace_progress(self.db, make_payload(testing_id=1001, pass_count=4))
+        replacement = make_payload(testing_id=1001, pass_count=2, daily_date="2026-05-02")
+        replacement.files[0].daily[0].fail = 0
+        replacement.files[0].daily[0].fixed = 2
+        replace_progress(self.db, replacement)
+
+        rows = self.db.scalars(
+            select(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == 1001)
+        ).all()
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].snapshot_date.isoformat(), "2026-05-02")
+        self.assertEqual((rows[0].fail_count, rows[0].suspend_count, rows[0].fixed_count), (0, 0, 2))
 
     def test_validation_failure_does_not_delete_existing_rows(self):
         replace_progress(self.db, make_payload())

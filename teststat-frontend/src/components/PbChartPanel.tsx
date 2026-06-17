@@ -186,6 +186,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
     ? `${formatDate(chart.range.from)} ～ ${formatDate(chart.range.to)}`
     : '-'
   const bugSummary = chart ? getBugSummary(chart) : null
+  const usesTestResultBugs = project.bug_count_source === 'test_result'
   // 表示対象が(全て)以外のときは不具合レイヤーを強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
 
@@ -216,24 +217,28 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
       </div>
 
       <div className="bug-bar">
-        <button
-          type="button"
-          className="bug-sync-button"
-          onClick={handleSyncBugs}
-          disabled={bugSync.loading || !bugsAllowed}
-        >
-          <Bug className="bug-sync-icon" aria-hidden="true" />
-          {bugSync.loading ? '取得中...' : '不具合数を取得'}
-        </button>
+        {!usesTestResultBugs && (
+          <button
+            type="button"
+            className="bug-sync-button"
+            onClick={handleSyncBugs}
+            disabled={bugSync.loading || !bugsAllowed}
+          >
+            <Bug className="bug-sync-icon" aria-hidden="true" />
+            {bugSync.loading ? '取得中...' : '不具合数を取得'}
+          </button>
+        )}
         {bugSync.error ? (
           <span className="bug-meta error">取得失敗: {bugSync.error}</span>
         ) : !bugsAllowed ? null : bugSummary ? (
           <span className="bug-meta">
-            不具合 <b>{bugSummary.total}</b> 件（未解消{' '}
-            <b className="open">{bugSummary.open}</b> / 見送り{' '}
-            <b className="suspended">{bugSummary.suspended}</b> / 完了{' '}
+            不具合 <b>{bugSummary.total}</b> 件（{usesTestResultBugs ? 'Fail' : '未解消'}{' '}
+            <b className="open">{bugSummary.open}</b> / {usesTestResultBugs ? 'Suspend' : '見送り'}{' '}
+            <b className="suspended">{bugSummary.suspended}</b> / {usesTestResultBugs ? 'Fixed' : '完了'}{' '}
             <b className="resolved">{bugSummary.resolved}</b>）
-            {chart?.bugs_updated_at ? `・最終取得: ${formatDateTime(chart.bugs_updated_at)}` : ''}
+            {chart?.bugs_updated_at
+              ? `・${usesTestResultBugs ? '最終更新' : '最終取得'}: ${formatDateTime(chart.bugs_updated_at)}`
+              : ''}
           </span>
         ) : (
           <span className="bug-meta">不具合データ未取得</span>
@@ -268,7 +273,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
           daily={daily}
           selectedLabel={label}
           openBugs={bugsAllowed ? openBugs : []}
-          bugDataFetched={Boolean(bugsAllowed && chart?.has_bugs)}
+          bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
         />
       )}
     </section>

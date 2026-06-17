@@ -1,11 +1,12 @@
-from datetime import datetime, timezone
+from collections import defaultdict
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
-from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, Testing
+from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.schemas.progress import DailyProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
 
 
@@ -48,10 +49,12 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
     db.execute(delete(FileProgress).where(FileProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyProgress).where(DailyProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyPersonProgress).where(DailyPersonProgress.testing_id == payload.testing_id))
+    db.execute(delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == payload.testing_id))
 
     file_rows: list[FileProgress] = []
     daily_rows: list[DailyProgress] = []
     person_rows: list[DailyPersonProgress] = []
+    bug_counts_by_date: dict[date, list[int]] = defaultdict(lambda: [0, 0, 0])
 
     for file in payload.files:
         file_rows.append(
@@ -81,6 +84,10 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
             )
         )
         for daily in file.daily:
+            bug_counts = bug_counts_by_date[daily.date]
+            bug_counts[0] += daily.fail
+            bug_counts[1] += daily.suspend
+            bug_counts[2] += daily.fixed
             daily_rows.append(
                 DailyProgress(
                     testing_id=payload.testing_id,
@@ -114,6 +121,17 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
                 )
 
     db.add_all(file_rows + daily_rows + person_rows)
+    db.add_all(
+        TestResultBugSnapshot(
+            testing_id=payload.testing_id,
+            snapshot_date=snapshot_date,
+            fail_count=counts[0],
+            suspend_count=counts[1],
+            fixed_count=counts[2],
+            sent_at=payload.sent_at,
+        )
+        for snapshot_date, counts in bug_counts_by_date.items()
+    )
     db.commit()
 
     return ProgressPostResponse(

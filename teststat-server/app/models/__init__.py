@@ -1,4 +1,4 @@
-from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, Testing
+from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.models.project import Project
 from app.models.plan import Plan, PlanDaily
 from app.models.holiday import Holiday
@@ -10,6 +10,7 @@ __all__ = [
     "FileProgress",
     "DailyProgress",
     "DailyPersonProgress",
+    "TestResultBugSnapshot",
     "Project",
     "Plan",
     "PlanDaily",

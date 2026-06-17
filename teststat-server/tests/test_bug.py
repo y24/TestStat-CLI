@@ -328,6 +328,25 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(body[0]["state"], "Active")
         self.assertEqual(body[0]["url"], "https://dev.azure.com/my-org/_workitems/edit/9002")
 
+    def test_list_open_bugs_fetches_azure_devops_in_test_result_mode(self):
+        from app.crud.project import update_project
+        from app.schemas.project import ProjectUpdate
+
+        update_project(self.db, 1001, ProjectUpdate(bug_count_source="test_result"))
+        self._patch_fetch(
+            lambda wid, settings=None: [
+                BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
+                BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
+            ]
+        )
+
+        res = self.client.get("/api/v1/projects/1001/bugs/open")
+
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["work_item_id"], 9002)
+
 
 if __name__ == "__main__":
     unittest.main()

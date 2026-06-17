@@ -41,6 +41,7 @@ class PastPlanSeries(BaseModel):
 class PbChartResponse(BaseModel):
     testing_id: int
     label: str | None
+    bug_count_source: str = "azure_devops"
     range: dict | None          # {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}
     actuals_updated_at: datetime | None
     available_cases: int        # 実績の available_cases 合計（0 = 実績なし）

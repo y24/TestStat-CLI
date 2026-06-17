@@ -13,7 +13,7 @@ from app.crud.bug import (
     has_bugs as _has_bugs,
 )
 from app.models.plan import Plan, PlanDaily
-from app.models.progress import FileProgress, DailyProgress, Testing
+from app.models.progress import DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.models.project import Project
 from app.schemas.pb_chart import (
     PastPlanSeries,
@@ -70,6 +70,27 @@ def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> di
         q = q.where(DailyProgress.label == label)
     rows = db.execute(q.group_by(DailyProgress.date)).all()
     return {r[0]: r[1] for r in rows}
+
+
+def _get_test_result_bug_daily_map(db: Session, testing_id: int) -> dict[date, tuple[int, int, int]]:
+    """取り込み日ごとのテスト結果由来の (Fail, Suspend, Fixed) スナップショットを返す。"""
+    rows = db.execute(
+        select(
+            TestResultBugSnapshot.snapshot_date,
+            TestResultBugSnapshot.fail_count,
+            TestResultBugSnapshot.suspend_count,
+            TestResultBugSnapshot.fixed_count,
+        )
+        .where(TestResultBugSnapshot.testing_id == testing_id)
+        .order_by(TestResultBugSnapshot.snapshot_date)
+    ).all()
+    return {row[0]: (int(row[1]), int(row[2]), int(row[3])) for row in rows}
+
+
+def _get_test_result_bug_updated_at(db: Session, testing_id: int):
+    return db.scalar(
+        select(func.max(TestResultBugSnapshot.sent_at)).where(TestResultBugSnapshot.testing_id == testing_id)
+    )
 
 
 def _get_available_cases(db: Session, testing_id: int, label: str | None) -> int:
@@ -131,6 +152,23 @@ def _compute_actual_series(
         cumsum += actual_daily_map[d]
         remaining_map[d] = available_cases - cumsum
     return remaining_map
+
+
+def _compute_test_result_bug_series(
+    date_range: list[date],
+    daily_map: dict[date, tuple[int, int, int]],
+) -> dict[date, tuple[int, int, int]]:
+    """テスト結果由来の不具合系列を date_range に補完する。
+
+    DailyProgress は結果ステータスのその日時点の件数として扱い、データがない日は直前値を引き継ぐ。
+    """
+    result: dict[date, tuple[int, int, int]] = {}
+    last = (0, 0, 0)
+    for d in date_range:
+        if d in daily_map:
+            last = daily_map[d]
+        result[d] = last
+    return result
 
 
 def _build_series(
@@ -317,15 +355,28 @@ def get_pb_chart(
     has_actuals = bool(actual_daily_map) and available_cases > 0
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
 
-    # 不具合（label 非依存。Testing ID 単位で取得済みのスナップショットを使う）
+    # 不具合（label 非依存。Testing ID 単位で取得済みのスナップショットまたはテスト結果を使う）
     # 不具合グラフは (全て) 表示（label=None）のときのみ描画するため、
     # label 指定時は range 拡張も系列計算も行わない（表示中のグラフで期間を算出する）。
-    bugs_present = _has_bugs(db, testing_id)
+    bug_count_source = project.bug_count_source
+    test_result_bug_daily_map = (
+        _get_test_result_bug_daily_map(db, testing_id) if bug_count_source == "test_result" and label is None else {}
+    )
+    test_result_has_bugs = bool(test_result_bug_daily_map)
+    bugs_present = test_result_has_bugs if bug_count_source == "test_result" else _has_bugs(db, testing_id)
     bugs_visible = bugs_present and label is None
-    bugs_updated_at = get_bugs_updated_at(db, testing_id) if bugs_present else None
+    bugs_updated_at = (
+        _get_test_result_bug_updated_at(db, testing_id)
+        if bug_count_source == "test_result" and bugs_present
+        else get_bugs_updated_at(db, testing_id) if bugs_present else None
+    )
     bug_from = bug_to = None
     if bugs_visible:
-        bug_from, bug_to = get_bug_date_bounds(db, testing_id)
+        if bug_count_source == "test_result":
+            bug_from = min(test_result_bug_daily_map) if test_result_bug_daily_map else None
+            bug_to = max(test_result_bug_daily_map) if test_result_bug_daily_map else None
+        else:
+            bug_from, bug_to = get_bug_date_bounds(db, testing_id)
 
     # 日付レンジ
     range_from: date | None = None
@@ -349,6 +400,7 @@ def get_pb_chart(
         return PbChartResponse(
             testing_id=testing_id,
             label=label,
+            bug_count_source=bug_count_source,
             range=None,
             actuals_updated_at=_get_actuals_updated_at(db, testing_id),
             available_cases=0,
@@ -362,8 +414,11 @@ def get_pb_chart(
     date_list = _date_range(range_from, range_to)
     bug_cumulative = None
     if bugs_visible:
-        suspend_states = get_settings().azure_devops_bug_suspend_status_set
-        bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)
+        if bug_count_source == "test_result":
+            bug_cumulative = _compute_test_result_bug_series(date_list, test_result_bug_daily_map)
+        else:
+            suspend_states = get_settings().azure_devops_bug_suspend_status_set
+            bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)
     series = _build_series(
         date_list, plan_remaining_map, plan_d_map, actual_remaining_sparse, actual_daily_map,
         bug_cumulative,
@@ -374,6 +429,7 @@ def get_pb_chart(
     return PbChartResponse(
         testing_id=testing_id,
         label=label,
+        bug_count_source=bug_count_source,
         range={"from": range_from.isoformat(), "to": range_to.isoformat()},
         actuals_updated_at=_get_actuals_updated_at(db, testing_id),
         available_cases=available_cases,

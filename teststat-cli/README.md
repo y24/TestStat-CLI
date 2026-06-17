@@ -25,6 +25,7 @@ Excelテスト仕様書からテスト結果を集計するCLIツールです。
 ### 前提条件
 
 - Python 3.7以上
+- SharePoint上のファイルをリストファイルで指定して集計する場合は、[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) および `az login` でのログインが追加で必要です（詳細は「SharePoint連携機能」参照）。
 
 ### セットアップ
 

@@ -192,10 +192,6 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
 
   return (
     <section className="chart-section">
-      <div className="chart-toolbar">
-        <h2>PB図</h2>
-      </div>
-
       <div className="chart-controls">
         <label className="target-select">
           <span>表示対象</span>

@@ -81,7 +81,7 @@ class TestResultBugSnapshot(Base):
     """テスト結果由来の不具合バーンダウン用スナップショット（日付単位）。
 
     FileProgress/DailyProgress は Testing ID 単位で洗替され、かつ「結果が変わると日付も移す」運用のため、
-    最新の取り込みだけでは過去の検出履歴を再現できない。そこで日付ごとに以下を蓄積する:
+    最新の取り込みだけでは過去の検出履歴を再現できない。そこで label（テスト種別）×日付ごとに以下を蓄積する:
 
     - detected_count: その日に新規検出された不具合数（増分）。検出累積は取り込み間で
       「総不具合数（Fail+Suspend+Fixed）累積の最大値（ハイウォーターマーク）」として保持し、
@@ -89,17 +89,22 @@ class TestResultBugSnapshot(Base):
     - suspend_count / fixed_count: その日時点で見送り／完了になっている件数（最新取り込みの現在値）。
 
     PB図では各日について 未解消(open) = 検出累積 − 見送り累積 − 完了累積 で算出する（Azure DevOps と同じ考え方）。
+    label 別に保持することで、表示対象がテスト別のときもそのテストの不具合だけを描画できる。
+    (全て) 表示時は label をまたいで合算する。
     """
 
     __tablename__ = "test_result_bug_snapshots"
     __table_args__ = (
-        UniqueConstraint("testing_id", "snapshot_date", name="uq_test_result_bug_snapshots_testing_date"),
+        UniqueConstraint(
+            "testing_id", "label", "snapshot_date", name="uq_test_result_bug_snapshots_testing_label_date"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("testings.testing_id", ondelete="CASCADE"), nullable=False, index=True
     )
+    label: Mapped[str | None] = mapped_column(String(255))
     snapshot_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     detected_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     suspend_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

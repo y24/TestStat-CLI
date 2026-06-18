@@ -296,6 +296,57 @@ class TestPbChart(unittest.TestCase):
             [(2, 1, 0), (2, 1, 0), (0, 2, 2)],
         )
 
+    def test_test_result_bug_source_per_label(self):
+        """テスト結果ソースは label 別に不具合を取得でき、(全て)では合算される。"""
+        from app.crud.project import update_project
+        from app.models.progress import TestResultBugSnapshot, Testing
+        from app.schemas.project import ProjectUpdate
+        from datetime import datetime
+        from sqlalchemy import select
+
+        update_project(self.db, 1001, ProjectUpdate(bug_count_source="test_result"))
+        if not self.db.scalar(select(Testing).where(Testing.testing_id == 1001)):
+            self.db.add(Testing(testing_id=1001, project_name="P1001", updated_at=datetime(2026, 5, 3, 12, 0)))
+            self.db.flush()
+        self.db.add_all(
+            [
+                # TEST001: 5/1 検出2 見送り0 完了0、5/3 検出1 完了1
+                TestResultBugSnapshot(
+                    testing_id=1001, label="TEST001", snapshot_date=date(2026, 5, 1),
+                    detected_count=2, suspend_count=0, fixed_count=0, sent_at=datetime(2026, 5, 1, 10, 0),
+                ),
+                TestResultBugSnapshot(
+                    testing_id=1001, label="TEST001", snapshot_date=date(2026, 5, 3),
+                    detected_count=1, suspend_count=0, fixed_count=1, sent_at=datetime(2026, 5, 3, 10, 0),
+                ),
+                # TEST002: 5/2 検出3 見送り1
+                TestResultBugSnapshot(
+                    testing_id=1001, label="TEST002", snapshot_date=date(2026, 5, 2),
+                    detected_count=3, suspend_count=1, fixed_count=0, sent_at=datetime(2026, 5, 2, 10, 0),
+                ),
+            ]
+        )
+        self.db.commit()
+
+        # TEST001 のみ: 5/1 検出2 → open2、5/3 検出累積3・完了1 → open2 完了1
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+        self.assertTrue(result.has_bugs)
+        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-03"})
+        self.assertEqual(
+            [(s.bug_open, s.bug_suspended, s.bug_resolved) for s in result.series],
+            [(2, 0, 0), (2, 0, 0), (2, 0, 1)],
+        )
+
+        # (全て): TEST001 + TEST002 を日付ごとに合算
+        # 5/1 検出2 → (2,0,0)
+        # 5/2 検出累積5・見送り1 → open4 見送り1
+        # 5/3 検出累積6・見送り1・完了1 → open4 見送り1 完了1
+        result_all = get_pb_chart(self.db, 1001, label=None)
+        self.assertEqual(
+            [(s.bug_open, s.bug_suspended, s.bug_resolved) for s in result_all.series],
+            [(2, 0, 0), (4, 1, 0), (4, 1, 1)],
+        )
+
     # ---- 存在しないプロジェクト ----
 
     def test_unknown_project_raises(self):

@@ -72,17 +72,23 @@ def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> di
     return {r[0]: r[1] for r in rows}
 
 
-def _get_test_result_bug_daily_map(db: Session, testing_id: int) -> dict[date, tuple[int, int, int]]:
-    """日付ごとのテスト結果由来の (検出増分, 見送り件数, 完了件数) スナップショットを返す。"""
+def _get_test_result_bug_daily_map(
+    db: Session, testing_id: int, label: str | None = None
+) -> dict[date, tuple[int, int, int]]:
+    """日付ごとのテスト結果由来の (検出増分, 見送り件数, 完了件数) スナップショットを返す。
+
+    label 指定時はそのテスト種別のみ。label=None（全て）は全 label を日付ごとに合算する。
+    """
+    q = select(
+        TestResultBugSnapshot.snapshot_date,
+        func.sum(TestResultBugSnapshot.detected_count),
+        func.sum(TestResultBugSnapshot.suspend_count),
+        func.sum(TestResultBugSnapshot.fixed_count),
+    ).where(TestResultBugSnapshot.testing_id == testing_id)
+    if label is not None:
+        q = q.where(TestResultBugSnapshot.label == label)
     rows = db.execute(
-        select(
-            TestResultBugSnapshot.snapshot_date,
-            TestResultBugSnapshot.detected_count,
-            TestResultBugSnapshot.suspend_count,
-            TestResultBugSnapshot.fixed_count,
-        )
-        .where(TestResultBugSnapshot.testing_id == testing_id)
-        .order_by(TestResultBugSnapshot.snapshot_date)
+        q.group_by(TestResultBugSnapshot.snapshot_date).order_by(TestResultBugSnapshot.snapshot_date)
     ).all()
     return {row[0]: (int(row[1]), int(row[2]), int(row[3])) for row in rows}
 
@@ -91,6 +97,13 @@ def _get_test_result_bug_updated_at(db: Session, testing_id: int):
     return db.scalar(
         select(func.max(TestResultBugSnapshot.sent_at)).where(TestResultBugSnapshot.testing_id == testing_id)
     )
+
+
+def _has_test_result_bugs(db: Session, testing_id: int) -> bool:
+    """label を問わず、テスト結果由来の不具合スナップショットが1件でもあるか。"""
+    return db.scalar(
+        select(TestResultBugSnapshot.id).where(TestResultBugSnapshot.testing_id == testing_id).limit(1)
+    ) is not None
 
 
 def _get_available_cases(db: Session, testing_id: int, label: str | None) -> int:
@@ -362,27 +375,26 @@ def get_pb_chart(
     has_actuals = bool(actual_daily_map) and available_cases > 0
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
 
-    # 不具合（label 非依存。Testing ID 単位で取得済みのスナップショットまたはテスト結果を使う）
-    # 不具合グラフは (全て) 表示（label=None）のときのみ描画するため、
-    # label 指定時は range 拡張も系列計算も行わない（表示中のグラフで期間を算出する）。
+    # 不具合
+    # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
+    #   (全て)=label=None のときは全 label を日付ごとに合算する。
+    # - azure_devops ソース: チケットはテストに紐付かないため、従来どおり (全て) 表示時のみ描画する。
     bug_count_source = project.bug_count_source
-    test_result_bug_daily_map = (
-        _get_test_result_bug_daily_map(db, testing_id) if bug_count_source == "test_result" and label is None else {}
-    )
-    test_result_has_bugs = bool(test_result_bug_daily_map)
-    bugs_present = test_result_has_bugs if bug_count_source == "test_result" else _has_bugs(db, testing_id)
-    bugs_visible = bugs_present and label is None
-    bugs_updated_at = (
-        _get_test_result_bug_updated_at(db, testing_id)
-        if bug_count_source == "test_result" and bugs_present
-        else get_bugs_updated_at(db, testing_id) if bugs_present else None
-    )
+    test_result_bug_daily_map: dict[date, tuple[int, int, int]] = {}
     bug_from = bug_to = None
-    if bugs_visible:
-        if bug_count_source == "test_result":
-            bug_from = min(test_result_bug_daily_map) if test_result_bug_daily_map else None
-            bug_to = max(test_result_bug_daily_map) if test_result_bug_daily_map else None
-        else:
+    if bug_count_source == "test_result":
+        test_result_bug_daily_map = _get_test_result_bug_daily_map(db, testing_id, label)
+        bugs_present = _has_test_result_bugs(db, testing_id)   # has_bugs フラグ用（label 非依存）
+        bugs_visible = bool(test_result_bug_daily_map)         # 表示中の label に不具合があるか
+        bugs_updated_at = _get_test_result_bug_updated_at(db, testing_id) if bugs_present else None
+        if bugs_visible:
+            bug_from = min(test_result_bug_daily_map)
+            bug_to = max(test_result_bug_daily_map)
+    else:
+        bugs_present = _has_bugs(db, testing_id)
+        bugs_visible = bugs_present and label is None
+        bugs_updated_at = get_bugs_updated_at(db, testing_id) if bugs_present else None
+        if bugs_visible:
             bug_from, bug_to = get_bug_date_bounds(db, testing_id)
 
     # 日付レンジ

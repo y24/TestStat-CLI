@@ -53,7 +53,8 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
     file_rows: list[FileProgress] = []
     daily_rows: list[DailyProgress] = []
     person_rows: list[DailyPersonProgress] = []
-    bug_counts_by_date: dict[date, list[int]] = defaultdict(lambda: [0, 0, 0])
+    # (label, date) -> [fail, suspend, fixed]。label 別に不具合バーンダウンを蓄積するため。
+    bug_counts_by_label_date: dict[tuple[str | None, date], list[int]] = defaultdict(lambda: [0, 0, 0])
 
     for file in payload.files:
         file_rows.append(
@@ -83,7 +84,7 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
             )
         )
         for daily in file.daily:
-            bug_counts = bug_counts_by_date[daily.date]
+            bug_counts = bug_counts_by_label_date[(file.label, daily.date)]
             bug_counts[0] += daily.fail
             bug_counts[1] += daily.suspend
             bug_counts[2] += daily.fixed
@@ -121,7 +122,7 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
 
     db.add_all(file_rows + daily_rows + person_rows)
 
-    _merge_test_result_bug_snapshots(db, payload.testing_id, bug_counts_by_date, payload.sent_at)
+    _merge_test_result_bug_snapshots(db, payload.testing_id, bug_counts_by_label_date, payload.sent_at)
     db.commit()
 
     return ProgressPostResponse(
@@ -135,54 +136,69 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
 def _merge_test_result_bug_snapshots(
     db: Session,
     testing_id: int,
-    new_counts_by_date: dict[date, list[int]],
+    new_counts_by_label_date: dict[tuple[str | None, date], list[int]],
     sent_at: datetime,
 ) -> None:
-    """テスト結果由来の不具合スナップショットをバーンダウン用に蓄積する。
+    """テスト結果由来の不具合スナップショットを label（テスト種別）別にバーンダウン用に蓄積する。
 
-    new_counts_by_date: {date: [fail, suspend, fixed]} … 今回取り込みの日付別件数。
+    new_counts_by_label_date: {(label, date): [fail, suspend, fixed]} … 今回取り込みの label×日付別件数。
 
     detected_count（検出増分）は「総不具合数(Fail+Suspend+Fixed)累積の最大値（ハイウォーターマーク）」
     として保持し、再取込で減らさない（= 検出履歴を残す。結果が変わって日付が移動しても消えない）。
     suspend_count / fixed_count は今回取り込みの現在値で置き換える（状態が変われば見送り／完了から外れる）。
+    ハイウォーターマークは label ごとに独立して算出する。
     """
     existing = db.scalars(
         select(TestResultBugSnapshot)
         .where(TestResultBugSnapshot.testing_id == testing_id)
         .order_by(TestResultBugSnapshot.snapshot_date)
     ).all()
-    old_detected_by_date = {row.snapshot_date: row.detected_count for row in existing}
+    old_detected_by_label_date: dict[str | None, dict[date, int]] = defaultdict(dict)
+    for row in existing:
+        old_detected_by_label_date[row.label][row.snapshot_date] = row.detected_count
 
-    new_total_by_date = {d: c[0] + c[1] + c[2] for d, c in new_counts_by_date.items()}
-    new_suspend_by_date = {d: c[1] for d, c in new_counts_by_date.items()}
-    new_fixed_by_date = {d: c[2] for d, c in new_counts_by_date.items()}
+    # 今回取り込みを label ごとにまとめ直す。
+    new_by_label: dict[str | None, dict[date, list[int]]] = defaultdict(dict)
+    for (label, d), counts in new_counts_by_label_date.items():
+        new_by_label[label][d] = counts
 
-    all_dates = sorted(set(old_detected_by_date) | set(new_counts_by_date))
+    merged_rows: list[tuple[str | None, date, tuple[int, int, int]]] = []
+    for label in set(old_detected_by_label_date) | set(new_by_label):
+        old_detected_by_date = old_detected_by_label_date.get(label, {})
+        new_counts_by_date = new_by_label.get(label, {})
 
-    # ハイウォーターマージ: 検出累積(d) = max(既存検出累積(d), 今回総数累積(d))。
-    # 同一不具合が日付移動しても二重計上せず、検出済み件数は減らない。
-    old_cum = new_cum = prev_hw = 0
-    merged: dict[date, tuple[int, int, int]] = {}
-    for d in all_dates:
-        old_cum += old_detected_by_date.get(d, 0)
-        new_cum += new_total_by_date.get(d, 0)
-        hw = max(old_cum, new_cum)
-        merged[d] = (hw - prev_hw, new_suspend_by_date.get(d, 0), new_fixed_by_date.get(d, 0))
-        prev_hw = hw
+        new_total_by_date = {d: c[0] + c[1] + c[2] for d, c in new_counts_by_date.items()}
+        new_suspend_by_date = {d: c[1] for d, c in new_counts_by_date.items()}
+        new_fixed_by_date = {d: c[2] for d, c in new_counts_by_date.items()}
 
-    # 既存の検出累積は merged に畳み込み済みなので全件入れ替え。
+        all_dates = sorted(set(old_detected_by_date) | set(new_counts_by_date))
+
+        # ハイウォーターマージ: 検出累積(d) = max(既存検出累積(d), 今回総数累積(d))。
+        # 同一不具合が日付移動しても二重計上せず、検出済み件数は減らない。
+        old_cum = new_cum = prev_hw = 0
+        for d in all_dates:
+            old_cum += old_detected_by_date.get(d, 0)
+            new_cum += new_total_by_date.get(d, 0)
+            hw = max(old_cum, new_cum)
+            merged_rows.append(
+                (label, d, (hw - prev_hw, new_suspend_by_date.get(d, 0), new_fixed_by_date.get(d, 0)))
+            )
+            prev_hw = hw
+
+    # 既存の検出累積は merged_rows に畳み込み済みなので全件入れ替え。
     # 何も寄与しない行（検出0・見送り0・完了0）は保存しない。
     db.execute(delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == testing_id))
     db.add_all(
         TestResultBugSnapshot(
             testing_id=testing_id,
+            label=label,
             snapshot_date=d,
             detected_count=detected,
             suspend_count=suspend,
             fixed_count=fixed,
             sent_at=sent_at,
         )
-        for d, (detected, suspend, fixed) in merged.items()
+        for label, d, (detected, suspend, fixed) in merged_rows
         if detected or suspend or fixed
     )
 

@@ -161,8 +161,10 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
   }, [project.testing_id, selectedLabel, layers.pastPlans, reloadKey])
 
   const label = selectedLabel || null
-  // 不具合グラフは表示対象が(全て)のときのみ表示する。
-  const bugsAllowed = selectedLabel === ''
+  const usesTestResultBugs = project.bug_count_source === 'test_result'
+  // テスト結果ソースは label 別に不具合を保持しているため、表示対象がテスト別でも描画できる。
+  // Azure DevOps ソースはチケットがテストに紐付かないため(全て)のときのみ表示する。
+  const bugsAllowed = usesTestResultBugs || selectedLabel === ''
   const isCurrentResult =
     result?.testingId === project.testing_id &&
     result.label === label &&
@@ -186,8 +188,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
     ? `${formatDate(chart.range.from)} ～ ${formatDate(chart.range.to)}`
     : '-'
   const bugSummary = chart ? getBugSummary(chart) : null
-  const usesTestResultBugs = project.bug_count_source === 'test_result'
-  // 表示対象が(全て)以外のときは不具合レイヤーを強制的にOFFにして描画する。
+  // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
 
   return (

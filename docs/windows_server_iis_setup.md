@@ -162,6 +162,7 @@ cd c:\app\TestStat
 
 1. `teststat-frontend` に移動
 2. `npm run build` で `dist` を生成
+3. `dist\web.config` を生成（IIS リバースプロキシ設定）
 
 エクスプローラから `rebuild_frontend.bat` を右クリックして `管理者として実行` しても動作します。管理者実行時は開始場所が変わることがあるため、bat は自身の配置場所を基準に `teststat-frontend` を探します。
 
@@ -177,14 +178,11 @@ IIS マネージャーで設定します。
    - アプリケーションプール: 静的ファイル配信のみであれば既定のものでも構いません。
 4. `http://<server-name>/tstat` で静的ファイルが表示できることを確認します。
 
-フロントエンドは API を呼び出すため、IIS の URL Rewrite と ARR でバックエンドへ転送します。`/tstat` 配下に API もまとめる場合は、以下の転送を設定します。
+`rebuild_frontend.bat` でビルドすると `dist\web.config` が自動生成されます。以下のリバースプロキシ規則が含まれるため、IIS での手動設定は不要です。
 
-- `/tstat/api/*` を `http://127.0.0.1:18000/api/*` にリバースプロキシ
-- `/tstat/health` を `http://127.0.0.1:18000/health` にリバースプロキシ
-
-`VITE_API_BASE_PATH=/tstat` でビルドすると、フロントエンドは `/tstat/api/*` と `/tstat/health` を呼び出します。別端末からアクセスした場合も IIS と同じオリジンになるため、バックエンドの 18000 ポートを直接公開したり CORS を設定したりする必要はありません。
-
-`web.config` を `dist` 配下に置く運用にする場合、`npm run build` により `dist` が再生成されると `web.config` が削除される可能性があります。この bat ファイルでは `web.config` の作成や書き換えは行わないため、URL Rewrite 規則は IIS 側の運用手順として管理してください。
+- `api/*` → バックエンドへ転送
+- `health` → バックエンドへ転送
+- その他のパス → `index.html`（SPA ルーティング用）
 
 ### 4.3 動作確認
 
@@ -250,7 +248,7 @@ schtasks /Run /TN "TestStat Backend"
 
 ### 7.2 フロントエンドは表示されるが API が失敗する
 
-- IIS の URL Rewrite 規則で `/tstat/api` と `/tstat/health` がバックエンドへ転送されているか確認します。
+- `dist\web.config` が存在するか確認します。ない場合は `rebuild_frontend.bat` を再実行してください。
 - `teststat-frontend\.env` の `VITE_API_BASE_PATH` が `/tstat` になっているか確認します。
 - ブラウザの開発者ツールで失敗している URL とステータスコードを確認します。
 - バックエンドの `.env` と DB 接続を確認します。

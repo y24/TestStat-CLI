@@ -518,6 +518,13 @@ project:
 - `az login` でログイン済みであること（アクセストークンの取得に使用します）
 - ログインアカウントに対象ファイルへの読み取り権限があること
 
+実行環境によっては、コマンドプロンプトでは `az` が使えても `tstat` から Azure CLI を見つけられない場合があります。
+その場合は Azure CLI の実体パスを環境変数 `TESTSTAT_AZ_CLI_PATH` に指定してください。
+
+```cmd
+set TESTSTAT_AZ_CLI_PATH=C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd
+```
+
 ### 使い方
 
 「リンクのコピー」で取得した共有 URL を `path` に指定します。
@@ -568,6 +575,9 @@ tstat -l project_list.yaml
 
 ### 注意事項
 
+- 問題の切り分け時は `-v` / `--verbose` を付けて実行してください。Azure CLI の検出結果、
+  `az account get-access-token` の終了コード、Graph API のステータス、ダウンロード先の一時パスなどを表示します。
+  アクセストークンと署名付きダウンロード URL はログに出力しません。
 - 共有 URL は「リンクのコピー」で得られる URL（`:x:/s/...` 形式）を使用してください。
   Excel の「発行」や埋め込みで得られる `_layouts/15/Doc.aspx?sourcedoc={GUID}...` 形式の URL は解決できないことがあります。
 - `403` エラーが発生する場合、`az login` のトークンに `Files.Read.All` / `Sites.Read.All` 相当の

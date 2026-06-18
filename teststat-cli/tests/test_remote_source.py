@@ -1,5 +1,7 @@
+import io
 import json
 import os
+import shutil
 import tempfile
 import unittest
 import urllib.error
@@ -11,6 +13,7 @@ from utils.RemoteSource import (
     RemoteSourceError,
     encode_share_id,
     is_remote_path,
+    resolve_az_command,
     resolve_download_url,
 )
 
@@ -27,6 +30,14 @@ class FakeResponse:
 
     def __exit__(self, exc_type, exc, tb):
         return False
+
+
+class FakeLogger:
+    def __init__(self):
+        self.messages = []
+
+    def log(self, message):
+        self.messages.append(message)
 
 
 class IsRemotePathTests(unittest.TestCase):
@@ -106,7 +117,7 @@ class ResolveDownloadUrlTests(unittest.TestCase):
 
 class GetAccessTokenTests(unittest.TestCase):
     def test_missing_az_raises(self):
-        with patch("utils.RemoteSource.subprocess.run", side_effect=FileNotFoundError()):
+        with patch("utils.RemoteSource.resolve_az_command", return_value=None):
             with self.assertRaises(RemoteSourceError) as ctx:
                 RemoteSource.get_access_token()
         self.assertIn("Azure CLI", str(ctx.exception))
@@ -117,7 +128,8 @@ class GetAccessTokenTests(unittest.TestCase):
             stdout = ""
             stderr = "Please run 'az login' to setup account."
 
-        with patch("utils.RemoteSource.subprocess.run", return_value=Completed()):
+        with patch("utils.RemoteSource.resolve_az_command", return_value="az.cmd"), \
+             patch("utils.RemoteSource.subprocess.run", return_value=Completed()):
             with self.assertRaises(RemoteSourceError) as ctx:
                 RemoteSource.get_access_token()
         self.assertIn("az login", str(ctx.exception))
@@ -128,8 +140,95 @@ class GetAccessTokenTests(unittest.TestCase):
             stdout = "the-token\n"
             stderr = ""
 
-        with patch("utils.RemoteSource.subprocess.run", return_value=Completed()):
-            self.assertEqual(RemoteSource.get_access_token(), "the-token")
+        logger = FakeLogger()
+        with patch("utils.RemoteSource.resolve_az_command", return_value="az.cmd"), \
+             patch("utils.RemoteSource.subprocess.run", return_value=Completed()) as run:
+            self.assertEqual(RemoteSource.get_access_token(logger=logger), "the-token")
+        self.assertEqual(run.call_args.args[0][0], "az.cmd")
+        self.assertTrue(any("token_length=9" in msg for msg in logger.messages))
+        self.assertFalse(any("the-token" in msg for msg in logger.messages))
+
+    def test_az_failure_logs_return_code_and_stderr(self):
+        class Completed:
+            returncode = 1
+            stdout = ""
+            stderr = "Please run 'az login' to setup account."
+
+        logger = FakeLogger()
+        with patch("utils.RemoteSource.resolve_az_command", return_value="az.cmd"), \
+             patch("utils.RemoteSource.subprocess.run", return_value=Completed()):
+            with self.assertRaises(RemoteSourceError) as ctx:
+                RemoteSource.get_access_token(logger=logger)
+
+        self.assertNotIn("Please run", str(ctx.exception))
+        self.assertTrue(any("returncode=1" in msg for msg in logger.messages))
+        self.assertTrue(any("az login" in msg for msg in logger.messages))
+
+
+class ResolveAzCommandTests(unittest.TestCase):
+    def test_env_path_takes_precedence(self):
+        temp_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".test_tmp", "az_path"))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        os.makedirs(temp_dir, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(temp_dir, ignore_errors=True))
+
+        az_path = os.path.join(temp_dir, "az.cmd")
+        with open(az_path, "w", encoding="utf-8") as f:
+            f.write("@echo off\n")
+
+        with patch.dict(os.environ, {RemoteSource.AZ_CLI_PATH_ENV_VAR: az_path}), \
+             patch("utils.RemoteSource.shutil.which", return_value=None):
+            logger = FakeLogger()
+            self.assertEqual(resolve_az_command(logger=logger), az_path)
+
+        self.assertTrue(any(RemoteSource.AZ_CLI_PATH_ENV_VAR in msg for msg in logger.messages))
+
+    def test_path_lookup_includes_windows_command_names(self):
+        calls = []
+
+        def fake_which(name):
+            calls.append(name)
+            return "C:\\Azure\\az.cmd" if name == "az.cmd" else None
+
+        with patch.dict(os.environ, {RemoteSource.AZ_CLI_PATH_ENV_VAR: ""}, clear=False), \
+             patch("utils.RemoteSource.shutil.which", side_effect=fake_which):
+            self.assertEqual(resolve_az_command(), "C:\\Azure\\az.cmd")
+
+        self.assertIn("az", calls)
+        self.assertIn("az.cmd", calls)
+
+    def test_download_url_log_does_not_include_signed_url(self):
+        body = json.dumps({
+            "id": "abc",
+            "name": "sample.xlsx",
+            "@microsoft.graph.downloadUrl": "https://signed.example/secret",
+        })
+        logger = FakeLogger()
+
+        with patch("utils.RemoteSource.urllib.request.urlopen", return_value=FakeResponse(body)):
+            name, url = resolve_download_url("u!xxx", "tok", logger=logger)
+
+        self.assertEqual(name, "sample.xlsx")
+        self.assertEqual(url, "https://signed.example/secret")
+        self.assertFalse(any("https://signed.example/secret" in msg for msg in logger.messages))
+        self.assertTrue(any("download_url=取得済み(非表示)" in msg for msg in logger.messages))
+
+    def test_graph_error_body_is_only_in_debug_log(self):
+        err = urllib.error.HTTPError(
+            "u",
+            500,
+            "Internal Server Error",
+            {},
+            io.BytesIO(b'{"error":"debug detail"}'),
+        )
+        logger = FakeLogger()
+
+        with patch("utils.RemoteSource.urllib.request.urlopen", side_effect=err):
+            with self.assertRaises(RemoteSourceError) as ctx:
+                resolve_download_url("u!xxx", "tok", logger=logger)
+
+        self.assertNotIn("debug detail", str(ctx.exception))
+        self.assertTrue(any("debug detail" in msg for msg in logger.messages))
 
 
 class RemoteFileManagerTests(unittest.TestCase):

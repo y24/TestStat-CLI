@@ -114,6 +114,29 @@ class ResolveDownloadUrlTests(unittest.TestCase):
             with self.assertRaises(RemoteSourceError):
                 resolve_download_url("u!xxx", "tok")
 
+    def test_retries_without_select_when_download_url_is_missing(self):
+        bodies = [
+            json.dumps({"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#shares"}),
+            json.dumps({
+                "id": "abc",
+                "name": "sample.xlsx",
+                "@microsoft.graph.downloadUrl": "https://dl.example/abc",
+            }),
+        ]
+        captured_urls = []
+
+        def fake_urlopen(req, timeout=None):
+            captured_urls.append(req.full_url)
+            return FakeResponse(bodies.pop(0))
+
+        with patch("utils.RemoteSource.urllib.request.urlopen", side_effect=fake_urlopen):
+            name, url = resolve_download_url("u!xxx", "tok", timeout=5)
+
+        self.assertEqual(name, "sample.xlsx")
+        self.assertEqual(url, "https://dl.example/abc")
+        self.assertIn("$select=", captured_urls[0])
+        self.assertNotIn("$select=", captured_urls[1])
+
 
 class GetAccessTokenTests(unittest.TestCase):
     def test_missing_az_raises(self):

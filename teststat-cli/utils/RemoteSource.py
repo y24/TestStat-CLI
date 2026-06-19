@@ -179,22 +179,11 @@ def get_access_token(resource=GRAPH_RESOURCE, logger=None):
     return token
 
 
-def resolve_download_url(share_id, token, graph_endpoint=DEFAULT_GRAPH_ENDPOINT,
-                         timeout=DEFAULT_TIMEOUT_SEC, logger=None):
-    """``/shares/{shareId}/driveItem`` を呼び出し (name, download_url) を返す。"""
-    url = (
-        f"{graph_endpoint.rstrip('/')}/shares/{share_id}/driveItem"
-        "?$select=id,name,@microsoft.graph.downloadUrl"
-    )
+def _request_drive_item(url, token, timeout, logger=None):
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Accept", "application/json")
 
-    _log(
-        logger,
-        "Graph API で共有 URL の driveItem を解決します: "
-        f"endpoint={graph_endpoint.rstrip('/')}, share_id_prefix={share_id[:16]}, timeout_sec={timeout}",
-    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             body = response.read().decode("utf-8")
@@ -228,8 +217,39 @@ def resolve_download_url(share_id, token, graph_endpoint=DEFAULT_GRAPH_ENDPOINT,
         _log(logger, f"Graph API の JSON 解析に失敗しました: {e}, body={_shorten_message(body)}")
         raise RemoteSourceError(f"Graph API の応答を解析できませんでした: {e}")
 
+    return data
+
+
+def resolve_download_url(share_id, token, graph_endpoint=DEFAULT_GRAPH_ENDPOINT,
+                         timeout=DEFAULT_TIMEOUT_SEC, logger=None):
+    """``/shares/{shareId}/driveItem`` を呼び出し (name, download_url) を返す。"""
+    base_url = f"{graph_endpoint.rstrip('/')}/shares/{share_id}/driveItem"
+
+    _log(
+        logger,
+        "Graph API で共有 URL の driveItem を解決します: "
+        f"endpoint={graph_endpoint.rstrip('/')}, share_id_prefix={share_id[:16]}, timeout_sec={timeout}",
+    )
+
+    data = _request_drive_item(
+        f"{base_url}?$select=id,name,@microsoft.graph.downloadUrl",
+        token,
+        timeout,
+        logger=logger,
+    )
     name = data.get("name")
     download_url = data.get("@microsoft.graph.downloadUrl")
+
+    if not download_url:
+        _log(
+            logger,
+            "Graph API 応答に downloadUrl がありません。$select なしで再試行します: "
+            f"keys={sorted(data.keys())}",
+        )
+        data = _request_drive_item(base_url, token, timeout, logger=logger)
+        name = data.get("name") or name
+        download_url = data.get("@microsoft.graph.downloadUrl")
+
     if not download_url:
         _log(logger, f"Graph API 応答に downloadUrl がありません: keys={sorted(data.keys())}")
         raise RemoteSourceError(

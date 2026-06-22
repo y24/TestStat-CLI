@@ -31,7 +31,6 @@ interface ProjectNavProps {
 }
 
 export function Sidebar({
-  apiStatus,
   projects,
   selectedTestingId,
   loading,
@@ -43,7 +42,7 @@ export function Sidebar({
 }: ProjectNavProps & { apiStatus: ApiStatus }) {
   return (
     <aside className="sidebar">
-      <SidebarHeader apiStatus={apiStatus} />
+      <SidebarHeader />
       <ProjectNav
         projects={projects}
         selectedTestingId={selectedTestingId}
@@ -58,7 +57,7 @@ export function Sidebar({
   )
 }
 
-function SidebarHeader({ apiStatus }: { apiStatus: ApiStatus }) {
+function SidebarHeader() {
   return (
     <div className="sidebar-header">
       <h1 className="app-title">TestStat Studio</h1>

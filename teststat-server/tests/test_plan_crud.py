@@ -11,10 +11,20 @@ from sqlalchemy import create_engine, event, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401  — 全モデルを Base.metadata に登録
-from app.crud.plan import activate_plan, create_plan, delete_plan, get_plan_detail, list_plans  # noqa: E402
+from app.crud.plan import (  # noqa: E402
+    activate_plan,
+    create_plan,
+    create_plan_label,
+    delete_plan,
+    delete_plan_label,
+    get_plan_detail,
+    list_plan_labels,
+    list_plans,
+    update_plan_label,
+)
 from app.crud.project import create_project  # noqa: E402
 from app.database import Base  # noqa: E402
-from app.schemas.plan import PlanCreate, PlanDailyIn  # noqa: E402
+from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelUpdate  # noqa: E402
 from app.schemas.project import ProjectCreate  # noqa: E402
 
 
@@ -65,6 +75,53 @@ class TestPlanCRUD(unittest.TestCase):
         )
 
     # ---- 基本 CRUD ----
+
+    def test_create_and_list_plan_labels(self):
+        created = create_plan_label(self.db, 1001, PlanLabelCreate(label="  TEST001  "))
+        self.assertEqual(created.label, "TEST001")
+
+        labels = list_plan_labels(self.db, 1001)
+        self.assertEqual([label.label for label in labels], ["TEST001"])
+
+
+    def test_update_plan_label_renames_related_plans(self):
+        label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        create_plan(self.db, 1001, self._make_plan("TEST001"))
+
+        updated = update_plan_label(self.db, label.id, PlanLabelUpdate(label="TEST-RENAMED"))
+
+        self.assertEqual(updated.label, "TEST-RENAMED")
+        labels = [item.label for item in list_plan_labels(self.db, 1001)]
+        self.assertEqual(labels, ["TEST-RENAMED"])
+        plans = list_plans(self.db, 1001)
+        self.assertEqual([plan.label for plan in plans], ["TEST-RENAMED"])
+
+    def test_update_plan_label_duplicate_raises(self):
+        from fastapi import HTTPException
+
+        first = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002"))
+        with self.assertRaises(HTTPException) as ctx:
+            update_plan_label(self.db, first.id, PlanLabelUpdate(label="TEST002"))
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    def test_delete_plan_label_deletes_related_plans(self):
+        label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        create_plan(self.db, 1001, self._make_plan("TEST001"))
+
+        delete_plan_label(self.db, label.id)
+
+        self.assertEqual(list_plan_labels(self.db, 1001), [])
+        self.assertEqual(list_plans(self.db, 1001), [])
+
+    def test_duplicate_plan_label_raises(self):
+        from fastapi import HTTPException
+
+        create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        with self.assertRaises(HTTPException) as ctx:
+            create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        self.assertEqual(ctx.exception.status_code, 409)
+
 
     def test_create_and_list(self):
         create_plan(self.db, 1001, self._make_plan("TEST001"))

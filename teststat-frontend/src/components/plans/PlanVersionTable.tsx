@@ -1,5 +1,5 @@
-import { ChartLine, TriangleAlert } from 'lucide-react'
-import type { PlanItem } from '../../api/types'
+import { ChartLine, Pencil, TriangleAlert } from 'lucide-react'
+import type { PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
 export function PlanVersionTable({
@@ -8,11 +8,13 @@ export function PlanVersionTable({
   availableCasesByLabel,
   overallAvailableCases,
   plans,
+  planLabels,
   holidays,
   useOverallPlan,
   submitting,
   onToggleOverall,
   onCreate,
+  onEditLabel,
   onManage,
   formatDate,
 }: {
@@ -21,16 +23,19 @@ export function PlanVersionTable({
   availableCasesByLabel: Record<string, number>
   overallAvailableCases: number
   plans: PlanItem[]
+  planLabels: PlanLabelItem[]
   holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
   onToggleOverall: (checked: boolean) => void
   onCreate: (label: string | null) => void
+  onEditLabel: (planLabel: PlanLabelItem) => void
   onManage: (label: string | null) => void
   formatDate: (value: string) => string
 }) {
   const rows = useOverallPlan ? [null] : labels
   const actualLabelSet = new Set(actualLabels)
+  const registeredLabelMap = new Map(planLabels.map((item) => [item.label, item]))
 
   return (
     <div className="plan-list-panel">
@@ -60,13 +65,14 @@ export function PlanVersionTable({
           <table className="plan-table">
             <thead>
               <tr>
+                <th className="plan-table-icon-column" aria-label="編集"></th>
                 <th>識別子(label)</th>
                 <th className="plan-table-centered-value">版</th>
                 <th className="plan-table-centered-value">項目数</th>
                 <th className="plan-table-centered-value">営業日数</th>
                 <th className="plan-table-centered-value">1日あたり項目数</th>
                 <th>期間</th>
-                <th>操作</th>
+                <th>計画</th>
               </tr>
             </thead>
             <tbody>
@@ -75,6 +81,7 @@ export function PlanVersionTable({
                   label === null ? plan.label === null : plan.label === label,
                 )
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
+                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? null
                 const actualAvailableCases =
                   label === null ? overallAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
@@ -89,6 +96,20 @@ export function PlanVersionTable({
                     : '-'
                 return (
                   <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
+                    <td className="plan-table-icon-column">
+                      {registeredLabel && (
+                        <button
+                          className="icon-button compact"
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => onEditLabel(registeredLabel)}
+                          aria-label={`${registeredLabel.label}を編集`}
+                          title="識別子を編集"
+                        >
+                          <Pencil aria-hidden="true" />
+                        </button>
+                      )}
+                    </td>
                     <td>
                       <strong>{displayLabel(label)}</strong>
                       {isPlanOnly && (
@@ -127,8 +148,7 @@ export function PlanVersionTable({
                         <button
                           className="primary-button compact icon-text-button"
                           type="button"
-                          disabled={submitting || isPlanOnly}
-                          title={isPlanOnly ? '実績がないテスト種別には追加の計画線を作成できません。' : undefined}
+                          disabled={submitting}
                           onClick={() => onCreate(label)}
                         >
                           <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />

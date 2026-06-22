@@ -10,6 +10,9 @@ import type {
   ProjectUpdatePayload,
   PbChartResponse,
   PlanCreatePayload,
+  PlanLabelCreatePayload,
+  PlanLabelItem,
+  PlanLabelUpdatePayload,
   PlanDetail,
   PlanItem,
   HolidayItem,
@@ -138,6 +141,22 @@ export const fetchPbChart = (
 // 計画編集（Phase F3）
 export const fetchPlans = (testing_id: number) =>
   get<PlanItem[]>(`/api/v1/projects/${testing_id}/plans`)
+export const fetchPlanLabels = (testing_id: number) =>
+  get<PlanLabelItem[]>(`/api/v1/projects/${testing_id}/plan-labels`)
+export const createPlanLabel = (testing_id: number, payload: PlanLabelCreatePayload) =>
+  request<PlanLabelItem>(`/api/v1/projects/${testing_id}/plan-labels`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+export const updatePlanLabel = (label_id: number, payload: PlanLabelUpdatePayload) =>
+  request<PlanLabelItem>(`/api/v1/plan-labels/${label_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+export const deletePlanLabel = (label_id: number) =>
+  request<void>(`/api/v1/plan-labels/${label_id}`, {
+    method: 'DELETE',
+  })
 export const createPlan = (testing_id: number, payload: PlanCreatePayload) =>
   request<PlanDetail>(`/api/v1/projects/${testing_id}/plans`, {
     method: 'POST',

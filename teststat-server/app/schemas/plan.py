@@ -1,6 +1,31 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class PlanLabelCreate(BaseModel):
+    label: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("label")
+    @classmethod
+    def normalize_label(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("label は必須です")
+        return normalized
+
+
+class PlanLabelUpdate(PlanLabelCreate):
+    pass
+
+
+class PlanLabelItem(BaseModel):
+    id: int
+    testing_id: int
+    label: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlanDailyIn(BaseModel):

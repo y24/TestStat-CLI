@@ -1,9 +1,9 @@
-import type { PlanItem } from '../../api/types'
+import type { PlanItem, PlanLabelItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft, ClipboardList } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Plus } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -13,6 +13,7 @@ export function PlanListScreen({
   availableCasesByLabel,
   overallAvailableCases,
   plans,
+  planLabels,
   holidays,
   useOverallPlan,
   submitting,
@@ -20,6 +21,8 @@ export function PlanListScreen({
   selectedModalPlans,
   onBack,
   onToggleOverall,
+  onAddLabel,
+  onEditLabel,
   onCreate,
   onManage,
   onSaveModal,
@@ -32,6 +35,7 @@ export function PlanListScreen({
   availableCasesByLabel: Record<string, number>
   overallAvailableCases: number
   plans: PlanItem[]
+  planLabels: PlanLabelItem[]
   holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
@@ -39,6 +43,8 @@ export function PlanListScreen({
   selectedModalPlans: PlanItem[]
   onBack: () => void
   onToggleOverall: (checked: boolean) => void
+  onAddLabel: () => void
+  onEditLabel: (planLabel: PlanLabelItem) => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
   onSaveModal: (changes: PlanVersionModalChanges) => void
@@ -68,6 +74,17 @@ export function PlanListScreen({
             </h1>
           </div>
         </div>
+        <div className="header-actions">
+          <button
+            className="primary-button icon-text-button"
+            type="button"
+            disabled={submitting}
+            onClick={onAddLabel}
+          >
+            <Plus className="button-icon" aria-hidden="true" />
+            <span>識別子を追加</span>
+          </button>
+        </div>
       </header>
 
       {loading && <div className="chart-state">計画を読み込み中...</div>}
@@ -79,11 +96,13 @@ export function PlanListScreen({
           availableCasesByLabel={availableCasesByLabel}
           overallAvailableCases={overallAvailableCases}
           plans={plans}
+          planLabels={planLabels}
           holidays={holidays}
           useOverallPlan={useOverallPlan}
           submitting={submitting}
           onToggleOverall={onToggleOverall}
           onCreate={onCreate}
+          onEditLabel={onEditLabel}
           onManage={onManage}
           formatDate={formatDate}
         />

@@ -2,10 +2,20 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.crud.pb_chart import get_pb_chart
-from app.crud.plan import activate_plan, create_plan, delete_plan, get_plan_detail, list_plans
+from app.crud.plan import (
+    activate_plan,
+    create_plan,
+    create_plan_label,
+    delete_plan,
+    delete_plan_label,
+    get_plan_detail,
+    list_plan_labels,
+    list_plans,
+    update_plan_label,
+)
 from app.database import get_db
 from app.schemas.pb_chart import PbChartResponse
-from app.schemas.plan import PlanCreate, PlanDetail, PlanItem
+from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelUpdate
 
 router = APIRouter(prefix="/api/v1", tags=["plans"])
 
@@ -13,6 +23,38 @@ router = APIRouter(prefix="/api/v1", tags=["plans"])
 @router.get("/projects/{testing_id}/plans", response_model=list[PlanItem])
 def read_plans(testing_id: int, db: Session = Depends(get_db)) -> list[PlanItem]:
     return list_plans(db, testing_id)
+
+
+@router.get("/projects/{testing_id}/plan-labels", response_model=list[PlanLabelItem])
+def read_plan_labels(testing_id: int, db: Session = Depends(get_db)) -> list[PlanLabelItem]:
+    return list_plan_labels(db, testing_id)
+
+
+@router.post(
+    "/projects/{testing_id}/plan-labels",
+    response_model=PlanLabelItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_plan_label(
+    testing_id: int,
+    payload: PlanLabelCreate,
+    db: Session = Depends(get_db),
+) -> PlanLabelItem:
+    return create_plan_label(db, testing_id, payload)
+
+
+@router.patch("/plan-labels/{label_id}", response_model=PlanLabelItem)
+def patch_plan_label(
+    label_id: int,
+    payload: PlanLabelUpdate,
+    db: Session = Depends(get_db),
+) -> PlanLabelItem:
+    return update_plan_label(db, label_id, payload)
+
+
+@router.delete("/plan-labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_plan_label_route(label_id: int, db: Session = Depends(get_db)) -> None:
+    delete_plan_label(db, label_id)
 
 
 @router.post(

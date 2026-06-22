@@ -275,6 +275,10 @@
   max-width: 720px;
 }
 
+.label-create-form {
+  max-width: 520px;
+}
+
 .content-header {
   display: flex;
   justify-content: space-between;
@@ -1200,6 +1204,27 @@
 .plan-table th.plan-table-centered-value,
 .plan-table td.plan-table-centered-value {
   text-align: center;
+}
+
+.plan-table th.plan-table-icon-column,
+.plan-table td.plan-table-icon-column {
+  width: 38px;
+  min-width: 38px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.plan-table .icon-button.compact {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.plan-table .icon-button.compact svg {
+  width: 15px;
+  height: 15px;
 }
 
 .active-plan-row {

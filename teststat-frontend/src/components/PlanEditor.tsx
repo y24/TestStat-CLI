@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { activatePlan, createPlan, deletePlan, fetchHolidays, fetchPlans, fetchProgressDaily, fetchProgressFiles } from '../api/client'
-import type { DailyProgressItem, FileProgressItem, PlanItem, ProjectItem } from '../api/types'
+import {
+  activatePlan,
+  createPlan,
+  createPlanLabel,
+  deletePlan,
+  deletePlanLabel,
+  fetchHolidays,
+  fetchPlanLabels,
+  fetchPlans,
+  fetchProgressDaily,
+  fetchProgressFiles,
+  updatePlanLabel,
+} from '../api/client'
+import type { DailyProgressItem, FileProgressItem, PlanItem, PlanLabelItem, ProjectItem } from '../api/types'
 import { getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 import { buildEvenDaily, countBusinessDays, parseDailyCsv } from '../utils/plans'
 import { useConfirmDialog } from './confirmDialogContext'
 import { PlanCreateScreen } from './plans/PlanCreateScreen'
+import { PlanLabelCreateScreen } from './plans/PlanLabelCreateScreen'
+import { PlanLabelEditScreen } from './plans/PlanLabelEditScreen'
 import { PlanListScreen } from './plans/PlanListScreen'
 import type { PlanFormState } from './plans/planFormTypes'
 import type { PlanVersionModalChanges } from './plans/PlanVersionModal'
@@ -14,12 +28,13 @@ import type { PlanVersionModalChanges } from './plans/PlanVersionModal'
 interface PlanResult {
   testingId: number
   plans: PlanItem[]
+  planLabels: PlanLabelItem[]
   files: FileProgressItem[]
   daily: DailyProgressItem[]
   error: string | null
 }
 
-type PlanEditorMode = 'list' | 'create'
+type PlanEditorMode = 'list' | 'create' | 'label' | 'label-edit'
 
 export function PlanEditor({
   project,
@@ -36,6 +51,8 @@ export function PlanEditor({
   const [result, setResult] = useState<PlanResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [labelInput, setLabelInput] = useState('')
+  const [editingPlanLabel, setEditingPlanLabel] = useState<PlanLabelItem | null>(null)
   const [mode, setMode] = useState<PlanEditorMode>('list')
   const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
@@ -43,19 +60,23 @@ export function PlanEditor({
   const [initialCreateForm, setInitialCreateForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [holidayDates, setHolidayDates] = useState<Set<string>>(() => new Set())
 
+  const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
+
   const loadPlans = () => {
     Promise.all([
       fetchPlans(project.testing_id),
+      loadPlanLabels(),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
     ])
-      .then(([plans, files, daily]) =>
-        setResult({ testingId: project.testing_id, plans, files, daily, error: null }),
+      .then(([plans, planLabels, files, daily]) =>
+        setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null }),
       )
       .catch((err) =>
         setResult({
           testingId: project.testing_id,
           plans: [],
+          planLabels: [],
           files: [],
           daily: [],
           error: getErrorMessage(err),
@@ -67,12 +88,13 @@ export function PlanEditor({
     let ignore = false
     Promise.all([
       fetchPlans(project.testing_id),
+      loadPlanLabels(),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
     ])
-      .then(([plans, files, daily]) => {
+      .then(([plans, planLabels, files, daily]) => {
         if (!ignore) {
-          setResult({ testingId: project.testing_id, plans, files, daily, error: null })
+          setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null })
           const hasOverall = plans.some((plan) => plan.label === null)
           const hasIndividual = plans.some((plan) => plan.label !== null)
           setUseOverallPlan(hasOverall && !hasIndividual)
@@ -83,6 +105,7 @@ export function PlanEditor({
           setResult({
             testingId: project.testing_id,
             plans: [],
+            planLabels: [],
             files: [],
             daily: [],
             error: getErrorMessage(err),
@@ -113,8 +136,12 @@ export function PlanEditor({
   }, [])
 
   useEffect(() => {
-    onDirtyChange(mode === 'create' && !isSamePlanForm(form, initialCreateForm))
-  }, [form, initialCreateForm, mode, onDirtyChange])
+    onDirtyChange(
+      (mode === 'create' && !isSamePlanForm(form, initialCreateForm)) ||
+        (mode === 'label' && labelInput.trim() !== '') ||
+        (mode === 'label-edit' && editingPlanLabel !== null && labelInput.trim() !== editingPlanLabel.label),
+    )
+  }, [editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange])
 
   useEffect(() => {
     return () => onDirtyChange(false)
@@ -122,6 +149,7 @@ export function PlanEditor({
 
   const loading = result?.testingId !== project.testing_id
   const plans = result?.testingId === project.testing_id ? result.plans : []
+  const planLabels = result?.testingId === project.testing_id ? result.planLabels : []
   const files = result?.testingId === project.testing_id ? result.files : []
   const daily = result?.testingId === project.testing_id ? result.daily : []
   const actualLabels = Array.from(
@@ -130,6 +158,7 @@ export function PlanEditor({
   const labels = Array.from(
     new Set([
       ...actualLabels,
+      ...planLabels.map((item) => item.label),
       ...plans.map((plan) => plan.label).filter((label): label is string => Boolean(label)),
     ]),
   ).sort((a, b) => a.localeCompare(b))
@@ -151,7 +180,6 @@ export function PlanEditor({
   const isCreatingNewVersion = plans.some((plan) =>
     targetPlanLabel === null ? plan.label === null : plan.label === targetPlanLabel,
   )
-
   const deletePlans = (targetPlans: PlanItem[]) => {
     const replacementPlans = findReplacementPlansAfterDelete(plans, targetPlans)
     setSubmitting(true)
@@ -188,6 +216,156 @@ export function PlanEditor({
     }
     setUseOverallPlan(checked)
     deletePlans(conflictingPlans)
+  }
+
+  const openLabelCreateScreen = () => {
+    setFormError(null)
+    setEditingPlanLabel(null)
+    setLabelInput('')
+    setMode('label')
+  }
+
+  const openLabelEditScreen = (planLabel: PlanLabelItem) => {
+    setFormError(null)
+    setEditingPlanLabel(planLabel)
+    setLabelInput(planLabel.label)
+    setMode('label-edit')
+  }
+
+  const cancelLabelEdit = async () => {
+    if (editingPlanLabel !== null && labelInput.trim() !== editingPlanLabel.label) {
+      const confirmed = await confirm({
+        title: '入力内容の破棄',
+        message: 'データが破棄されますが、よろしいですか？',
+        confirmLabel: '破棄',
+        danger: true,
+      })
+      if (!confirmed) {
+        return
+      }
+    }
+    setFormError(null)
+    setEditingPlanLabel(null)
+    setLabelInput('')
+    setMode('list')
+  }
+
+  const cancelLabelCreate = async () => {
+    if (labelInput.trim() !== '') {
+      const confirmed = await confirm({
+        title: '入力内容の破棄',
+        message: 'データが破棄されますが、よろしいですか？',
+        confirmLabel: '破棄',
+        danger: true,
+      })
+      if (!confirmed) {
+        return
+      }
+    }
+    setFormError(null)
+    setLabelInput('')
+    setMode('list')
+  }
+
+  const submitPlanLabel = async (event: FormEvent) => {
+    event.preventDefault()
+    setFormError(null)
+
+    const label = labelInput.trim()
+    if (!label) {
+      setFormError('識別子を入力してください')
+      return
+    }
+    if (labels.includes(label)) {
+      setFormError('同じ識別子がすでに存在します')
+      return
+    }
+
+    setSubmitting(true)
+    createPlanLabel(project.testing_id, { label })
+      .then(() => {
+        loadPlans()
+        onChanged()
+        setLabelInput('')
+        setMode('list')
+      })
+      .catch((err) => {
+        if (isNotFoundError(err)) {
+          setFormError('識別子登録APIが見つかりません。')
+          return
+        }
+        setFormError(getErrorMessage(err))
+      })
+      .finally(() => setSubmitting(false))
+  }
+
+  const submitPlanLabelEdit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (editingPlanLabel === null) {
+      return
+    }
+    setFormError(null)
+
+    const label = labelInput.trim()
+    if (!label) {
+      setFormError('識別子を入力してください')
+      return
+    }
+    if (label !== editingPlanLabel.label && labels.includes(label)) {
+      setFormError('同じ識別子がすでに存在します')
+      return
+    }
+
+    setSubmitting(true)
+    updatePlanLabel(editingPlanLabel.id, { label })
+      .then(() => {
+        loadPlans()
+        onChanged()
+        setEditingPlanLabel(null)
+        setLabelInput('')
+        setMode('list')
+      })
+      .catch((err) => {
+        if (isNotFoundError(err)) {
+          setFormError('識別子編集APIが見つかりません。バックエンドを最新化して再起動してください。')
+          return
+        }
+        setFormError(getErrorMessage(err))
+      })
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleDeletePlanLabel = async () => {
+    if (editingPlanLabel === null) {
+      return
+    }
+    const confirmed = await confirm({
+      title: '識別子の削除',
+      message: 'この識別子と、この識別子に作成した計画線を削除します。続行しますか。',
+      confirmLabel: '削除',
+      danger: true,
+    })
+    if (!confirmed) {
+      return
+    }
+
+    setSubmitting(true)
+    deletePlanLabel(editingPlanLabel.id)
+      .then(() => {
+        loadPlans()
+        onChanged()
+        setEditingPlanLabel(null)
+        setLabelInput('')
+        setMode('list')
+      })
+      .catch((err) => {
+        if (isNotFoundError(err)) {
+          setFormError('識別子削除APIが見つかりません。バックエンドを最新化して再起動してください。')
+          return
+        }
+        setFormError(getErrorMessage(err))
+      })
+      .finally(() => setSubmitting(false))
   }
 
   const openCreateScreen = (label: string | null) => {
@@ -340,6 +518,38 @@ export function PlanEditor({
       .finally(() => setSubmitting(false))
   }
 
+  if (mode === 'label-edit' && editingPlanLabel !== null) {
+    return (
+      <PlanLabelEditScreen
+        loading={loading}
+        error={result?.error}
+        planLabel={editingPlanLabel}
+        label={labelInput}
+        formError={formError}
+        submitting={submitting}
+        onLabelChange={setLabelInput}
+        onCancel={cancelLabelEdit}
+        onSubmit={submitPlanLabelEdit}
+        onDelete={handleDeletePlanLabel}
+      />
+    )
+  }
+
+  if (mode === 'label') {
+    return (
+      <PlanLabelCreateScreen
+        loading={loading}
+        error={result?.error}
+        label={labelInput}
+        formError={formError}
+        submitting={submitting}
+        onLabelChange={setLabelInput}
+        onCancel={cancelLabelCreate}
+        onSubmit={submitPlanLabel}
+      />
+    )
+  }
+
   if (mode === 'create') {
     return (
       <PlanCreateScreen
@@ -369,6 +579,7 @@ export function PlanEditor({
       availableCasesByLabel={availableCasesByLabel}
       overallAvailableCases={overallAvailableCases}
       plans={plans}
+      planLabels={planLabels}
       holidays={holidayDates}
       useOverallPlan={useOverallPlan}
       submitting={submitting}
@@ -376,6 +587,8 @@ export function PlanEditor({
       selectedModalPlans={selectedModalPlans}
       onBack={onBack}
       onToggleOverall={handleToggleOverall}
+      onAddLabel={openLabelCreateScreen}
+      onEditLabel={openLabelEditScreen}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}
       onSaveModal={handleSaveModalChanges}
@@ -514,4 +727,8 @@ function formatDailyCount(value: number) {
     return String(value)
   }
   return value.toFixed(1)
+}
+
+function isNotFoundError(err: unknown) {
+  return getErrorMessage(err).includes('404 Not Found')
 }

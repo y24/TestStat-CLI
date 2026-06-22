@@ -138,6 +138,19 @@ export interface ProjectOrderUpdatePayload {
   testing_ids: number[]
 }
 
+export interface PlanLabelItem {
+  id: number
+  testing_id: number
+  label: string
+  created_at: string
+}
+
+export interface PlanLabelCreatePayload {
+  label: string
+}
+
+export type PlanLabelUpdatePayload = PlanLabelCreatePayload
+
 export interface PlanItem {
   id: number
   testing_id: number

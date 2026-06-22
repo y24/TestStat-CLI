@@ -2,9 +2,17 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.models.plan import Plan, PlanDaily
+from app.models.plan import Plan, PlanDaily, PlanLabel
 from app.models.project import Project
-from app.schemas.plan import PlanCreate, PlanDetail, PlanDailyItem, PlanItem
+from app.schemas.plan import (
+    PlanCreate,
+    PlanDetail,
+    PlanDailyItem,
+    PlanItem,
+    PlanLabelCreate,
+    PlanLabelItem,
+    PlanLabelUpdate,
+)
 
 
 # ---------- helpers ----------
@@ -21,6 +29,13 @@ def _require_plan(db: Session, plan_id: int) -> Plan:
     if p is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="plan not found")
     return p
+
+
+def _require_plan_label(db: Session, label_id: int) -> PlanLabel:
+    label = db.scalar(select(PlanLabel).where(PlanLabel.id == label_id))
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="plan label not found")
+    return label
 
 
 def _label_filter(label: str | None):
@@ -95,6 +110,88 @@ def list_plans(db: Session, testing_id: int) -> list[PlanItem]:
         ).all()
     ) if plans else {}
     return [_to_item(p, totals.get(p.id, 0)) for p in plans]
+
+
+def list_plan_labels(db: Session, testing_id: int) -> list[PlanLabelItem]:
+    _require_project(db, testing_id)
+    labels = list(
+        db.scalars(
+            select(PlanLabel)
+            .where(PlanLabel.testing_id == testing_id)
+            .order_by(PlanLabel.label)
+        )
+    )
+    return [PlanLabelItem.model_validate(label) for label in labels]
+
+
+def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) -> PlanLabelItem:
+    _require_project(db, testing_id)
+    existing = db.scalar(
+        select(PlanLabel).where(
+            PlanLabel.testing_id == testing_id,
+            PlanLabel.label == payload.label,
+        )
+    )
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already exists")
+
+    label = PlanLabel(testing_id=testing_id, label=payload.label)
+    db.add(label)
+    db.commit()
+    db.refresh(label)
+    return PlanLabelItem.model_validate(label)
+
+
+def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> PlanLabelItem:
+    label = _require_plan_label(db, label_id)
+    if label.label == payload.label:
+        return PlanLabelItem.model_validate(label)
+
+    existing = db.scalar(
+        select(PlanLabel).where(
+            PlanLabel.testing_id == label.testing_id,
+            PlanLabel.label == payload.label,
+            PlanLabel.id != label.id,
+        )
+    )
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already exists")
+
+    conflicting_plan = db.scalar(
+        select(Plan).where(
+            Plan.testing_id == label.testing_id,
+            Plan.label == payload.label,
+        )
+    )
+    if conflicting_plan is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already has plans")
+
+    old_label = label.label
+    label.label = payload.label
+    db.execute(
+        update(Plan)
+        .where(Plan.testing_id == label.testing_id, Plan.label == old_label)
+        .values(label=payload.label)
+    )
+    db.commit()
+    db.refresh(label)
+    return PlanLabelItem.model_validate(label)
+
+
+def delete_plan_label(db: Session, label_id: int) -> None:
+    label = _require_plan_label(db, label_id)
+    plans = list(
+        db.scalars(
+            select(Plan).where(
+                Plan.testing_id == label.testing_id,
+                Plan.label == label.label,
+            )
+        )
+    )
+    for plan in plans:
+        db.delete(plan)
+    db.delete(label)
+    db.commit()
 
 
 def get_plan_detail(db: Session, plan_id: int) -> PlanDetail:

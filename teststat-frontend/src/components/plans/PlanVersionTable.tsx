@@ -47,7 +47,7 @@ export function PlanVersionTable({
     <div className="plan-list-panel">
       <div className="plan-panel-header">
         <div>
-          <div className="panel-title">計画一覧</div>
+          <div className="panel-title">テスト一覧</div>
           <div className="panel-subtitle">
             {useOverallPlan ? '全体計画を1つだけ管理します。' : '識別子ごとに計画を管理します。'}
           </div>

@@ -39,8 +39,8 @@ export function PlanLabelEditScreen({
             className="icon-button header-back-button"
             type="button"
             onClick={onCancel}
-            aria-label="テスト計画入力に戻る"
-            title="テスト計画入力に戻る"
+            aria-label="テスト計画・管理に戻る"
+            title="テスト計画・管理に戻る"
           >
             <ArrowLeft aria-hidden="true" />
           </button>

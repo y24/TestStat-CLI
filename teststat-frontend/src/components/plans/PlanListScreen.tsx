@@ -76,7 +76,7 @@ export function PlanListScreen({
           <div>
             <h1 className="title-with-icon">
               <ClipboardList className="title-icon" aria-hidden="true" />
-              <span>テスト計画入力</span>
+              <span>テスト計画・管理</span>
             </h1>
           </div>
         </div>

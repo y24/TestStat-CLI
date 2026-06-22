@@ -289,7 +289,7 @@ export function PbChartPanel({
           {onPlans && (
             <button className="primary-button icon-text-button" type="button" onClick={onPlans}>
               <ClipboardList className="button-icon" aria-hidden="true" strokeWidth={2.2} />
-              <span>テスト計画入力</span>
+              <span>テスト計画・管理</span>
             </button>
           )}
         </div>

@@ -17,12 +17,15 @@ export function PlanListScreen({
   holidays,
   useOverallPlan,
   submitting,
+  collectingLabel,
+  collectErrors,
   modalLabel,
   selectedModalPlans,
   onBack,
   onToggleOverall,
   onAddLabel,
   onEditLabel,
+  onRefreshLabel,
   onCreate,
   onManage,
   onSaveModal,
@@ -39,12 +42,15 @@ export function PlanListScreen({
   holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
+  collectingLabel: string | null
+  collectErrors: Record<string, string>
   modalLabel: string | null | undefined
   selectedModalPlans: PlanItem[]
   onBack: () => void
   onToggleOverall: (checked: boolean) => void
   onAddLabel: () => void
   onEditLabel: (planLabel: LabelEditTarget) => void
+  onRefreshLabel: (label: string) => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
   onSaveModal: (changes: PlanVersionModalChanges) => void
@@ -100,9 +106,12 @@ export function PlanListScreen({
           holidays={holidays}
           useOverallPlan={useOverallPlan}
           submitting={submitting}
+          collectingLabel={collectingLabel}
+          collectErrors={collectErrors}
           onToggleOverall={onToggleOverall}
           onCreate={onCreate}
           onEditLabel={onEditLabel}
+          onRefreshLabel={onRefreshLabel}
           onManage={onManage}
           formatDate={formatDate}
         />

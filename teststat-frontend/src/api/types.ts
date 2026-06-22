@@ -258,3 +258,20 @@ export interface OpenBugItem {
   is_suspended: boolean
 }
 
+// === 識別子の情報更新（SharePoint URL から再集計） ===
+
+export interface CollectFailure {
+  testing_id: number
+  reason: string
+  message: string
+}
+
+export interface CollectResult {
+  targets: number
+  succeeded: number[]
+  failed: CollectFailure[]
+  auth_error: boolean
+  started_at: string
+  finished_at: string | null
+}
+

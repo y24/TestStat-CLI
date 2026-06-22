@@ -56,6 +56,20 @@ def post_project_collect(
     return CollectStarted(started=True, targets=targets)
 
 
+@router.post("/projects/{testing_id}/collect-label", response_model=CollectResult)
+def post_label_collect(
+    testing_id: int,
+    label: str,
+    db: Session = Depends(get_db),
+) -> CollectResult:
+    """1つの識別子だけを同期収集し、その結果（成功/失敗）を直接返す（情報更新ボタン用）。"""
+    _begin_collect()
+    try:
+        return collector.collect_label(db, testing_id, label, settings=get_settings())
+    finally:
+        _collect_lock.release()
+
+
 @router.get("/collect/status", response_model=CollectResult | None)
 def get_collect_status() -> CollectResult | None:
     return collector.get_last_result()

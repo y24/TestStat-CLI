@@ -1,4 +1,4 @@
-import { ChartLine, FileSpreadsheet, Pencil, TriangleAlert } from 'lucide-react'
+import { ChartLine, FileSpreadsheet, Pencil, RefreshCw, TriangleAlert } from 'lucide-react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
@@ -12,9 +12,12 @@ export function PlanVersionTable({
   holidays,
   useOverallPlan,
   submitting,
+  collectingLabel,
+  collectErrors,
   onToggleOverall,
   onCreate,
   onEditLabel,
+  onRefreshLabel,
   onManage,
   formatDate,
 }: {
@@ -27,9 +30,12 @@ export function PlanVersionTable({
   holidays: Set<string>
   useOverallPlan: boolean
   submitting: boolean
+  collectingLabel: string | null
+  collectErrors: Record<string, string>
   onToggleOverall: (checked: boolean) => void
   onCreate: (label: string | null) => void
   onEditLabel: (planLabel: LabelEditTarget) => void
+  onRefreshLabel: (label: string) => void
   onManage: (label: string | null) => void
   formatDate: (value: string) => string
 }) {
@@ -98,16 +104,38 @@ export function PlanVersionTable({
                   <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
                     <td className="plan-table-icon-column">
                       {registeredLabel && (
-                        <button
-                          className="icon-button compact"
-                          type="button"
-                          disabled={submitting}
-                          onClick={() => onEditLabel(registeredLabel)}
-                          aria-label={`${registeredLabel.label}を編集`}
-                          title="識別子を編集"
-                        >
-                          <Pencil aria-hidden="true" />
-                        </button>
+                        <div className="plan-row-actions">
+                          <button
+                            className="icon-button compact"
+                            type="button"
+                            disabled={submitting}
+                            onClick={() => onEditLabel(registeredLabel)}
+                            aria-label={`${registeredLabel.label}を編集`}
+                            title="識別子を編集"
+                          >
+                            <Pencil aria-hidden="true" />
+                          </button>
+                          <button
+                            className={`icon-button compact${
+                              collectingLabel === label ? ' is-refreshing' : ''
+                            }`}
+                            type="button"
+                            disabled={
+                              submitting ||
+                              !registeredLabel.source_url ||
+                              collectingLabel !== null
+                            }
+                            onClick={() => label !== null && onRefreshLabel(label)}
+                            aria-label={`${registeredLabel.label}の情報を更新`}
+                            title={
+                              registeredLabel.source_url
+                                ? '情報を更新（URLのファイルを取得して集計）'
+                                : 'URLが未登録のため更新できません'
+                            }
+                          >
+                            <RefreshCw aria-hidden="true" />
+                          </button>
+                        </div>
                       )}
                     </td>
                     <td>
@@ -128,6 +156,15 @@ export function PlanVersionTable({
                         <span className="row-note plan-only-note">
                           <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
                           <span>データがありません</span>
+                        </span>
+                      )}
+                      {label !== null && collectErrors[label] && (
+                        <span
+                          className="row-note plan-only-note collect-error-note"
+                          title={collectErrors[label]}
+                        >
+                          <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+                          <span>取得エラー: {collectErrors[label]}</span>
                         </span>
                       )}
                       {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}

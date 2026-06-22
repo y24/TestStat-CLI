@@ -1303,10 +1303,16 @@
 
 .plan-table th.plan-table-icon-column,
 .plan-table td.plan-table-icon-column {
-  width: 38px;
-  min-width: 38px;
+  width: 72px;
+  min-width: 72px;
   text-align: center;
   vertical-align: middle;
+}
+
+.plan-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .plan-table .icon-button.compact {
@@ -1320,6 +1326,22 @@
 .plan-table .icon-button.compact svg {
   width: 15px;
   height: 15px;
+}
+
+.plan-table .icon-button.compact.is-refreshing svg {
+  animation: spin 0.8s linear infinite;
+}
+
+.collect-error-note {
+  color: #8a5a00;
+  max-width: 220px;
+}
+
+.collect-error-note > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .active-plan-row {

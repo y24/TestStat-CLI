@@ -64,6 +64,18 @@ class TestCollector(unittest.TestCase):
         self.assertEqual(targets[0].testing_id, 3001)
         self.assertEqual(targets[0].files, (("A", "https://example.com/a.xlsx"),))
 
+    def test_load_targets_filters_by_label(self):
+        create_plan_label(self.db, 3001, PlanLabelCreate(label="A", source_url="https://example.com/a.xlsx"))
+        create_plan_label(self.db, 3001, PlanLabelCreate(label="B", source_url="https://example.com/b.xlsx"))
+
+        targets = _load_targets(self.db, testing_id=3001, label="B")
+        self.assertEqual(len(targets), 1)
+        self.assertEqual(targets[0].files, (("B", "https://example.com/b.xlsx"),))
+
+        # URL 未登録の識別子は対象外（情報更新ボタンが押せないケース）
+        create_plan_label(self.db, 3001, PlanLabelCreate(label="C", source_url=""))
+        self.assertEqual(_load_targets(self.db, testing_id=3001, label="C"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

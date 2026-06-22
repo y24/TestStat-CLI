@@ -60,6 +60,11 @@ def collect_project(db: Session | None = None, testing_id: int | None = None, *,
     return _collect(db, settings=settings, testing_id=testing_id)
 
 
+def collect_label(db: Session, testing_id: int, label: str, *, settings: Settings | None = None) -> CollectResult:
+    """1つの識別子だけを対象に同期的に収集する（情報更新ボタン用）。"""
+    return _collect(db, settings=settings, testing_id=testing_id, label=label, record=False)
+
+
 def collect_all_with_new_session() -> CollectResult:
     with SessionLocal() as db:
         return collect_all(db, settings=get_settings())
@@ -70,7 +75,14 @@ def collect_project_with_new_session(testing_id: int) -> CollectResult:
         return collect_project(db, testing_id, settings=get_settings())
 
 
-def _collect(db: Session | None, *, settings: Settings | None, testing_id: int | None) -> CollectResult:
+def _collect(
+    db: Session | None,
+    *,
+    settings: Settings | None,
+    testing_id: int | None,
+    label: str | None = None,
+    record: bool = True,
+) -> CollectResult:
     settings = settings or get_settings()
     own_session = db is None
     session = db or SessionLocal()
@@ -80,11 +92,11 @@ def _collect(db: Session | None, *, settings: Settings | None, testing_id: int |
     try:
         if not settings.collect_enabled:
             result.failed.append(CollectFailure(testing_id=testing_id or 0, reason="other", message="collector disabled"))
-            return _finish(result)
-        targets = _load_targets(session, testing_id=testing_id)
+            return _finish(result, record=record)
+        targets = _load_targets(session, testing_id=testing_id, label=label)
         result.targets = len(targets)
         if not targets:
-            return _finish(result)
+            return _finish(result, record=record)
         if not settings.tstat_command.strip():
             for target in targets:
                 result.failed.append(CollectFailure(
@@ -92,7 +104,7 @@ def _collect(db: Session | None, *, settings: Settings | None, testing_id: int |
                     reason="other",
                     message="TSTAT_COMMAND is not configured",
                 ))
-            return _finish(result)
+            return _finish(result, record=record)
 
         _ensure_log_dir(settings)
         base_work_dir = Path(settings.collect_work_dir) if settings.collect_work_dir.strip() else None
@@ -117,19 +129,20 @@ def _collect(db: Session | None, *, settings: Settings | None, testing_id: int |
                         result.auth_error = True
                     result.failed.append(failure)
                 _write_log(settings, target, yaml_path, completed)
-        return _finish(result)
+        return _finish(result, record=record)
     finally:
         if own_session:
             session.close()
 
 
-def _finish(result: CollectResult) -> CollectResult:
+def _finish(result: CollectResult, *, record: bool = True) -> CollectResult:
     result.finished_at = datetime.now()
-    set_last_result(result)
+    if record:
+        set_last_result(result)
     return result
 
 
-def _load_targets(db: Session, testing_id: int | None = None) -> list[CollectTarget]:
+def _load_targets(db: Session, testing_id: int | None = None, label: str | None = None) -> list[CollectTarget]:
     query = (
         select(Project.testing_id, Project.name, PlanLabel.label, PlanLabel.source_url)
         .join(PlanLabel, PlanLabel.testing_id == Project.testing_id)
@@ -138,13 +151,15 @@ def _load_targets(db: Session, testing_id: int | None = None) -> list[CollectTar
     )
     if testing_id is not None:
         query = query.where(Project.testing_id == testing_id)
+    if label is not None:
+        query = query.where(PlanLabel.label == label)
 
     grouped: dict[int, tuple[str, list[tuple[str, str]]]] = {}
-    for row_testing_id, project_name, label, source_url in db.execute(query):
+    for row_testing_id, project_name, row_label, source_url in db.execute(query):
         if not source_url:
             continue
         name, files = grouped.setdefault(row_testing_id, (project_name, []))
-        files.append((label, source_url))
+        files.append((row_label, source_url))
 
     return [
         CollectTarget(testing_id=tid, project_name=name, files=tuple(files))

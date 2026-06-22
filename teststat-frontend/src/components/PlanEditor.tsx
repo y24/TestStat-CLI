@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   activatePlan,
+  collectLabel,
   createPlan,
   createPlanLabel,
   deletePlan,
@@ -66,6 +67,8 @@ export function PlanEditor({
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [initialCreateForm, setInitialCreateForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [holidayDates, setHolidayDates] = useState<Set<string>>(() => new Set())
+  const [collectingLabel, setCollectingLabel] = useState<string | null>(null)
+  const [collectErrors, setCollectErrors] = useState<Record<string, string>>({})
 
   const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
 
@@ -204,6 +207,39 @@ export function PlanEditor({
       })
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
+  }
+
+  const handleRefreshLabel = (label: string) => {
+    if (collectingLabel !== null) {
+      return
+    }
+    setCollectingLabel(label)
+    setCollectErrors((prev) => {
+      if (!(label in prev)) {
+        return prev
+      }
+      const next = { ...prev }
+      delete next[label]
+      return next
+    })
+    collectLabel(project.testing_id, label)
+      .then((result) => {
+        const failure = result.failed[0]
+        if (failure) {
+          setCollectErrors((prev) => ({ ...prev, [label]: failure.message }))
+          return
+        }
+        if (result.targets === 0) {
+          setCollectErrors((prev) => ({ ...prev, [label]: 'URLが登録されていないため取得できませんでした' }))
+          return
+        }
+        loadPlans()
+        onChanged()
+      })
+      .catch((err) => {
+        setCollectErrors((prev) => ({ ...prev, [label]: getErrorMessage(err) }))
+      })
+      .finally(() => setCollectingLabel(null))
   }
 
   const handleToggleOverall = async (checked: boolean) => {
@@ -620,12 +656,15 @@ export function PlanEditor({
       holidays={holidayDates}
       useOverallPlan={useOverallPlan}
       submitting={submitting}
+      collectingLabel={collectingLabel}
+      collectErrors={collectErrors}
       modalLabel={modalLabel}
       selectedModalPlans={selectedModalPlans}
       onBack={onBack}
       onToggleOverall={handleToggleOverall}
       onAddLabel={openLabelCreateScreen}
       onEditLabel={openLabelEditScreen}
+      onRefreshLabel={handleRefreshLabel}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}
       onSaveModal={handleSaveModalChanges}

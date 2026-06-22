@@ -24,6 +24,7 @@ import type {
   AzureDevOpsWorkItem,
   BugSyncResult,
   OpenBugItem,
+  CollectResult,
 } from './types'
 
 // 本番では IIS の /tstat 配下で同一オリジン配信し、/tstat/api と /tstat/health を
@@ -183,6 +184,13 @@ export const deletePlan = (plan_id: number) =>
   request<void>(`/api/v1/plans/${plan_id}`, {
     method: 'DELETE',
   })
+
+// 識別子の情報更新: SharePoint URL からファイルを取得して同期的に再集計
+export const collectLabel = (testing_id: number, label: string) =>
+  request<CollectResult>(
+    `/api/v1/projects/${testing_id}/collect-label?label=${encodeURIComponent(label)}`,
+    { method: 'POST' },
+  )
 
 // 設定: 祝日一覧
 export const fetchHolidays = () => get<HolidayItem[]>('/api/v1/holidays')

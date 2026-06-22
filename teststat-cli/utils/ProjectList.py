@@ -35,10 +35,18 @@ def read_yaml_project_list(list_file_path):
         raise Exception(f"プロジェクトリストファイルの読み込みに失敗しました: {list_file_path}, 詳細: {e}")
     
     # データ構造の検証
-    if not isinstance(data, dict) or "project" not in data:
-        raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'project'キーが見つかりません")
-    
-    project_data = data["project"]
+    if not isinstance(data, dict):
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: トップレベルがマッピングではありません")
+
+    # 'project' ラッパーの有無で形式を自動判別する
+    # - 旧形式（後方互換）: project: 配下に定義をネスト
+    # - 新形式: トップレベルに直接定義を記述（project: ラッパー省略）
+    if "project" in data:
+        project_data = data["project"]
+        if not isinstance(project_data, dict):
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'project'の値がマッピングではありません")
+    else:
+        project_data = data
     
     # 必須フィールドの検証
     required_fields = ["project_name", "files"]

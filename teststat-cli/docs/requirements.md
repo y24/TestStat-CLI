@@ -223,14 +223,23 @@ python test_stat.py -l project_list.yaml --date-range 2024-01-15 2024-01-20
 ```
 
 #### YAML形式
+最上段の `project:` ラッパーは省略可能（トップレベル直書き）。後方互換のため `project:` ありの旧形式も読み込める。
 ```yaml
+# project: ラッパー省略（推奨）
+project_name: "プロジェクト名"
+files:
+  - label: "ラベル1"
+    path: "ファイルパス1"
+  - label: "ラベル2"
+    path: "ファイルパス2"
+```
+```yaml
+# project: ラッパーあり（後方互換）
 project:
   project_name: "プロジェクト名"
   files:
     - label: "ラベル1"
       path: "ファイルパス1"
-    - label: "ラベル2"
-      path: "ファイルパス2"
 ```
 
 ### 4.3.3 テキスト形式（従来方式）
@@ -252,7 +261,7 @@ input_sample/taihi/sample3_.xlsx
 ### 4.3.5 エラーハンドリング
 
 - 拡張子が`.json`/`.yaml`/`.yml`/`.txt`以外の場合はエラー
-- 必須フィールド（project, project_name, files, label, path）がない場合はエラー（JSON/YAMLのみ）
+- 必須フィールド（project_name, files, label, path）がない場合はエラー（JSON/YAMLのみ）。`project:` ラッパーは任意
 - ファイルが存在しない場合や.xlsx以外の場合はエラー
 
 ### 3.2 オプション一覧（抜粋）

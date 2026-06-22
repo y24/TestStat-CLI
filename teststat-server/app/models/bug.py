@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -14,6 +14,10 @@ class BugSnapshot(Base):
     """
 
     __tablename__ = "bug_snapshots"
+    __table_args__ = (
+        Index("ix_bug_snapshots_testing_created", "testing_id", "created_date"),
+        Index("ix_bug_snapshots_testing_finish", "testing_id", "finish_date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(

@@ -94,7 +94,60 @@ def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSu
 
 
 def _actual_vs_plan_rates(db: Session, testing_ids: list[int]) -> dict[int, float | None]:
-    return {testing_id: _actual_vs_plan_rate(db, testing_id) for testing_id in testing_ids}
+    if not testing_ids:
+        return {}
+
+    latest_actual_dates = (
+        select(
+            DailyProgress.testing_id.label("testing_id"),
+            func.max(DailyProgress.date).label("latest_actual_date"),
+        )
+        .where(DailyProgress.testing_id.in_(testing_ids))
+        .group_by(DailyProgress.testing_id)
+        .subquery()
+    )
+
+    actual_rows = db.execute(
+        select(
+            DailyProgress.testing_id,
+            func.coalesce(func.sum(DailyProgress.executed), 0),
+        )
+        .join(
+            latest_actual_dates,
+            DailyProgress.testing_id == latest_actual_dates.c.testing_id,
+        )
+        .where(DailyProgress.date <= latest_actual_dates.c.latest_actual_date)
+        .group_by(DailyProgress.testing_id)
+    ).all()
+    actuals = {testing_id: executed for testing_id, executed in actual_rows}
+
+    planned_rows = db.execute(
+        select(
+            Plan.testing_id,
+            func.coalesce(func.sum(PlanDaily.planned_count), 0),
+        )
+        .join(PlanDaily, PlanDaily.plan_id == Plan.id)
+        .join(
+            latest_actual_dates,
+            Plan.testing_id == latest_actual_dates.c.testing_id,
+        )
+        .where(
+            Plan.testing_id.in_(testing_ids),
+            Plan.is_active.is_(True),
+            PlanDaily.date <= latest_actual_dates.c.latest_actual_date,
+        )
+        .group_by(Plan.testing_id)
+    ).all()
+    planned = {testing_id: planned_completed for testing_id, planned_completed in planned_rows}
+
+    rates: dict[int, float | None] = {}
+    for testing_id in testing_ids:
+        planned_completed = planned.get(testing_id, 0) or 0
+        if planned_completed <= 0 or testing_id not in actuals:
+            rates[testing_id] = None
+        else:
+            rates[testing_id] = round((actuals.get(testing_id, 0) or 0) / planned_completed * 100, 2)
+    return rates
 
 
 def _to_response(

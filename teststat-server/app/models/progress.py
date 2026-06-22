@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -18,6 +18,9 @@ class Testing(Base):
 
 class FileProgress(Base):
     __tablename__ = "file_progress"
+    __table_args__ = (
+        Index("ix_file_progress_testing_label", "testing_id", "label"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(Integer, ForeignKey("testings.testing_id", ondelete="CASCADE"), nullable=False, index=True)
@@ -46,6 +49,9 @@ class FileProgress(Base):
 
 class DailyProgress(Base):
     __tablename__ = "daily_progress"
+    __table_args__ = (
+        Index("ix_daily_progress_testing_label_date", "testing_id", "label", "date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(Integer, ForeignKey("testings.testing_id", ondelete="CASCADE"), nullable=False, index=True)
@@ -98,6 +104,7 @@ class TestResultBugSnapshot(Base):
         UniqueConstraint(
             "testing_id", "label", "snapshot_date", name="uq_test_result_bug_snapshots_testing_label_date"
         ),
+        Index("ix_test_result_bug_snapshots_testing_label_date", "testing_id", "label", "snapshot_date"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,6 +8,9 @@ from app.database import Base
 
 class Plan(Base):
     __tablename__ = "plans"
+    __table_args__ = (
+        Index("ix_plans_testing_label_active", "testing_id", "label", "is_active"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
@@ -37,6 +40,9 @@ class PlanLabel(Base):
 
 class PlanDaily(Base):
     __tablename__ = "plan_daily"
+    __table_args__ = (
+        Index("ix_plan_daily_plan_date", "plan_id", "date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, index=True)

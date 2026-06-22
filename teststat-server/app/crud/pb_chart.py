@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -7,10 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.crud.bug import (
+    get_bug_chart_metadata,
     get_bug_cumulative,
-    get_bug_date_bounds,
-    get_bugs_updated_at,
-    has_bugs as _has_bugs,
 )
 from app.models.plan import Plan, PlanDaily
 from app.models.progress import DailyProgress, FileProgress, TestResultBugSnapshot, Testing
@@ -93,32 +91,33 @@ def _get_test_result_bug_daily_map(
     return {row[0]: (int(row[1]), int(row[2]), int(row[3])) for row in rows}
 
 
-def _get_test_result_bug_updated_at(db: Session, testing_id: int):
-    return db.scalar(
-        select(func.max(TestResultBugSnapshot.sent_at)).where(TestResultBugSnapshot.testing_id == testing_id)
-    )
+def _get_test_result_bug_metadata(db: Session, testing_id: int) -> tuple[bool, datetime | None]:
+    count, updated_at = db.execute(
+        select(
+            func.count(TestResultBugSnapshot.id),
+            func.max(TestResultBugSnapshot.sent_at),
+        ).where(TestResultBugSnapshot.testing_id == testing_id)
+    ).one()
+    return (count or 0) > 0, updated_at
 
 
-def _has_test_result_bugs(db: Session, testing_id: int) -> bool:
-    """label を問わず、テスト結果由来の不具合スナップショットが1件でもあるか。"""
-    return db.scalar(
-        select(TestResultBugSnapshot.id).where(TestResultBugSnapshot.testing_id == testing_id).limit(1)
-    ) is not None
-
-
-def _get_available_cases(db: Session, testing_id: int, label: str | None) -> int:
-    """実績の対象件数合計。実績なし=0。"""
-    q = select(func.coalesce(func.sum(FileProgress.available_cases), 0)).where(
+def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, datetime | None]:
+    """実績の対象件数合計と更新日時。実績なし=0。"""
+    available_query = select(func.coalesce(func.sum(FileProgress.available_cases), 0)).where(
         FileProgress.testing_id == testing_id
     )
     if label is not None:
-        q = q.where(FileProgress.label == label)
-    return db.scalar(q) or 0
+        available_query = available_query.where(FileProgress.label == label)
 
-
-def _get_actuals_updated_at(db: Session, testing_id: int):
-    testing = db.scalar(select(Testing).where(Testing.testing_id == testing_id))
-    return testing.updated_at if testing else None
+    available_cases, updated_at = db.execute(
+        select(
+            available_query.scalar_subquery(),
+            select(Testing.updated_at)
+            .where(Testing.testing_id == testing_id)
+            .scalar_subquery(),
+        )
+    ).one()
+    return available_cases or 0, updated_at
 
 
 # ---------- 系列計算 ----------
@@ -371,7 +370,7 @@ def get_pb_chart(
 
     # 実績
     actual_daily_map = _get_actual_daily_map(db, testing_id, label)
-    available_cases = _get_available_cases(db, testing_id, label)
+    available_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
     has_actuals = bool(actual_daily_map) and available_cases > 0
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
 
@@ -384,18 +383,16 @@ def get_pb_chart(
     bug_from = bug_to = None
     if bug_count_source == "test_result":
         test_result_bug_daily_map = _get_test_result_bug_daily_map(db, testing_id, label)
-        bugs_present = _has_test_result_bugs(db, testing_id)   # has_bugs フラグ用（label 非依存）
+        bugs_present, bugs_updated_at = _get_test_result_bug_metadata(db, testing_id)
         bugs_visible = bool(test_result_bug_daily_map)         # 表示中の label に不具合があるか
-        bugs_updated_at = _get_test_result_bug_updated_at(db, testing_id) if bugs_present else None
         if bugs_visible:
             bug_from = min(test_result_bug_daily_map)
             bug_to = max(test_result_bug_daily_map)
     else:
-        bugs_present = _has_bugs(db, testing_id)
+        bugs_present, bugs_updated_at, bug_from, bug_to = get_bug_chart_metadata(db, testing_id)
         bugs_visible = bugs_present and label is None
-        bugs_updated_at = get_bugs_updated_at(db, testing_id) if bugs_present else None
-        if bugs_visible:
-            bug_from, bug_to = get_bug_date_bounds(db, testing_id)
+        if not bugs_visible:
+            bug_from = bug_to = None
 
     # 日付レンジ
     # Default to the visible PB chart range based on plan/actual series.
@@ -433,7 +430,7 @@ def get_pb_chart(
             label=label,
             bug_count_source=bug_count_source,
             range=None,
-            actuals_updated_at=_get_actuals_updated_at(db, testing_id),
+            actuals_updated_at=actuals_updated_at,
             available_cases=0,
             planned_total_cases=None,
             series=[],
@@ -466,7 +463,7 @@ def get_pb_chart(
         label=label,
         bug_count_source=bug_count_source,
         range={"from": range_from.isoformat(), "to": range_to.isoformat()},
-        actuals_updated_at=_get_actuals_updated_at(db, testing_id),
+        actuals_updated_at=actuals_updated_at,
         available_cases=available_cases,
         planned_total_cases=planned_total,
         series=series,

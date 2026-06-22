@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime
 from urllib.parse import quote
 
@@ -76,18 +77,28 @@ def get_bug_cumulative(
         )
     ).all()
 
+    events: dict[date, list[int]] = defaultdict(lambda: [0, 0, 0])
+    for state, created_date, finish_date in rows:
+        if created_date is not None:
+            events[created_date][0] += 1
+        if _is_suspended(state, suspend_states):
+            suspended_date = finish_date or created_date
+            if suspended_date is not None:
+                events[suspended_date][1] += 1
+        elif finish_date is not None:
+            events[finish_date][2] += 1
+
     result: dict[date, tuple[int, int, int]] = {}
-    for d in date_range:
-        detected = suspended = resolved = 0
-        for state, created_date, finish_date in rows:
-            if created_date is not None and created_date <= d:
-                detected += 1
-            if _is_suspended(state, suspend_states):
-                suspended_date = finish_date or created_date
-                if suspended_date is not None and suspended_date <= d:
-                    suspended += 1
-            elif finish_date is not None and finish_date <= d:
-                resolved += 1
+    detected = suspended = resolved = 0
+    event_dates = sorted(events)
+    event_index = 0
+    for d in sorted(date_range):
+        while event_index < len(event_dates) and event_dates[event_index] <= d:
+            delta_detected, delta_suspended, delta_resolved = events[event_dates[event_index]]
+            detected += delta_detected
+            suspended += delta_suspended
+            resolved += delta_resolved
+            event_index += 1
         result[d] = (detected - suspended - resolved, suspended, resolved)
     return result
 
@@ -115,6 +126,20 @@ def get_bugs_updated_at(db: Session, testing_id: int) -> datetime | None:
     return db.scalar(
         select(func.max(BugSnapshot.fetched_at)).where(BugSnapshot.testing_id == testing_id)
     )
+
+
+def get_bug_chart_metadata(db: Session, testing_id: int) -> tuple[bool, datetime | None, date | None, date | None]:
+    count, updated_at, min_created, max_created, max_finish = db.execute(
+        select(
+            func.count(BugSnapshot.id),
+            func.max(BugSnapshot.fetched_at),
+            func.min(BugSnapshot.created_date),
+            func.max(BugSnapshot.created_date),
+            func.max(BugSnapshot.finish_date),
+        ).where(BugSnapshot.testing_id == testing_id)
+    ).one()
+    max_date = max((d for d in (max_created, max_finish) if d is not None), default=None)
+    return (count or 0) > 0, updated_at, min_created, max_date
 
 
 def get_bug_date_bounds(db: Session, testing_id: int) -> tuple[date | None, date | None]:

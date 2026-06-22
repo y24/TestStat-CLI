@@ -335,7 +335,7 @@ def _mock_child_bugs(work_item_id: int, settings: Settings) -> list[BugWorkItem]
         (9003, "帳票印字ずれ", "Closed", date(2025, 2, 10), date(2025, 2, 24)),
         (9004, "タイムアウト", "Active", date(2025, 2, 13), None),
         (9008, "次期対応", "Suspend", date(2025, 2, 18), date(2025, 3, 6)),
-        (9009, "軽微な文言", "Active", date(2025, 3, 3), None),
+        (9009, "軽微な文言", "Suspend", date(2025, 3, 3), None),
         (9005, "重複起票", "Removed", date(2025, 2, 20), None),
     ]
     ignore_states = settings.azure_devops_bug_ignore_status_set
@@ -350,3 +350,4 @@ def _mock_child_bugs(work_item_id: int, settings: Settings) -> list[BugWorkItem]
         for wid, title, state, created, finish in samples
         if state not in ignore_states
     ]
+

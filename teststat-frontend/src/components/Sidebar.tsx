@@ -62,7 +62,6 @@ function SidebarHeader({ apiStatus }: { apiStatus: ApiStatus }) {
   return (
     <div className="sidebar-header">
       <h1 className="app-title">TestStat Studio</h1>
-      {apiStatus === 'error' && <div className="api-status api-status-error">API 接続失敗</div>}
     </div>
   )
 }

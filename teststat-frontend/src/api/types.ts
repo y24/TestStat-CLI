@@ -221,4 +221,5 @@ export interface OpenBugItem {
   title: string | null
   state: string | null
   url: string | null
+  is_suspended: boolean
 }

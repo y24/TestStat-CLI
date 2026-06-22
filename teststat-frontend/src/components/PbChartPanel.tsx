@@ -507,9 +507,40 @@ function ProgressBreakdown({
 }
 
 function OpenBugList({ bugs, bugDataFetched }: { bugs: OpenBugItem[]; bugDataFetched: boolean }) {
+  const openBugs = bugs.filter((bug) => !bug.is_suspended)
+  const suspendedBugs = bugs.filter((bug) => bug.is_suspended)
   return (
-    <section className="breakdown-block" aria-label="未解決の不具合チケット一覧">
-      <h3>未解決Bugチケット一覧</h3>
+    <>
+      <BugListSection
+        title="未解決チケット一覧"
+        ariaLabel="未解決の不具合チケット一覧"
+        bugs={openBugs}
+        emptyText={bugDataFetched ? '未解決の不具合チケットはありません' : '不具合データ未取得です'}
+      />
+      <BugListSection
+        title="対応見送りチケット一覧"
+        ariaLabel="対応見送りの不具合チケット一覧"
+        bugs={suspendedBugs}
+        emptyText={bugDataFetched ? '対応見送りの不具合チケットはありません' : '不具合データ未取得です'}
+      />
+    </>
+  )
+}
+
+function BugListSection({
+  title,
+  ariaLabel,
+  bugs,
+  emptyText,
+}: {
+  title: string
+  ariaLabel: string
+  bugs: OpenBugItem[]
+  emptyText: string
+}) {
+  return (
+    <section className="breakdown-block" aria-label={ariaLabel}>
+      <h3>{title}</h3>
       {bugs.length > 0 ? (
         <div className="breakdown-table-wrap">
           <table className="breakdown-table open-bug-table">
@@ -542,9 +573,7 @@ function OpenBugList({ bugs, bugDataFetched }: { bugs: OpenBugItem[]; bugDataFet
           </table>
         </div>
       ) : (
-        <div className="breakdown-empty">
-          {bugDataFetched ? '未解決の不具合チケットはありません' : '不具合データ未取得です'}
-        </div>
+        <div className="breakdown-empty">{emptyText}</div>
       )}
     </section>
   )

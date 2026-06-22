@@ -17,3 +17,4 @@ class OpenBugItem(BaseModel):
     title: str | None
     state: str | None
     url: str | None
+    is_suspended: bool = False

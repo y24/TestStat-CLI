@@ -39,10 +39,10 @@ def replace_bugs(
 
     open_count = suspended_count = resolved_count = 0
     for bug in bugs:
-        if bug.finish_date is None:
-            open_count += 1
-        elif _is_suspended(bug.state, suspend_states):
+        if _is_suspended(bug.state, suspend_states):
             suspended_count += 1
+        elif bug.finish_date is None:
+            open_count += 1
         else:
             resolved_count += 1
 
@@ -81,11 +81,12 @@ def get_bug_cumulative(
         for state, created_date, finish_date in rows:
             if created_date is not None and created_date <= d:
                 detected += 1
-            if finish_date is not None and finish_date <= d:
-                if _is_suspended(state, suspend_states):
+            if _is_suspended(state, suspend_states):
+                suspended_date = finish_date or created_date
+                if suspended_date is not None and suspended_date <= d:
                     suspended += 1
-                else:
-                    resolved += 1
+            elif finish_date is not None and finish_date <= d:
+                resolved += 1
         result[d] = (detected - suspended - resolved, suspended, resolved)
     return result
 
@@ -117,10 +118,18 @@ def get_bug_date_bounds(db: Session, testing_id: int) -> tuple[date | None, date
     return min_created, max_date
 
 
-def get_open_bugs(db: Session, testing_id: int, settings: Settings) -> list[OpenBugItem]:
+def get_open_bugs(
+    db: Session,
+    testing_id: int,
+    settings: Settings,
+    suspend_states: set[str],
+) -> list[OpenBugItem]:
     rows = db.execute(
         select(BugSnapshot.bug_work_item_id, BugSnapshot.title, BugSnapshot.state)
-        .where(BugSnapshot.testing_id == testing_id, BugSnapshot.finish_date.is_(None))
+        .where(
+            BugSnapshot.testing_id == testing_id,
+            (BugSnapshot.finish_date.is_(None) | BugSnapshot.state.in_(suspend_states)),
+        )
         .order_by(BugSnapshot.bug_work_item_id)
     ).all()
     return [
@@ -129,6 +138,7 @@ def get_open_bugs(db: Session, testing_id: int, settings: Settings) -> list[Open
             title=title,
             state=state,
             url=build_work_item_url(work_item_id, settings),
+            is_suspended=_is_suspended(state, suspend_states),
         )
         for work_item_id, title, state in rows
     ]

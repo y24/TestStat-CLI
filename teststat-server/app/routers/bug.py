@@ -90,8 +90,9 @@ def list_open_bugs(testing_id: int, db: Session = Depends(get_db)) -> list[OpenB
                 title=bug.title or None,
                 state=bug.state or None,
                 url=build_work_item_url(bug.work_item_id, settings),
+                is_suspended=bug.state in settings.azure_devops_bug_suspend_status_set,
             )
             for bug in bugs
-            if bug.finish_date is None
+            if bug.finish_date is None or bug.state in settings.azure_devops_bug_suspend_status_set
         ]
-    return get_open_bugs(db, testing_id, settings)
+    return get_open_bugs(db, testing_id, settings, settings.azure_devops_bug_suspend_status_set)

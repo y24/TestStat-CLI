@@ -228,6 +228,16 @@ class TestCrud(unittest.TestCase):
         self.assertEqual(res.suspended_count, 1)
         self.assertEqual(res.resolved_count, 1)
 
+    def test_suspend_status_counts_as_suspended_without_finish_date(self):
+        bugs = [
+            BugWorkItem(9001, "open", "Active", date(2026, 5, 2), None),
+            BugWorkItem(9002, "suspend", "Suspend", date(2026, 5, 3), None),
+        ]
+        res = replace_bugs(self.db, 1001, bugs, {"Suspend"}, datetime(2026, 5, 20, 12, 0))
+        self.assertEqual((res.open_count, res.suspended_count, res.resolved_count), (1, 1, 0))
+        cum = get_bug_cumulative(self.db, 1001, [date(2026, 5, 20)], {"Suspend"})
+        self.assertEqual(cum[date(2026, 5, 20)], (1, 1, 0))
+
     def test_replace_is_idempotent(self):
         replace_bugs(self.db, 1001, self._bugs(), {"Suspend"}, datetime(2026, 5, 20, 12, 0))
         replace_bugs(self.db, 1001, self._bugs(), {"Suspend"}, datetime(2026, 5, 21, 12, 0))
@@ -254,12 +264,15 @@ class TestCrud(unittest.TestCase):
             self.db,
             1001,
             make_settings(AZURE_DEVOPS_ORGANIZATION="my-org", AZURE_DEVOPS_PROJECT="my-project"),
+            {"Suspend"},
         )
-        self.assertEqual(len(bugs), 1)
-        self.assertEqual(bugs[0].work_item_id, 9002)
+        self.assertEqual([bug.work_item_id for bug in bugs], [9002, 9007])
         self.assertEqual(bugs[0].title, "b")
         self.assertEqual(bugs[0].state, "Active")
+        self.assertFalse(bugs[0].is_suspended)
         self.assertEqual(bugs[0].url, "https://dev.azure.com/my-org/my-project/_workitems/edit/9002")
+        self.assertEqual(bugs[1].state, "Suspend")
+        self.assertTrue(bugs[1].is_suspended)
 
     def test_build_work_item_url_without_organization(self):
         self.assertIsNone(build_work_item_url(9002, make_settings(AZURE_DEVOPS_ORGANIZATION="")))
@@ -361,17 +374,38 @@ class TestRouter(unittest.TestCase):
             lambda wid: [
                 BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
                 BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
+                BugWorkItem(9003, "suspend", "Suspend", date(2026, 5, 4), None),
+                BugWorkItem(9004, "finished suspend", "Suspend", date(2026, 5, 5), date(2026, 5, 8)),
             ]
         )
         self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 200)
         res = self.client.get("/api/v1/projects/1001/bugs/open")
         self.assertEqual(res.status_code, 200)
         body = res.json()
-        self.assertEqual(len(body), 1)
-        self.assertEqual(body[0]["work_item_id"], 9002)
+        self.assertEqual([item["work_item_id"] for item in body], [9002, 9003, 9004])
         self.assertEqual(body[0]["title"], "open")
         self.assertEqual(body[0]["state"], "Active")
+        self.assertFalse(body[0]["is_suspended"])
         self.assertEqual(body[0]["url"], "https://dev.azure.com/my-org/_workitems/edit/9002")
+        self.assertEqual(body[1]["state"], "Suspend")
+        self.assertTrue(body[1]["is_suspended"])
+        self.assertEqual(body[2]["title"], "finished suspend")
+        self.assertTrue(body[2]["is_suspended"])
+
+    def test_mock_sync_exposes_suspended_bug_in_list(self):
+        self._patch_fetch(self._original_fetch)
+        res = self.client.post("/api/v1/projects/1001/bugs/sync")
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertGreaterEqual(body["suspended_count"], 1)
+
+        list_res = self.client.get("/api/v1/projects/1001/bugs/open")
+        self.assertEqual(list_res.status_code, 200)
+        suspended = [item for item in list_res.json() if item["is_suspended"]]
+        self.assertTrue(any(item["work_item_id"] == 9009 for item in suspended))
+        self.assertTrue(any(item["work_item_id"] == 9007 for item in suspended))
+        self.assertTrue(any(item["work_item_id"] == 9008 for item in suspended))
+        self.assertTrue(all(item["state"] == "Suspend" for item in suspended))
 
     def test_list_open_bugs_fetches_azure_devops_in_test_result_mode(self):
         from app.crud.project import update_project
@@ -382,6 +416,8 @@ class TestRouter(unittest.TestCase):
             lambda wid, settings=None: [
                 BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
                 BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
+                BugWorkItem(9003, "suspend", "Suspend", date(2026, 5, 4), None),
+                BugWorkItem(9004, "finished suspend", "Suspend", date(2026, 5, 5), date(2026, 5, 8)),
             ]
         )
 
@@ -389,9 +425,13 @@ class TestRouter(unittest.TestCase):
 
         self.assertEqual(res.status_code, 200)
         body = res.json()
-        self.assertEqual(len(body), 1)
-        self.assertEqual(body[0]["work_item_id"], 9002)
+        self.assertEqual([item["work_item_id"] for item in body], [9002, 9003, 9004])
+        self.assertFalse(body[0]["is_suspended"])
+        self.assertTrue(body[1]["is_suspended"])
+        self.assertTrue(body[2]["is_suspended"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
+

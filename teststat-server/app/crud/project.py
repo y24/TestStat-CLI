@@ -112,6 +112,7 @@ def _to_response(
         planned_start_date=project.planned_start_date,
         planned_end_date=project.planned_end_date,
         bug_count_source=project.bug_count_source,
+        pb_chart_range_source=project.pb_chart_range_source,
         archived=project.archived,
         display_order=project.display_order,
         created_at=project.created_at,
@@ -195,6 +196,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
         planned_start_date=payload.planned_start_date,
         planned_end_date=payload.planned_end_date,
         bug_count_source=payload.bug_count_source,
+        pb_chart_range_source=payload.pb_chart_range_source,
         display_order=(max_display_order + 1) if max_display_order is not None else 0,
     )
     db.add(project)
@@ -222,6 +224,8 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
         project.planned_end_date = payload.planned_end_date
     if payload.bug_count_source is not None:
         project.bug_count_source = payload.bug_count_source
+    if payload.pb_chart_range_source is not None:
+        project.pb_chart_range_source = payload.pb_chart_range_source
     if payload.archived is not None:
         project.archived = payload.archived
     _validate_project_planned_date_range(project)

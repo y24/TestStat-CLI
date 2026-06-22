@@ -102,6 +102,7 @@ export interface ProjectItem {
   planned_start_date: string | null
   planned_end_date: string | null
   bug_count_source: 'azure_devops' | 'test_result'
+  pb_chart_range_source: 'plan_actual' | 'project_period'
   archived: boolean
   display_order: number
   created_at: string
@@ -123,6 +124,7 @@ export interface ProjectCreatePayload {
   planned_start_date?: string | null
   planned_end_date?: string | null
   bug_count_source?: 'azure_devops' | 'test_result'
+  pb_chart_range_source?: 'plan_actual' | 'project_period'
 }
 
 export interface ProjectUpdatePayload {
@@ -131,6 +133,7 @@ export interface ProjectUpdatePayload {
   planned_start_date?: string | null
   planned_end_date?: string | null
   bug_count_source?: 'azure_devops' | 'test_result'
+  pb_chart_range_source?: 'plan_actual' | 'project_period'
   archived?: boolean
 }
 

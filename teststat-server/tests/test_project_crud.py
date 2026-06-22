@@ -108,6 +108,16 @@ class TestProjectCRUD(unittest.TestCase):
 
         self.assertEqual(updated.bug_count_source, "azure_devops")
 
+    def test_create_and_update_pb_chart_range_source(self):
+        created = create_project(
+            self.db,
+            ProjectCreate(testing_id=3006, name="PB範囲P", pb_chart_range_source="project_period"),
+        )
+        self.assertEqual(created.pb_chart_range_source, "project_period")
+
+        updated = update_project(self.db, 3006, ProjectUpdate(pb_chart_range_source="plan_actual"))
+
+        self.assertEqual(updated.pb_chart_range_source, "plan_actual")
     def test_create_and_update_planned_dates(self):
         from datetime import date
 
@@ -354,6 +364,21 @@ class TestProjectRouter(unittest.TestCase):
         Base.metadata.drop_all(self.engine)
         self.engine.dispose()
 
+    def test_patch_pb_chart_range_source_persists_and_is_returned(self):
+        res = self.client.post("/api/v1/projects", json={"testing_id": 9002, "name": "P"})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["pb_chart_range_source"], "plan_actual")
+
+        patch = self.client.patch(
+            "/api/v1/projects/9002",
+            json={"name": "P", "pb_chart_range_source": "project_period"},
+        )
+
+        self.assertEqual(patch.status_code, 200)
+        self.assertEqual(patch.json()["pb_chart_range_source"], "project_period")
+        reread = self.client.get("/api/v1/projects/9002")
+        self.assertEqual(reread.status_code, 200)
+        self.assertEqual(reread.json()["pb_chart_range_source"], "project_period")
     def test_patch_bug_count_source_persists_and_is_returned(self):
         res = self.client.post("/api/v1/projects", json={"testing_id": 9001, "name": "P"})
         self.assertEqual(res.status_code, 201)

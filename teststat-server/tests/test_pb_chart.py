@@ -347,6 +347,140 @@ class TestPbChart(unittest.TestCase):
             [(2, 0, 0), (4, 1, 0), (4, 1, 1)],
         )
 
+    def test_project_period_range_source_uses_project_planned_dates(self):
+        from app.crud.project import update_project
+        from app.schemas.project import ProjectUpdate
+
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        update_project(
+            self.db,
+            1001,
+            ProjectUpdate(
+                planned_start_date=date(2026, 4, 30),
+                planned_end_date=date(2026, 5, 10),
+                pb_chart_range_source="project_period",
+            ),
+        )
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-10"})
+        self.assertEqual(len(result.series), 11)
+        self.assertIsNone(result.series[0].planned_remaining)
+        self.assertEqual(result.series[1].planned_remaining, 80)
+        self.assertEqual(result.series[5].planned_remaining, 0)
+        self.assertIsNone(result.series[-1].planned_remaining)
+
+    def test_project_period_range_source_falls_back_without_project_planned_dates(self):
+        from app.crud.project import update_project
+        from app.schemas.project import ProjectUpdate
+
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        update_project(self.db, 1001, ProjectUpdate(pb_chart_range_source="project_period"))
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 5)
+    def test_azure_devops_bug_dates_do_not_expand_plan_actual_range(self):
+        from app.models.bug import BugSnapshot
+        from datetime import datetime
+
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        self.db.add_all(
+            [
+                BugSnapshot(
+                    testing_id=1001,
+                    bug_work_item_id=9001,
+                    title="before range",
+                    state="Active",
+                    created_date=date(2026, 4, 25),
+                    finish_date=None,
+                    fetched_at=datetime(2026, 5, 20, 12, 0),
+                ),
+                BugSnapshot(
+                    testing_id=1001,
+                    bug_work_item_id=9002,
+                    title="after range",
+                    state="Active",
+                    created_date=date(2026, 5, 10),
+                    finish_date=None,
+                    fetched_at=datetime(2026, 5, 20, 12, 0),
+                ),
+            ]
+        )
+        self.db.commit()
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertTrue(result.has_bugs)
+        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 5)
+        self.assertEqual(
+            [item.date for item in result.series],
+            [date(2026, 5, day) for day in range(1, 6)],
+        )
+        self.assertEqual(
+            [(item.bug_open, item.bug_suspended, item.bug_resolved) for item in result.series],
+            [(1, 0, 0)] * 5,
+        )
+
+    def test_test_result_bug_dates_do_not_expand_plan_actual_range(self):
+        from app.crud.project import update_project
+        from app.models.progress import TestResultBugSnapshot, Testing
+        from app.schemas.project import ProjectUpdate
+        from datetime import datetime
+        from sqlalchemy import select
+
+        update_project(self.db, 1001, ProjectUpdate(bug_count_source="test_result"))
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        if not self.db.scalar(select(Testing).where(Testing.testing_id == 1001)):
+            self.db.add(Testing(
+                testing_id=1001,
+                project_name="P1001",
+                updated_at=datetime(2026, 5, 3, 12, 0),
+            ))
+            self.db.flush()
+        self.db.add_all(
+            [
+                TestResultBugSnapshot(
+                    testing_id=1001,
+                    snapshot_date=date(2026, 4, 30),
+                    detected_count=2,
+                    suspend_count=0,
+                    fixed_count=0,
+                    sent_at=datetime(2026, 4, 30, 10, 0),
+                ),
+                TestResultBugSnapshot(
+                    testing_id=1001,
+                    snapshot_date=date(2026, 5, 3),
+                    detected_count=1,
+                    suspend_count=0,
+                    fixed_count=0,
+                    sent_at=datetime(2026, 5, 3, 10, 0),
+                ),
+                TestResultBugSnapshot(
+                    testing_id=1001,
+                    snapshot_date=date(2026, 5, 10),
+                    detected_count=5,
+                    suspend_count=0,
+                    fixed_count=0,
+                    sent_at=datetime(2026, 5, 10, 10, 0),
+                ),
+            ]
+        )
+        self.db.commit()
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertTrue(result.has_bugs)
+        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 5)
+        self.assertEqual(
+            [(item.bug_open, item.bug_suspended, item.bug_resolved) for item in result.series],
+            [(2, 0, 0), (2, 0, 0), (3, 0, 0), (3, 0, 0), (3, 0, 0)],
+        )
+
     # ---- 存在しないプロジェクト ----
 
     def test_unknown_project_raises(self):

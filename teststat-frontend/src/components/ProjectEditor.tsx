@@ -18,6 +18,7 @@ interface ProjectFormState {
   planned_start_date: string
   planned_end_date: string
   bug_count_source: 'azure_devops' | 'test_result'
+  pb_chart_range_source: 'plan_actual' | 'project_period'
 }
 
 const emptyForm: ProjectFormState = {
@@ -26,6 +27,7 @@ const emptyForm: ProjectFormState = {
   planned_start_date: '',
   planned_end_date: '',
   bug_count_source: 'azure_devops',
+  pb_chart_range_source: 'plan_actual',
 }
 
 export function ProjectEditor({
@@ -54,6 +56,7 @@ export function ProjectEditor({
           planned_start_date: project.planned_start_date ?? '',
           planned_end_date: project.planned_end_date ?? '',
           bug_count_source: project.bug_count_source,
+          pb_chart_range_source: project.pb_chart_range_source,
         }
       : emptyForm,
   )
@@ -71,12 +74,15 @@ export function ProjectEditor({
         ? Boolean(form.testing_id.trim()) ||
           (Boolean(form.name.trim()) && form.name !== autoFilledNameRef.current) ||
           Boolean(form.planned_start_date) ||
-          Boolean(form.planned_end_date)
+          Boolean(form.planned_end_date) ||
+          form.bug_count_source !== 'azure_devops' ||
+          form.pb_chart_range_source !== 'plan_actual'
         : project !== null &&
           (form.name !== project.name ||
             form.planned_start_date !== (project.planned_start_date ?? '') ||
             form.planned_end_date !== (project.planned_end_date ?? '') ||
-            form.bug_count_source !== project.bug_count_source)
+            form.bug_count_source !== project.bug_count_source ||
+            form.pb_chart_range_source !== project.pb_chart_range_source)
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
 
@@ -171,6 +177,7 @@ export function ProjectEditor({
       planned_start_date: form.planned_start_date || null,
       planned_end_date: form.planned_end_date || null,
       bug_count_source: form.bug_count_source,
+      pb_chart_range_source: form.pb_chart_range_source,
     }
     const request =
       mode === 'new'
@@ -314,6 +321,22 @@ export function ProjectEditor({
           >
             <option value="azure_devops">Azure DevOps - Testing IDの子Bugチケットのステータスを参照</option>
             <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照</option>
+          </select>
+        </label>
+        <label>
+          <span>PB図の表示範囲</span>
+          <select
+            value={form.pb_chart_range_source}
+            disabled={submitting}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                pb_chart_range_source: event.target.value as ProjectFormState['pb_chart_range_source'],
+              })
+            }
+          >
+            <option value="plan_actual">計画線・実績線の範囲</option>
+            <option value="project_period">テスト期間の開始日・終了日</option>
           </select>
         </label>
 

@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 BugCountSource = Literal["azure_devops", "test_result"]
+PbChartRangeSource = Literal["plan_actual", "project_period"]
 
 
 class ProjectCreate(BaseModel):
@@ -13,6 +14,7 @@ class ProjectCreate(BaseModel):
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     bug_count_source: BugCountSource = "azure_devops"
+    pb_chart_range_source: PbChartRangeSource = "plan_actual"
 
     @model_validator(mode="after")
     def validate_planned_date_range(self) -> "ProjectCreate":
@@ -31,6 +33,7 @@ class ProjectUpdate(BaseModel):
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     bug_count_source: BugCountSource | None = None
+    pb_chart_range_source: PbChartRangeSource | None = None
     archived: bool | None = None
 
     @model_validator(mode="after")
@@ -51,6 +54,7 @@ class ProjectResponse(BaseModel):
     planned_start_date: date | None
     planned_end_date: date | None
     bug_count_source: BugCountSource
+    pb_chart_range_source: PbChartRangeSource
     archived: bool
     display_order: int
     created_at: datetime

@@ -398,21 +398,33 @@ def get_pb_chart(
             bug_from, bug_to = get_bug_date_bounds(db, testing_id)
 
     # 日付レンジ
-    range_from: date | None = None
-    range_to: date | None = None
+    # Default to the visible PB chart range based on plan/actual series.
+    # Bug-only dates are used only when there is no plan or actual data.
+    plan_actual_from: date | None = None
+    plan_actual_to: date | None = None
     if has_plan:
-        range_from = plan_start
-        range_to = plan_end
+        plan_actual_from = plan_start
+        plan_actual_to = plan_end
     if actual_daily_map:
         actual_min = min(actual_daily_map)
         actual_max = max(actual_daily_map)
-        range_from = min(range_from, actual_min) if range_from else actual_min
-        range_to = max(range_to, actual_max) if range_to else actual_max
-    # バグエリアが途中で切れないよう、起票日/完了日も range に含める。
-    if bug_from is not None:
-        range_from = min(range_from, bug_from) if range_from else bug_from
-    if bug_to is not None:
-        range_to = max(range_to, bug_to) if range_to else bug_to
+        plan_actual_from = min(plan_actual_from, actual_min) if plan_actual_from else actual_min
+        plan_actual_to = max(plan_actual_to, actual_max) if plan_actual_to else actual_max
+
+    if (
+        project.pb_chart_range_source == "project_period"
+        and project.planned_start_date is not None
+        and project.planned_end_date is not None
+    ):
+        range_from = project.planned_start_date
+        range_to = project.planned_end_date
+    else:
+        range_from = plan_actual_from
+        range_to = plan_actual_to
+
+    if range_from is None and bug_from is not None:
+        range_from = bug_from
+        range_to = bug_to
 
     if range_from is None or range_to is None:
         # データが一切ない
@@ -434,7 +446,11 @@ def get_pb_chart(
     bug_cumulative = None
     if bugs_visible:
         if bug_count_source == "test_result":
-            bug_cumulative = _compute_test_result_bug_series(date_list, test_result_bug_daily_map)
+            bug_series_start = min(bug_from, range_from) if bug_from is not None else range_from
+            bug_cumulative = _compute_test_result_bug_series(
+                _date_range(bug_series_start, range_to),
+                test_result_bug_daily_map,
+            )
         else:
             suspend_states = get_settings().azure_devops_bug_suspend_status_set
             bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)

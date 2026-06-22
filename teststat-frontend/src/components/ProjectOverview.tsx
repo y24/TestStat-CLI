@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PbChartSettings, ProjectItem } from '../api/types'
-import { formatDate, formatDateTimeWithRelative } from '../utils/date'
+import { formatDate } from '../utils/date'
 import { buildProjectShareUrl, copyTextToClipboard } from '../utils/shareLink'
-import {
-  getProgressStatusLevel,
-  type ProgressStatusLevel,
-  type ProgressStatusThresholds,
-} from '../utils/statusThresholds'
+import type { ProgressStatusThresholds } from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
 import { Check, ClipboardList, FilePenLine, Link2 } from 'lucide-react'
@@ -39,7 +35,6 @@ export function ProjectOverview({
   }
 
   const status = getProjectStatus(project)
-  const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
   const needsPlanInput = project.has_actuals && project.active_plan_count === 0
   const plannedPeriod =
     project.planned_start_date && project.planned_end_date
@@ -80,17 +75,13 @@ export function ProjectOverview({
         </div>
       </header>
 
-      <section className="summary-grid">
-        <StatusTile label="完了率(対全体)" value={formatCompletionRate(project)} />
-        <StatusTile
-          label="完了率(対計画)"
-          value={formatRate(project.actual_vs_plan_rate)}
-          statusLevel={planStatusLevel}
-        />
-        <StatusTile label="最終更新" value={formatDateTimeWithRelative(project.actuals_updated_at)} />
-      </section>
-
-      <PbChartPanel key={project.testing_id} project={project} pbChartSettings={pbChartSettings} onPlans={onPlans} />
+      <PbChartPanel
+        key={project.testing_id}
+        project={project}
+        pbChartSettings={pbChartSettings}
+        progressStatusThresholds={progressStatusThresholds}
+        onPlans={onPlans}
+      />
     </div>
   )
 }
@@ -144,59 +135,4 @@ function getProjectStatus(project: ProjectItem): { label: string; className: str
   return { label: '進行中', className: 'active' }
 }
 
-function formatRate(value: number | null | undefined) {
-  if (value == null) {
-    return '-'
-  }
-  return `${value.toFixed(1)}%`
-}
-
-function formatCompletionRate(project: ProjectItem) {
-  const rate = formatRate(project.actual_completed_rate)
-  if (rate === '-') {
-    return rate
-  }
-  return `${rate} (${project.actual_completed}/${project.actual_available_cases})`
-}
-
-function StatusTile({
-  label,
-  value,
-  statusLevel,
-}: {
-  label: string
-  value: string
-  statusLevel?: ProgressStatusLevel
-}) {
-  return (
-    <div className="status-tile">
-      <span>{label}</span>
-      <strong className={statusLevel ? 'status-value with-indicator' : 'status-value'}>
-        {statusLevel && (
-          <span
-            className={`plan-status-indicator ${statusLevel}`}
-            aria-label={getProgressStatusLabel(statusLevel)}
-            title={getProgressStatusLabel(statusLevel)}
-          >
-            ●
-          </span>
-        )}
-        <span>{value}</span>
-      </strong>
-    </div>
-  )
-}
-
-function getProgressStatusLabel(level: ProgressStatusLevel) {
-  if (level === 'normal') {
-    return '正常'
-  }
-  if (level === 'caution') {
-    return '注意'
-  }
-  if (level === 'warning') {
-    return '警告'
-  }
-  return '状態なし'
-}
 

@@ -30,7 +30,12 @@ import type {
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { Bug, ClipboardList } from 'lucide-react'
-import { formatDate, formatDateTime } from '../utils/date'
+import { formatDateTime, formatDateTimeWithRelative } from '../utils/date'
+import {
+  getProgressStatusLevel,
+  type ProgressStatusLevel,
+  type ProgressStatusThresholds,
+} from '../utils/statusThresholds'
 import { getErrorMessage } from '../utils/errors'
 
 echarts.use([
@@ -85,10 +90,12 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
 export function PbChartPanel({
   project,
   pbChartSettings,
+  progressStatusThresholds,
   onPlans,
 }: {
   project: ProjectItem
   pbChartSettings: PbChartSettings
+  progressStatusThresholds: ProgressStatusThresholds
   onPlans?: () => void
 }) {
   const [result, setResult] = useState<ChartResult | null>(null)
@@ -193,15 +200,32 @@ export function PbChartPanel({
     ),
   ).sort((a, b) => a.localeCompare(b))
   const loading = !isCurrentResult
-  const rangeText = chart?.range
-    ? `${formatDate(chart.range.from)} ～ ${formatDate(chart.range.to)}`
-    : '-'
   const bugSummary = chart ? getBugSummary(chart) : null
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
+  const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
+  // Block件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
+  const blockedCount = daily.reduce((sum, item) => sum + item.Blocked, 0)
+  // 未解決チケットは「未解決チケット一覧」と同じ母数（見送りを除く未解決バグ）。
+  const bugDataFetched = usesTestResultBugs || Boolean(chart?.has_bugs)
+  const openTicketCount = openBugs.filter((bug) => !bug.is_suspended).length
 
   return (
     <section className="chart-section">
+      <section className="summary-grid">
+        <StatusTile label="完了率(対全体)" value={formatCompletionRate(project)} />
+        <StatusTile
+          label="完了率(対計画)"
+          value={formatRate(project.actual_vs_plan_rate)}
+          statusLevel={planStatusLevel}
+        />
+        <StatusTile label="Block件数" value={loading ? '-' : String(blockedCount)} />
+        <StatusTile
+          label="未解決チケット件数"
+          value={loading || !bugDataFetched ? '-' : String(openTicketCount)}
+        />
+      </section>
+
       <div className="chart-controls">
         <label className="target-select">
           <span>表示対象</span>
@@ -218,7 +242,9 @@ export function PbChartPanel({
             ))}
           </select>
         </label>
-        <span className="chart-period">表示期間: {rangeText}</span>
+        <span className="chart-period">
+          最終更新: {formatDateTimeWithRelative(project.actuals_updated_at)}
+        </span>
         <ChartLayerControls layers={layers} onChange={setLayers} bugsAllowed={bugsAllowed} />
       </div>
 
@@ -284,6 +310,62 @@ export function PbChartPanel({
       )}
     </section>
   )
+}
+
+function StatusTile({
+  label,
+  value,
+  statusLevel,
+}: {
+  label: string
+  value: string
+  statusLevel?: ProgressStatusLevel
+}) {
+  return (
+    <div className="status-tile">
+      <span>{label}</span>
+      <strong className={statusLevel ? 'status-value with-indicator' : 'status-value'}>
+        {statusLevel && (
+          <span
+            className={`plan-status-indicator ${statusLevel}`}
+            aria-label={getProgressStatusLabel(statusLevel)}
+            title={getProgressStatusLabel(statusLevel)}
+          >
+            ●
+          </span>
+        )}
+        <span>{value}</span>
+      </strong>
+    </div>
+  )
+}
+
+function getProgressStatusLabel(level: ProgressStatusLevel) {
+  if (level === 'normal') {
+    return '正常'
+  }
+  if (level === 'caution') {
+    return '注意'
+  }
+  if (level === 'warning') {
+    return '警告'
+  }
+  return '状態なし'
+}
+
+function formatRate(value: number | null | undefined) {
+  if (value == null) {
+    return '-'
+  }
+  return `${value.toFixed(1)}%`
+}
+
+function formatCompletionRate(project: ProjectItem) {
+  const rate = formatRate(project.actual_completed_rate)
+  if (rate === '-') {
+    return rate
+  }
+  return `${rate} (${project.actual_completed}/${project.actual_available_cases})`
 }
 
 function getBugSummary(

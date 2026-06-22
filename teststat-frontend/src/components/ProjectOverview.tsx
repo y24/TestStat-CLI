@@ -9,7 +9,7 @@ import {
 } from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
-import { Check, ClipboardList, FolderKanban, Link2, Pencil } from 'lucide-react'
+import { Check, ClipboardList, FilePenLine, Link2 } from 'lucide-react'
 
 export function ProjectOverview({
   project,
@@ -51,7 +51,6 @@ export function ProjectOverview({
       <header className="content-header">
         <div>
           <h1 className="project-title">
-            <FolderKanban className="title-icon" aria-hidden="true" />
             {project.archived && <LockIcon />}
             <span>{project.name}</span>
             <ShareLinkButton testingId={project.testing_id} />
@@ -71,8 +70,8 @@ export function ProjectOverview({
         </div>
         <div className="header-actions">
           <button className="secondary-button icon-text-button" type="button" onClick={onEdit}>
-            <Pencil className="button-icon" aria-hidden="true" />
-            <span>プロジェクト情報編集</span>
+            <FilePenLine className="button-icon" aria-hidden="true" />
+            <span>プロジェクト設定</span>
           </button>
           <button className="primary-button icon-text-button" type="button" onClick={onPlans}>
             <ClipboardList className="button-icon" aria-hidden="true" strokeWidth={2.2} />

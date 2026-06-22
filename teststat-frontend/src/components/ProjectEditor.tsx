@@ -266,7 +266,7 @@ export function ProjectEditor({
     <div className="content-shell narrow plan-screen">
       <header className="content-header">
         <div>
-          <h1>{mode === 'new' ? '新規プロジェクト作成' : 'プロジェクト情報編集'}</h1>
+          <h1>{mode === 'new' ? '新規プロジェクト作成' : 'プロジェクト設定'}</h1>
         </div>
       </header>
 

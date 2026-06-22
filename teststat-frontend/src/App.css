@@ -175,14 +175,6 @@
   stroke-width: 2.2;
 }
 
-.project-list-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: #5e6a78;
-  stroke-width: 2.1;
-}
-
 .project-name-row .lock-icon {
   flex: 0 0 15px;
 }
@@ -422,10 +414,6 @@
 
 .project-title .lock-icon {
   flex: 0 0 20px;
-}
-
-.project-title .title-icon {
-  margin-right: 1px;
 }
 
 .project-title span {

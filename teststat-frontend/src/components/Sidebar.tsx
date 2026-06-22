@@ -13,7 +13,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, FolderKanban, Plus, RefreshCw, Search, Settings } from 'lucide-react'
+import { GripVertical, Plus, RefreshCw, Search, Settings } from 'lucide-react'
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
@@ -287,7 +287,6 @@ function SortableProjectRow({
       </span>
       <button className="project-row-main" type="button" onClick={() => onSelect(project.testing_id)}>
         <span className="project-name-row">
-          <FolderKanban className="project-list-icon" aria-hidden="true" />
           {project.archived && <LockIcon />}
           <span className="project-name">{project.name}</span>
         </span>

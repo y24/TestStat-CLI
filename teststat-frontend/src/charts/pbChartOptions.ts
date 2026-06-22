@@ -20,6 +20,7 @@ export type PbChartOption = ComposeOption<
 
 const chartFontFamily =
   '"Yu Gothic", "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif'
+const maxDateTickCount = 12
 
 // 不具合の右軸スケールは段階的に: 30 → 50 → 70 → 90 …（少件数で全体を占有しないように）。
 function steppedBugMax(peak: number, baseMax: number): number {
@@ -28,12 +29,55 @@ function steppedBugMax(peak: number, baseMax: number): number {
   return Math.ceil((peak - normalizedBaseMax) / 20) * 20 + normalizedBaseMax
 }
 
+function formatAxisDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return value
+  return `${Number(match[2])}/${Number(match[3])}`
+}
+
+function getDayOfWeek(value: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getDay()
+}
+
+function selectDateTickIndexes(dates: string[]): Set<number> {
+  if (dates.length <= maxDateTickCount) {
+    return new Set(dates.map((_, index) => index))
+  }
+
+  const minGap = Math.ceil(dates.length / maxDateTickCount)
+  const selected = new Set<number>([0, dates.length - 1])
+  let lastSelected = 0
+
+  dates.forEach((date, index) => {
+    const isMonday = getDayOfWeek(date) === 1
+    const isMonthStart = date.endsWith('-01')
+    if (!isMonday && !isMonthStart) {
+      return
+    }
+    if (index - lastSelected >= minGap && dates.length - 1 - index >= Math.max(1, minGap - 1)) {
+      selected.add(index)
+      lastSelected = index
+    }
+  })
+
+  for (let index = 0; index < dates.length; index += minGap) {
+    if (![...selected].some((selectedIndex) => Math.abs(selectedIndex - index) < minGap)) {
+      selected.add(index)
+    }
+  }
+
+  return selected
+}
+
 export function buildPbChartOption(
   chart: PbChartResponse,
   layers: ChartLayers,
   bugAxisMax: number,
 ): PbChartOption {
   const dates = chart.series.map((item) => item.date)
+  const dateTickIndexes = selectDateTickIndexes(dates)
   const series: PbChartOption['series'] = []
   const hasBugData =
     chart.has_bugs && chart.series.some((item) => item.bug_open !== null)
@@ -215,14 +259,26 @@ export function buildPbChartOption(
       type: 'scroll',
       data: legendData,
     },
-    grid: { left: 58, right: showBugs ? 52 : 24, top: 42, bottom: 18 },
+    grid: { left: 58, right: showBugs ? 52 : 24, top: 42, bottom: 42 },
     xAxis: {
       type: 'category',
       data: dates,
       boundaryGap: true,
-      axisLabel: { show: false },
+      axisLabel: {
+        show: true,
+        color: '#687386',
+        margin: 10,
+        hideOverlap: true,
+        formatter: (value: string) => formatAxisDate(value),
+        interval: (index: number) => dateTickIndexes.has(index),
+      },
       axisLine: { show: false },
-      axisTick: { show: false },
+      axisTick: {
+        show: true,
+        alignWithLabel: true,
+        interval: (index: number) => dateTickIndexes.has(index),
+        lineStyle: { color: '#cbd2dc' },
+      },
     },
     yAxis: showBugs
       ? [

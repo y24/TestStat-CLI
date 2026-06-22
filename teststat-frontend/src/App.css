@@ -1384,6 +1384,25 @@
   stroke-width: 2.4;
 }
 
+.plan-excel-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: #217346;
+  vertical-align: middle;
+  border-radius: 3px;
+  transition: opacity 0.15s;
+}
+
+.plan-excel-link:hover {
+  opacity: 0.7;
+}
+
+.plan-excel-link svg {
+  width: 15px;
+  height: 15px;
+}
+
 .active-plan-radio {
   width: 16px;
   height: 16px;

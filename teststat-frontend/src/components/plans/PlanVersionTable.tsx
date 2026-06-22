@@ -1,4 +1,4 @@
-import { ChartLine, Link, Pencil, TriangleAlert } from 'lucide-react'
+import { ChartLine, FileSpreadsheet, Pencil, TriangleAlert } from 'lucide-react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
@@ -113,10 +113,16 @@ export function PlanVersionTable({
                     <td>
                       <strong>{displayLabel(label)}</strong>
                       {registeredLabel?.source_url && (
-                        <span className="row-note plan-only-note" title="SharePoint URL 登録済み">
-                          <Link className="plan-only-note-icon" aria-hidden="true" />
-                          <span>URL 登録済み</span>
-                        </span>
+                        <a
+                          href={registeredLabel.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="plan-excel-link"
+                          title="SharePointのExcelを開く"
+                          aria-label={`${registeredLabel.label} のExcelファイルを開く`}
+                        >
+                          <FileSpreadsheet aria-hidden="true" />
+                        </a>
                       )}
                       {isPlanOnly && (
                         <span className="row-note plan-only-note">

@@ -17,7 +17,9 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 
@@ -30,6 +32,7 @@ AZ_CLI_PATH_ENV_VAR = "TESTSTAT_AZ_CLI_PATH"
 GRAPH_RESOURCE = "https://graph.microsoft.com"
 DEFAULT_GRAPH_ENDPOINT = "https://graph.microsoft.com/v1.0"
 DEFAULT_TIMEOUT_SEC = 60
+DOWNLOAD_CHUNK_SIZE = 1024 * 256
 
 
 class RemoteSourceError(Exception):
@@ -39,6 +42,106 @@ class RemoteSourceError(Exception):
 def _log(logger, message):
     if logger:
         logger.log(message)
+
+
+def _format_bytes(value):
+    units = ("B", "KB", "MB", "GB")
+    size = float(value or 0)
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(size)} {unit}"
+            return f"{size:.1f} {unit}"
+        size /= 1024
+
+
+class DownloadProgress:
+    """SharePoint ダウンロードの進捗をコンソールへ表示する。"""
+
+    def __init__(self, label=None, file_name=None, item_index=None, item_total=None,
+                 stream=None, enabled=True):
+        self.label = label or "-"
+        self.file_name = file_name or "download.xlsx"
+        self.item_index = item_index
+        self.item_total = item_total
+        self.stream = stream if stream is not None else sys.stdout
+        self.enabled = enabled
+        self._started = False
+        self._last_render = 0
+        self._last_length = 0
+
+    def _prefix(self):
+        if self.item_index is not None and self.item_total is not None:
+            return f"[{self.item_index}/{self.item_total}]"
+        return ""
+
+    def status(self, message, include_context=False):
+        if not self.enabled:
+            return
+        prefix = self._prefix()
+        head = f"{prefix} " if prefix else ""
+        context = f": label={self.label}, file={self.file_name}" if include_context else ""
+        print(f"{head}{message}{context}", file=self.stream)
+        try:
+            self.stream.flush()
+        except Exception:
+            pass
+
+    def start(self, total_bytes=None):
+        if not self.enabled:
+            return
+        self._started = True
+        total = _format_bytes(total_bytes) if total_bytes else "size unknown"
+        prefix = self._prefix()
+        head = f"{prefix} " if prefix else ""
+        print(
+            f"{head}SharePoint ファイルをダウンロード中: {self.file_name} ({total})",
+            file=self.stream,
+        )
+
+    def update(self, downloaded_bytes, total_bytes=None, force=False):
+        if not self.enabled:
+            return
+        now = time.monotonic()
+        if not force and now - self._last_render < 0.2:
+            return
+        self._last_render = now
+
+        prefix = self._prefix()
+        head = f"{prefix} " if prefix else ""
+        if total_bytes:
+            ratio = min(max(downloaded_bytes / total_bytes, 0), 1)
+            percent = ratio * 100
+            width = 24
+            filled = int(width * ratio)
+            bar = "#" * filled + "-" * (width - filled)
+            detail = f"{percent:5.1f}% {_format_bytes(downloaded_bytes)}/{_format_bytes(total_bytes)}"
+        else:
+            bar = "#" * 8
+            detail = f"{_format_bytes(downloaded_bytes)} downloaded"
+
+        line = f"\r{head}[{bar}] {detail}"
+        padding = " " * max(self._last_length - len(line), 0)
+        print(line + padding, end="", file=self.stream)
+        self._last_length = len(line)
+        try:
+            self.stream.flush()
+        except Exception:
+            pass
+
+    def finish(self, dest_path, downloaded_bytes=None):
+        if not self.enabled:
+            return
+        if self._started:
+            self.update(downloaded_bytes or 0, downloaded_bytes or None, force=True)
+            print(file=self.stream)
+        prefix = self._prefix()
+        head = f"{prefix} " if prefix else ""
+        print(f"{head}SharePoint ファイルのダウンロード完了: {dest_path}", file=self.stream)
+        try:
+            self.stream.flush()
+        except Exception:
+            pass
 
 
 def _shorten_message(value, limit=800):
@@ -260,8 +363,19 @@ def resolve_download_url(share_id, token, graph_endpoint=DEFAULT_GRAPH_ENDPOINT,
     return name, download_url
 
 
+def _get_content_length(response):
+    try:
+        value = response.headers.get("Content-Length")
+    except Exception:
+        value = None
+    try:
+        return int(value) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
 def download_to_temp(download_url, file_name, temp_dir,
-                     timeout=DEFAULT_TIMEOUT_SEC, logger=None):
+                     timeout=DEFAULT_TIMEOUT_SEC, logger=None, progress=None):
     """downloadUrl からファイル本体を取得し temp_dir/<file_name> に保存する。
 
     downloadUrl は署名付きの一時 URL のため Authorization ヘッダは付与しない。
@@ -271,10 +385,24 @@ def download_to_temp(download_url, file_name, temp_dir,
 
     req = urllib.request.Request(download_url, method="GET")
     _log(logger, f"署名付き URL からファイルをダウンロードします: file={safe_name}, dest={dest_path}, timeout_sec={timeout}")
+    downloaded = 0
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response, \
                 open(dest_path, "wb") as f:
-            shutil.copyfileobj(response, f)
+            total_bytes = _get_content_length(response)
+            if progress:
+                progress.file_name = safe_name
+                progress.start(total_bytes)
+            while True:
+                chunk = response.read(DOWNLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+                if progress:
+                    progress.update(downloaded, total_bytes)
+            if progress:
+                progress.finish(dest_path, downloaded)
     except urllib.error.HTTPError as e:
         body = _read_http_error_body(e)
         _log(
@@ -335,12 +463,18 @@ class RemoteFileManager:
                 self.logger.log(f"一時ディレクトリを作成しました: {self._temp_dir}")
         return self._temp_dir
 
-    def fetch(self, url):
+    def fetch(self, url, label=None, item_index=None, item_total=None, progress_stream=None):
         """共有 URL からファイルを取得し、ローカルの一時パスを返す。"""
         _log(logger=self.logger, message=f"SharePoint ファイル取得を開始します: url={url}")
+        progress = DownloadProgress(
+            label=label, item_index=item_index, item_total=item_total,
+            stream=progress_stream, enabled=progress_stream is not None,
+        )
+        progress.status("SharePoint ファイル取得を開始します", include_context=True)
         if url in self._cache:
             if self.logger:
                 self.logger.log(f"キャッシュ済みのファイルを再利用します: {url}")
+            progress.status("キャッシュ済みのSharePointファイルを再利用します")
             return self._cache[url]
 
         temp_dir = self._ensure_temp_dir()
@@ -357,25 +491,29 @@ class RemoteFileManager:
             shutil.copyfile(mock_path, dest_path)
             if self.logger:
                 self.logger.log(f"[MOCK] {url} → {dest_path}")
+            progress.finish(dest_path, os.path.getsize(dest_path))
             self._cache[url] = dest_path
             return dest_path
 
         if self._token is None:
+            progress.status("Graph アクセストークンを取得しています")
             self._token = get_access_token(logger=self.logger)
         else:
             _log(self.logger, "キャッシュ済みの Graph アクセストークンを再利用します。")
 
         share_id = encode_share_id(url)
         _log(self.logger, f"共有 URL を Graph shareId に変換しました: share_id_prefix={share_id[:16]}")
+        progress.status("Graph API でダウンロード URL を解決しています")
         name, download_url = resolve_download_url(
             share_id, self._token,
             graph_endpoint=self.graph_endpoint,
             timeout=self.timeout,
             logger=self.logger,
         )
+        progress.file_name = os.path.basename(name or "download.xlsx")
         local_path = download_to_temp(
             download_url, name, temp_dir,
-            timeout=self.timeout, logger=self.logger,
+            timeout=self.timeout, logger=self.logger, progress=progress,
         )
         self._cache[url] = local_path
         return local_path

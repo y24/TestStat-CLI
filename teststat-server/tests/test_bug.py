@@ -17,10 +17,17 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 import app.models  # noqa: F401,E402
 import app.services.azure_devops as ado  # noqa: E402
 from app.config import Settings  # noqa: E402
-from app.crud.bug import build_work_item_url, get_bug_cumulative, get_open_bugs, replace_bugs  # noqa: E402
+from app.crud.bug import (  # noqa: E402
+    build_work_item_url,
+    delete_bug_count_data,
+    get_bug_cumulative,
+    get_open_bugs,
+    replace_bugs,
+)
 from app.crud.pb_chart import get_pb_chart  # noqa: E402
 from app.crud.project import create_project  # noqa: E402
 from app.database import Base  # noqa: E402
+from app.models.progress import TestResultBugSnapshot, Testing  # noqa: E402
 from app.schemas.project import ProjectCreate  # noqa: E402
 from app.services.azure_devops import BugWorkItem  # noqa: E402
 
@@ -277,6 +284,27 @@ class TestCrud(unittest.TestCase):
     def test_build_work_item_url_without_organization(self):
         self.assertIsNone(build_work_item_url(9002, make_settings(AZURE_DEVOPS_ORGANIZATION="")))
 
+    def test_delete_bug_count_data_removes_all_bug_sources(self):
+        replace_bugs(self.db, 1001, self._bugs(), {"Suspend"}, datetime(2026, 5, 20, 12, 0))
+        self.db.add(Testing(testing_id=1001, project_name="P"))
+        self.db.commit()
+        self.db.add(
+            TestResultBugSnapshot(
+                testing_id=1001,
+                label=None,
+                snapshot_date=date(2026, 5, 20),
+                detected_count=2,
+                suspend_count=1,
+                fixed_count=0,
+                sent_at=datetime(2026, 5, 20, 12, 0),
+            )
+        )
+        self.db.commit()
+
+        self.assertEqual(delete_bug_count_data(self.db, 1001), (3, 1))
+        cum = get_bug_cumulative(self.db, 1001, [date(2026, 5, 20)], {"Suspend"})
+        self.assertEqual(cum[date(2026, 5, 20)], (0, 0, 0))
+
 
 class TestPbChartIntegration(unittest.TestCase):
     def setUp(self):
@@ -354,6 +382,19 @@ class TestRouter(unittest.TestCase):
     def test_unknown_project_404(self):
         self._patch_fetch(lambda wid: [])
         self.assertEqual(self.client.post("/api/v1/projects/9999/bugs/sync").status_code, 404)
+
+    def test_delete_bug_count_data(self):
+        self._patch_fetch(lambda wid: [
+            BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
+        ])
+        self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 200)
+        self.assertEqual(self.client.delete("/api/v1/projects/1001/bugs").status_code, 204)
+        res = self.client.get("/api/v1/projects/1001/bugs/open")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), [])
+
+    def test_delete_bug_count_data_unknown_project_404(self):
+        self.assertEqual(self.client.delete("/api/v1/projects/9999/bugs").status_code, 404)
 
     def test_not_configured_503(self):
         def raise_nc(wid):

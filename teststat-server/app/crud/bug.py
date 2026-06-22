@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models.bug import BugSnapshot
+from app.models.progress import TestResultBugSnapshot
 from app.schemas.bug import BugSyncResponse, OpenBugItem
 from app.services.azure_devops import BugWorkItem
 
@@ -95,6 +96,19 @@ def has_bugs(db: Session, testing_id: int) -> bool:
     return db.scalar(
         select(func.count()).select_from(BugSnapshot).where(BugSnapshot.testing_id == testing_id)
     ) > 0
+
+
+def delete_bug_count_data(db: Session, testing_id: int) -> tuple[int, int]:
+    """Testing ID に紐づく取得済み不具合数データを削除する。
+
+    戻り値は (Azure DevOps 由来の削除件数, テスト結果由来の削除件数)。
+    """
+    azure_result = db.execute(delete(BugSnapshot).where(BugSnapshot.testing_id == testing_id))
+    test_result = db.execute(
+        delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == testing_id)
+    )
+    db.commit()
+    return azure_result.rowcount or 0, test_result.rowcount or 0
 
 
 def get_bugs_updated_at(db: Session, testing_id: int) -> datetime | None:

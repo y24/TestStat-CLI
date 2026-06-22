@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.crud.bug import build_work_item_url, get_open_bugs, replace_bugs
+from app.crud.bug import build_work_item_url, delete_bug_count_data, get_open_bugs, replace_bugs
 from app.crud.project import get_project
 from app.database import get_db
 from app.schemas.bug import BugSyncResponse, OpenBugItem
@@ -52,6 +52,17 @@ def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse
         return replace_bugs(
             db, testing_id, bugs, suspend_states, datetime.now(timezone.utc).replace(tzinfo=None)
         )
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.delete("/projects/{testing_id}/bugs", status_code=status.HTTP_204_NO_CONTENT)
+def delete_bugs(testing_id: int, db: Session = Depends(get_db)) -> None:
+    # プロジェクト存在確認（無ければ 404）。
+    get_project(db, testing_id)
+    try:
+        delete_bug_count_data(db, testing_id)
     except Exception:
         db.rollback()
         raise

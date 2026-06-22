@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   createProject,
+  deleteBugCountData,
   deleteProject,
   fetchAzureDevOpsWorkItem,
   fetchProgressSummary,
@@ -63,6 +64,7 @@ export function ProjectEditor({
   const [submitting, setSubmitting] = useState(false)
   const [adoLoading, setAdoLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [formNotice, setFormNotice] = useState<string | null>(null)
   const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
   const testingIdValue = Number(form.testing_id)
   const testingIdValid = Number.isInteger(testingIdValue) && testingIdValue > 0
@@ -157,6 +159,7 @@ export function ProjectEditor({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     setFormError(null)
+    setFormNotice(null)
 
     const testingId = Number(form.testing_id)
     if (!Number.isInteger(testingId) || testingId <= 0) {
@@ -203,10 +206,33 @@ export function ProjectEditor({
     }
     setSubmitting(true)
     setFormError(null)
+    setFormNotice(null)
     updateProject(project.testing_id, {
       archived: !project.archived,
     })
       .then(onProjectUpdated)
+      .catch((err) => setFormError(getErrorMessage(err)))
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleDeleteBugData = async () => {
+    if (!project) {
+      return
+    }
+    const confirmed = await confirm({
+      title: '不具合数データの削除',
+      message: `Testing ID ${project.testing_id} の取得済み不具合数データを削除します。プロジェクト、計画、実績データは削除されません。`,
+      confirmLabel: '削除',
+      danger: true,
+    })
+    if (!confirmed) {
+      return
+    }
+    setSubmitting(true)
+    setFormError(null)
+    setFormNotice(null)
+    deleteBugCountData(project.testing_id)
+      .then(() => setFormNotice('不具合数データを削除しました。'))
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
   }
@@ -246,6 +272,7 @@ export function ProjectEditor({
 
       <form className="editor-form" onSubmit={submit}>
         {formError && <div className="form-error">{formError}</div>}
+        {formNotice && <div className="form-success">{formNotice}</div>}
         <label>
           <span>Testing ID</span>
           <div className="ado-fetch-row">
@@ -357,6 +384,14 @@ export function ProjectEditor({
               >
                 <LockIcon unlocked={project?.archived} />
                 {project?.archived ? 'アーカイブ解除' : 'アーカイブ'}
+              </button>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={handleDeleteBugData}
+                disabled={submitting}
+              >
+                不具合数データ削除
               </button>
               <span
                 className="delete-action-tooltip"

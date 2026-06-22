@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from utils import RemoteSource
 from utils.RemoteSource import (
+    DownloadProgress,
     RemoteFileManager,
     RemoteSourceError,
     encode_share_id,
@@ -19,11 +20,18 @@ from utils.RemoteSource import (
 
 
 class FakeResponse:
-    def __init__(self, body="{}"):
-        self._body = body.encode("utf-8")
+    def __init__(self, body="{}", headers=None):
+        self._body = body.encode("utf-8") if isinstance(body, str) else body
+        self._offset = 0
+        self.headers = headers or {}
 
-    def read(self):
-        return self._body
+    def read(self, size=-1):
+        if size is None or size < 0:
+            size = len(self._body) - self._offset
+        start = self._offset
+        end = min(start + size, len(self._body))
+        self._offset = end
+        return self._body[start:end]
 
     def __enter__(self):
         return self
@@ -70,6 +78,33 @@ class EncodeShareIdTests(unittest.TestCase):
         self.assertNotIn("=", share_id)
         self.assertNotIn("/", share_id)
         self.assertNotIn("+", share_id)
+
+
+class DownloadProgressTests(unittest.TestCase):
+    def test_download_to_temp_writes_progress_with_label_and_count(self):
+        stream = io.StringIO()
+        progress = DownloadProgress(label="LABEL1", item_index=1, item_total=2, stream=stream)
+        body = b"abc" * 100
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch(
+                "utils.RemoteSource.urllib.request.urlopen",
+                return_value=FakeResponse(body, {"Content-Length": str(len(body))}),
+            ):
+                path = RemoteSource.download_to_temp(
+                    "https://dl.example/file",
+                    "sample.xlsx",
+                    temp_dir,
+                    progress=progress,
+                )
+            with open(path, "rb") as f:
+                self.assertEqual(f.read(), body)
+
+        output = stream.getvalue()
+        self.assertIn("[1/2]", output)
+        self.assertIn("sample.xlsx", output)
+        self.assertIn("100.0%", output)
+        self.assertNotIn("label=LABEL1", output)
 
 
 class ResolveDownloadUrlTests(unittest.TestCase):

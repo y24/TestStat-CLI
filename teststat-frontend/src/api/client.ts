@@ -203,6 +203,9 @@ export const fetchAzureDevOpsWorkItem = (work_item_id: number) =>
 export const syncAzureDevOpsBugs = (testing_id: number) =>
   request<BugSyncResult>(`/api/v1/projects/${testing_id}/bugs/sync`, { method: 'POST' })
 
+export const deleteBugCountData = (testing_id: number) =>
+  request<void>(`/api/v1/projects/${testing_id}/bugs`, { method: 'DELETE' })
+
 export const fetchOpenBugs = (testing_id: number) =>
   get<OpenBugItem[]>(`/api/v1/projects/${testing_id}/bugs/open`)
 

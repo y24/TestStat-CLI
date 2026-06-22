@@ -355,9 +355,16 @@ def main():
     if args.list:
         try:
             project_info = ProjectList.read_project_list_file(args.list)
+            remote_file_infos = [
+                file_info for file_info in project_info["files"]
+                if file_info.get("is_remote") or RemoteSource.is_remote_path(file_info["path"])
+            ]
+            remote_total = len(remote_file_infos)
+            remote_index = 0
             for file_info in project_info["files"]:
                 # リモートURL（SharePoint共有URL等）は一時フォルダへダウンロードして集計する
                 if file_info.get("is_remote") or RemoteSource.is_remote_path(file_info["path"]):
+                    remote_index += 1
                     sp_config = settings.get("sharepoint", {})
                     if not sp_config.get("enabled", True):
                         execution_warnings.append(f"SharePoint連携が無効のためスキップします: {file_info['path']}")
@@ -367,7 +374,14 @@ def main():
                             remote_mgr = RemoteSource.RemoteFileManager(sp_config, verbose_logger)
                             if remote_mgr.cleanup_enabled:
                                 atexit.register(remote_mgr.cleanup)
-                        target_path = remote_mgr.fetch(file_info["path"])
+                        progress_stream = sys.stderr if is_json_mode else sys.stdout
+                        target_path = remote_mgr.fetch(
+                            file_info["path"],
+                            label=file_info.get("label", ""),
+                            item_index=remote_index,
+                            item_total=remote_total,
+                            progress_stream=progress_stream,
+                        )
                     except RemoteSource.RemoteSourceError as e:
                         execution_warnings.append(f"SharePointダウンロードに失敗しました: {file_info['path']} ({e})")
                         continue

@@ -13,8 +13,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, FolderKanban, Plus, RefreshCw, Settings } from 'lucide-react'
-import type { CSSProperties } from 'react'
+import { GripVertical, FolderKanban, Plus, RefreshCw, Search, Settings } from 'lucide-react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
 import { LockIcon } from './icons/LockIcon'
@@ -92,8 +92,22 @@ function ProjectNav({
   onReorder,
   onSettings,
 }: ProjectNavProps) {
+  const [archivedFilter, setArchivedFilter] = useState('')
   const activeProjects = projects.filter((project) => !project.archived)
-  const archivedProjects = projects.filter((project) => project.archived)
+  const archivedProjects = useMemo(
+    () =>
+      projects
+        .filter((project) => project.archived)
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [projects],
+  )
+  const filteredArchivedProjects = useMemo(() => {
+    const query = archivedFilter.trim().toLocaleLowerCase()
+    if (!query) {
+      return archivedProjects
+    }
+    return archivedProjects.filter((project) => project.name.toLocaleLowerCase().includes(query))
+  }, [archivedFilter, archivedProjects])
 
   return (
     <div className="project-nav">
@@ -127,14 +141,25 @@ function ProjectNav({
       {!loading && archivedProjects.length > 0 && (
         <details className="archived-group">
           <summary>アーカイブ済み ({archivedProjects.length})</summary>
-          <ProjectList
-            projects={archivedProjects}
-            selectedTestingId={selectedTestingId}
-            onSelect={onSelect}
-            onReorder={(testingIds) => {
-              onReorder([...activeProjects.map((project) => project.testing_id), ...testingIds])
-            }}
-          />
+          <label className="archived-filter">
+            <Search className="archived-filter-icon" aria-hidden="true" />
+            <input
+              type="search"
+              value={archivedFilter}
+              onChange={(event) => setArchivedFilter(event.target.value)}
+              placeholder="プロジェクト名でフィルタ"
+              aria-label="アーカイブ済みプロジェクトをプロジェクト名でフィルタ"
+            />
+          </label>
+          {filteredArchivedProjects.length > 0 ? (
+            <ArchivedProjectList
+              projects={filteredArchivedProjects}
+              selectedTestingId={selectedTestingId}
+              onSelect={onSelect}
+            />
+          ) : (
+            <div className="nav-message">一致するプロジェクトはありません</div>
+          )}
         </details>
       )}
       <div className="sidebar-footer">
@@ -143,6 +168,35 @@ function ProjectNav({
           設定
         </button>
       </div>
+    </div>
+  )
+}
+
+function ArchivedProjectList({
+  projects,
+  selectedTestingId,
+  onSelect,
+}: {
+  projects: ProjectItem[]
+  selectedTestingId: number | null
+  onSelect: (testingId: number) => void
+}) {
+  return (
+    <div className="project-list archived-project-list">
+      {projects.map((project) => (
+        <button
+          key={project.testing_id}
+          className={['archived-project-row', project.testing_id === selectedTestingId ? 'selected' : '']
+            .filter(Boolean)
+            .join(' ')}
+          type="button"
+          onClick={() => onSelect(project.testing_id)}
+          title={project.name}
+        >
+          <LockIcon />
+          <span className="archived-project-name">{project.name}</span>
+        </button>
+      ))}
     </div>
   )
 }

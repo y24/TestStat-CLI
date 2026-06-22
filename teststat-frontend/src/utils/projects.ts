@@ -5,6 +5,9 @@ export function sortProjects(projects: ProjectItem[]) {
     if (a.archived !== b.archived) {
       return Number(a.archived) - Number(b.archived)
     }
+    if (a.archived && b.archived) {
+      return b.updated_at.localeCompare(a.updated_at)
+    }
     if (a.display_order !== b.display_order) {
       return a.display_order - b.display_order
     }

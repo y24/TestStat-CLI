@@ -34,7 +34,7 @@ tstat --help
 ```powershell
 cd teststat-server
 .\.venv\Scripts\activate
-uvicorn app.main:app --host 0.0.0.0 --port 18000
+uvicorn app.main:app --host 0.0.0.0 --port 18000 --reload
 ```
 
 ```powershell

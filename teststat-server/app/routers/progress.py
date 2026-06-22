@@ -27,15 +27,13 @@ def read_progress_summary(testing_id: int, db: Session = Depends(get_db)) -> Pro
 
 @router.get("/progress/{testing_id}/files", response_model=list[FileProgressItem])
 def read_progress_files(testing_id: int, db: Session = Depends(get_db)) -> list[FileProgressItem]:
-    if get_progress_summary(db, testing_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Testing ID not found")
+    # コレクション系は未開始（Testing 行なし）でも 200 + 空配列を返す。空集合は Not Found ではない。
     return get_file_progress(db, testing_id)
 
 
 @router.get("/progress/{testing_id}/daily", response_model=list[DailyProgressItem])
 def read_progress_daily(testing_id: int, db: Session = Depends(get_db)) -> list[DailyProgressItem]:
-    if get_progress_summary(db, testing_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Testing ID not found")
+    # コレクション系は未開始（Testing 行なし）でも 200 + 空配列を返す。空集合は Not Found ではない。
     return get_daily_progress(db, testing_id)
 
 

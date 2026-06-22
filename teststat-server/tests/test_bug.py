@@ -76,6 +76,20 @@ class TestSettingsParsing(unittest.TestCase):
         )
         self.assertEqual(s.azure_devops_bug_suspend_status_set, set())
 
+    def test_bug_date_fields_are_ordered_csv_lists(self):
+        s = make_settings(
+            AZURE_DEVOPS_BUG_CREATED_DATE_FIELD=" System.CreatedDate, Custom.CreatedDate, System.CreatedDate ",
+            AZURE_DEVOPS_BUG_FINISH_DATE_FIELD="Microsoft.VSTS.Common.ClosedDate, Custom.FinishDate",
+        )
+        self.assertEqual(
+            s.azure_devops_bug_created_date_fields,
+            ["System.CreatedDate", "Custom.CreatedDate"],
+        )
+        self.assertEqual(
+            s.azure_devops_bug_finish_date_fields,
+            ["Microsoft.VSTS.Common.ClosedDate", "Custom.FinishDate"],
+        )
+
 
 class TestMockMode(unittest.TestCase):
     def test_returns_bugs_without_removed(self):
@@ -131,6 +145,37 @@ class TestRemoteMode(unittest.TestCase):
         self.assertIsNone(bugs[1].finish_date)
         self.assertEqual(captured["requests"][0][0], "POST")
         self.assertTrue(captured["requests"][0][1].endswith("/wiql?api-version=7.1"))
+
+    def test_bug_date_fields_fallback_in_order(self):
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/wiql"):
+                return httpx.Response(200, json={"workItems": [{"id": 9001}]})
+            captured["fields"] = request.url.params.get("fields")
+            return httpx.Response(200, json={"value": [
+                {"id": 9001, "fields": {
+                    "System.Title": "A",
+                    "System.State": "Closed",
+                    "Microsoft.VSTS.Scheduling.StartDate": "2026-05-02T09:00:00Z",
+                    "Custom.FinishDate": "2026-05-06T10:00:00Z",
+                }},
+            ]})
+
+        self._install_transport(handler)
+        settings = make_settings(
+            AZURE_DEVOPS_BUG_CREATED_DATE_FIELD="System.CreatedDate,Microsoft.VSTS.Scheduling.StartDate",
+            AZURE_DEVOPS_BUG_FINISH_DATE_FIELD="Microsoft.VSTS.Common.ClosedDate,Custom.FinishDate",
+        )
+        bugs = ado.fetch_child_bugs(1001, settings)
+
+        self.assertEqual(bugs[0].created_date, date(2026, 5, 2))
+        self.assertEqual(bugs[0].finish_date, date(2026, 5, 6))
+        self.assertEqual(
+            captured["fields"],
+            "System.Title,System.State,System.CreatedDate,Microsoft.VSTS.Scheduling.StartDate,"
+            "Microsoft.VSTS.Common.ClosedDate,Custom.FinishDate",
+        )
 
     def test_ignore_status_filtered_remote(self):
         def handler(request: httpx.Request) -> httpx.Response:

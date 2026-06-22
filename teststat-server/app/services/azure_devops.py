@@ -243,8 +243,8 @@ def _configured_bug_fields(settings: Settings) -> list[str]:
     candidates = [
         settings.azure_devops_title_field,
         settings.azure_devops_bug_state_field,
-        settings.azure_devops_bug_created_date_field,
-        settings.azure_devops_bug_finish_date_field,
+        *settings.azure_devops_bug_created_date_fields,
+        *settings.azure_devops_bug_finish_date_fields,
     ]
     result: list[str] = []
     for name in candidates:
@@ -298,14 +298,23 @@ def _fetch_child_bugs_remote(work_item_id: int, settings: Settings) -> list[BugW
     return bugs
 
 
+def _parse_first_date(fields: dict, field_names: list[str]) -> date | None:
+    """候補フィールドを順に見て、最初に解釈できた日付を返す。"""
+    for name in field_names:
+        parsed = _parse_date(fields.get(name))
+        if parsed is not None:
+            return parsed
+    return None
+
+
 def _build_bug(item: dict, settings: Settings) -> BugWorkItem:
     fields = item.get("fields", {})
     return BugWorkItem(
         work_item_id=item.get("id", 0),
         title=fields.get(settings.azure_devops_title_field) or "",
         state=fields.get(settings.azure_devops_bug_state_field) or "",
-        created_date=_parse_date(fields.get(settings.azure_devops_bug_created_date_field)),
-        finish_date=_parse_date(fields.get(settings.azure_devops_bug_finish_date_field)),
+        created_date=_parse_first_date(fields, settings.azure_devops_bug_created_date_fields),
+        finish_date=_parse_first_date(fields, settings.azure_devops_bug_finish_date_fields),
     )
 
 

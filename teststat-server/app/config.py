@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     def _csv_set(value: str) -> set[str]:
         return {item.strip() for item in value.split(",") if item.strip()}
 
+    @staticmethod
+    def _csv_list(value: str) -> list[str]:
+        result: list[str] = []
+        for item in value.split(","):
+            name = item.strip()
+            if name and name not in result:
+                result.append(name)
+        return result
+
     @property
     def azure_devops_bug_ignore_status_set(self) -> set[str]:
         return self._csv_set(self.azure_devops_bug_ignore_status)
@@ -56,6 +65,14 @@ class Settings(BaseSettings):
     def azure_devops_bug_suspend_status_set(self) -> set[str]:
         # IGNORE と重複した State は除外を優先（見送り集合からは外す）。
         return self._csv_set(self.azure_devops_bug_suspend_status) - self.azure_devops_bug_ignore_status_set
+
+    @property
+    def azure_devops_bug_created_date_fields(self) -> list[str]:
+        return self._csv_list(self.azure_devops_bug_created_date_field)
+
+    @property
+    def azure_devops_bug_finish_date_fields(self) -> list[str]:
+        return self._csv_list(self.azure_devops_bug_finish_date_field)
 
 
 @lru_cache

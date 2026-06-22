@@ -129,10 +129,13 @@ AZURE_DEVOPS_API_VERSION=7.1
 AZURE_DEVOPS_TITLE_FIELD=System.Title
 AZURE_DEVOPS_START_DATE_FIELD=Microsoft.VSTS.Scheduling.StartDate
 AZURE_DEVOPS_END_DATE_FIELD=Microsoft.VSTS.Scheduling.FinishDate
+AZURE_DEVOPS_BUG_CREATED_DATE_FIELD=System.CreatedDate,Microsoft.VSTS.Scheduling.StartDate
+AZURE_DEVOPS_BUG_FINISH_DATE_FIELD=Microsoft.VSTS.Common.ClosedDate,Custom.FinishDate
 ```
 
 - `AZURE_DEVOPS_ORGANIZATION`: 組織名（`https://dev.azure.com/{org}` の `{org}`）。
 - 日付フィールドはプロセステンプレートに合わせて変更する（Agile/CMMI は既定値のままでよいことが多い。カスタムの場合は `Custom.ActualStartDate` のような参照名を指定）。
+- 不具合の日付フィールドはカンマ区切りで複数指定できる。左から順に値を確認し、最初に日付として読めた値を使う。
 - 設定変更後はサーバーを再起動する。
 
 ### 4. 動作確認

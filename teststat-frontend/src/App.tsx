@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   fetchHealth,
@@ -13,6 +13,7 @@ import type { PbChartSettings, ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { useConfirmDialog } from './components/confirmDialogContext'
 import { PlanEditor } from './components/PlanEditor'
+import type { PlanEditorMode } from './components/PlanEditor'
 import { ProjectEditor } from './components/ProjectEditor'
 import { ProjectOverview } from './components/ProjectOverview'
 import { SettingsScreen } from './components/SettingsScreen'
@@ -20,11 +21,20 @@ import { Sidebar } from './components/Sidebar'
 import type { ApiStatus, ViewMode } from './types/ui'
 import { getErrorMessage } from './utils/errors'
 import { sortProjects } from './utils/projects'
+import { normalizeUrlToBase, readTestingIdFromUrl } from './utils/shareLink'
 import {
   DEFAULT_PROGRESS_STATUS_THRESHOLDS,
   type ProgressStatusThresholds,
 } from './utils/statusThresholds'
 import { getStoredSelectedTestingId, setStoredSelectedTestingId } from './utils/uiStateStorage'
+
+const DISCARD_CONFIRM_OPTIONS = {
+  title: '入力内容の破棄',
+  message: '編集した内容が保存されていません。画面を離れてもよろしいですか？',
+  confirmLabel: 'OK',
+  cancelLabel: 'キャンセル',
+  danger: true,
+} as const
 
 export default function App() {
   return (
@@ -40,6 +50,7 @@ function AppContent() {
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedTestingId, setSelectedTestingId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
+  const [planMode, setPlanMode] = useState<PlanEditorMode>('list')
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -48,15 +59,72 @@ function AppContent() {
   )
   const [pbChartSettings, setPbChartSettings] = useState<PbChartSettings>({ bug_axis_max: 30 })
 
+  // popstate ハンドラから最新値を同期的に参照するための ref。
+  const viewModeRef = useRef(viewMode)
+  const planModeRef = useRef(planMode)
+  const hasUnsavedChangesRef = useRef(hasUnsavedChanges)
+
+  useEffect(() => {
+    viewModeRef.current = viewMode
+  }, [viewMode])
+
+  useEffect(() => {
+    planModeRef.current = planMode
+  }, [planMode])
+
   const selectedProject = useMemo(
     () => projects.find((project) => project.testing_id === selectedTestingId) ?? null,
     [projects, selectedTestingId],
   )
 
-  const resolveSelectedTestingId = (
-    items: ProjectItem[],
-    preferredTestingId: number | null,
-  ) => {
+  // 未保存フラグは state と ref を同時に更新し、popstate から遅延なく読めるようにする。
+  const setUnsaved = useCallback((dirty: boolean) => {
+    hasUnsavedChangesRef.current = dirty
+    setHasUnsavedChanges(dirty)
+  }, [])
+
+  // 概要 → サブ画面へ。URL は変えず履歴エントリだけ積む（ブラウザバックで概要へ戻れる）。
+  const openSubview = useCallback((view: Exclude<ViewMode, 'overview'>) => {
+    const nextPlanMode: PlanEditorMode = 'list'
+    const state = view === 'plans' ? { view, planMode: nextPlanMode } : { view }
+    if (viewModeRef.current === 'overview') {
+      window.history.pushState(state, '')
+    } else {
+      window.history.replaceState(state, '')
+    }
+    setViewMode(view)
+    setPlanMode(nextPlanMode)
+  }, [])
+
+  // 計画一覧 → 計画内サブ画面へ。履歴を一段積み、ブラウザバックで計画一覧へ戻す。
+  const openPlanScreen = useCallback((nextPlanMode: Exclude<PlanEditorMode, 'list'>) => {
+    if (viewModeRef.current !== 'plans') {
+      return
+    }
+    window.history.pushState({ view: 'plans', planMode: nextPlanMode }, '')
+    setPlanMode(nextPlanMode)
+  }, [])
+
+  // 現在の画面から一段戻る（計画内サブ画面→計画一覧、計画一覧→概要）。
+  const goBackOneLevel = useCallback(() => {
+    if (viewModeRef.current === 'overview') {
+      return
+    }
+    window.history.back()
+  }, [])
+
+  const goToOverview = useCallback(() => {
+    if (viewModeRef.current === 'overview') {
+      return
+    }
+    if (viewModeRef.current === 'plans' && planModeRef.current !== 'list') {
+      window.history.go(-2)
+      return
+    }
+    window.history.back()
+  }, [])
+
+  const resolveSelectedTestingId = (items: ProjectItem[], preferredTestingId: number | null) => {
     if (preferredTestingId !== null && items.some((item) => item.testing_id === preferredTestingId)) {
       return preferredTestingId
     }
@@ -81,15 +149,20 @@ function AppContent() {
     fetchHealth()
       .then(() => setApiStatus('ok'))
       .catch(() => setApiStatus('error'))
+    // 共有リンク（/tstat/<id>）で開かれた場合は URL の id を初期選択に使う。
+    // それ以外は直前選択（localStorage）。判定後、アドレスバーはベースパスへ正規化する。
+    const urlTestingId = readTestingIdFromUrl()
     fetchProjects()
       .then((items) => {
         setProjects(items)
-        const nextSelectedTestingId = resolveSelectedTestingId(items, getStoredSelectedTestingId())
+        const preferredTestingId = urlTestingId ?? getStoredSelectedTestingId()
+        const nextSelectedTestingId = resolveSelectedTestingId(items, preferredTestingId)
         setSelectedTestingId(nextSelectedTestingId)
         setStoredSelectedTestingId(nextSelectedTestingId)
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
+    normalizeUrlToBase()
     fetchProgressStatusThresholds()
       .then(setProgressStatusThresholds)
       .catch((err) => setError(getErrorMessage(err)))
@@ -98,17 +171,46 @@ function AppContent() {
       .catch((err) => setError(getErrorMessage(err)))
   }, [])
 
+  // ブラウザの戻る/進む。未保存編集中はここで破棄確認し、キャンセルなら履歴を積み直して留まる。
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const targetView = (event.state?.view as ViewMode | undefined) ?? 'overview'
+      const targetPlanMode: PlanEditorMode = targetView === 'plans'
+        ? (event.state?.planMode as PlanEditorMode | undefined) ?? 'list'
+        : 'list'
+      const currentView = viewModeRef.current
+      const currentPlanMode = planModeRef.current
+      if (currentView === targetView && currentPlanMode === targetPlanMode) {
+        return
+      }
+      if (currentView !== 'overview' && hasUnsavedChangesRef.current) {
+        void confirm(DISCARD_CONFIRM_OPTIONS).then((confirmed) => {
+          if (confirmed) {
+            setUnsaved(false)
+            setViewMode(targetView)
+            setPlanMode(targetPlanMode)
+          } else {
+            const currentState = currentView === 'plans'
+              ? { view: currentView, planMode: currentPlanMode }
+              : { view: currentView }
+            window.history.pushState(currentState, '')
+          }
+        })
+        return
+      }
+      setViewMode(targetView)
+      setPlanMode(targetPlanMode)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [confirm, setUnsaved])
+
   const confirmDiscardChanges = useCallback(async () => {
     if (!hasUnsavedChanges) {
       return true
     }
-    return confirm({
-      title: '入力内容の破棄',
-      message: '編集した内容が保存されていません。画面を離れてもよろしいですか？',
-      confirmLabel: 'OK',
-      cancelLabel: 'キャンセル',
-      danger: true,
-    })
+    return confirm(DISCARD_CONFIRM_OPTIONS)
   }, [confirm, hasUnsavedChanges])
 
   const runAfterDiscardConfirmation = useCallback(
@@ -117,12 +219,13 @@ function AppContent() {
       if (!confirmed) {
         return
       }
-      setHasUnsavedChanges(false)
+      setUnsaved(false)
       action()
     },
-    [confirmDiscardChanges],
+    [confirmDiscardChanges, setUnsaved],
   )
 
+  // タブ閉じ・リロード時の警告（ブラウザバックは上の popstate で別途ガード）。
   useEffect(() => {
     if (!hasUnsavedChanges) {
       return
@@ -137,12 +240,6 @@ function AppContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  const handleProjectSaved = (project: ProjectItem) => {
-    setHasUnsavedChanges(false)
-    handleProjectUpdated(project)
-    setViewMode('overview')
-  }
-
   const handleProjectUpdated = (project: ProjectItem) => {
     setProjects((current) => {
       const exists = current.some((item) => item.testing_id === project.testing_id)
@@ -155,8 +252,14 @@ function AppContent() {
     setStoredSelectedTestingId(project.testing_id)
   }
 
+  const handleProjectSaved = (project: ProjectItem) => {
+    setUnsaved(false)
+    handleProjectUpdated(project)
+    goToOverview()
+  }
+
   const handleDeleted = (testingId: number) => {
-    setHasUnsavedChanges(false)
+    setUnsaved(false)
     const nextProjects = projects.filter((item) => item.testing_id !== testingId)
     const nextSelectedTestingId =
       selectedTestingId === testingId
@@ -165,7 +268,7 @@ function AppContent() {
     setProjects(nextProjects)
     setSelectedTestingId(nextSelectedTestingId)
     setStoredSelectedTestingId(nextSelectedTestingId)
-    setViewMode('overview')
+    goToOverview()
   }
 
   const handleProjectReorder = (orderedTestingIds: number[]) => {
@@ -213,16 +316,16 @@ function AppContent() {
           void runAfterDiscardConfirmation(() => {
             setSelectedTestingId(testingId)
             setStoredSelectedTestingId(testingId)
-            setViewMode('overview')
+            goToOverview()
           })
         }}
         onCreate={() => {
-          void runAfterDiscardConfirmation(() => setViewMode('new'))
+          void runAfterDiscardConfirmation(() => openSubview('new'))
         }}
         onRefresh={loadProjects}
         onReorder={handleProjectReorder}
         onSettings={() => {
-          void runAfterDiscardConfirmation(() => setViewMode('settings'))
+          void runAfterDiscardConfirmation(() => openSubview('settings'))
         }}
       />
       <main className="main-area">
@@ -243,10 +346,10 @@ function AppContent() {
                 mode="new"
                 project={null}
                 onCancel={() => {
-                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
+                  void runAfterDiscardConfirmation(goToOverview)
                 }}
                 onSaved={handleProjectSaved}
-                onDirtyChange={setHasUnsavedChanges}
+                onDirtyChange={setUnsaved}
               />
             )}
             {viewMode === 'edit' && selectedProject && (
@@ -254,12 +357,12 @@ function AppContent() {
                 mode="edit"
                 project={selectedProject}
                 onCancel={() => {
-                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
+                  void runAfterDiscardConfirmation(goToOverview)
                 }}
                 onSaved={handleProjectSaved}
                 onProjectUpdated={handleProjectUpdated}
                 onDeleted={handleDeleted}
-                onDirtyChange={setHasUnsavedChanges}
+                onDirtyChange={setUnsaved}
               />
             )}
             {viewMode === 'overview' && (
@@ -267,19 +370,19 @@ function AppContent() {
                 project={selectedProject}
                 progressStatusThresholds={progressStatusThresholds}
                 pbChartSettings={pbChartSettings}
-                onCreate={() => setViewMode('new')}
-                onEdit={() => setViewMode('edit')}
-                onPlans={() => setViewMode('plans')}
+                onCreate={() => openSubview('new')}
+                onEdit={() => openSubview('edit')}
+                onPlans={() => openSubview('plans')}
               />
             )}
             {viewMode === 'plans' && selectedProject && (
               <PlanEditor
                 project={selectedProject}
-                onBack={() => {
-                  void runAfterDiscardConfirmation(() => setViewMode('overview'))
-                }}
+                mode={planMode}
+                onBack={goBackOneLevel}
+                onOpenScreen={openPlanScreen}
                 onChanged={loadProjects}
-                onDirtyChange={setHasUnsavedChanges}
+                onDirtyChange={setUnsaved}
               />
             )}
             {viewMode === 'settings' && (
@@ -306,4 +409,3 @@ function ProjectLoading() {
     </div>
   )
 }
-

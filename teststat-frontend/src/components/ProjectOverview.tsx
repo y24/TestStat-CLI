@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import type { PbChartSettings, ProjectItem } from '../api/types'
 import { formatDate, formatDateTimeWithRelative } from '../utils/date'
+import { buildProjectShareUrl, copyTextToClipboard } from '../utils/shareLink'
 import {
   getProgressStatusLevel,
   type ProgressStatusLevel,
@@ -7,7 +9,7 @@ import {
 } from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
-import { ClipboardList, FolderKanban, Pencil } from 'lucide-react'
+import { Check, ClipboardList, FolderKanban, Link2, Pencil } from 'lucide-react'
 
 export function ProjectOverview({
   project,
@@ -52,6 +54,7 @@ export function ProjectOverview({
             <FolderKanban className="title-icon" aria-hidden="true" />
             {project.archived && <LockIcon />}
             <span>{project.name}</span>
+            <ShareLinkButton testingId={project.testing_id} />
           </h1>
           {plannedPeriod && <div className="project-planned-period">予定期間: {plannedPeriod}</div>}
           <div className="project-status-row">
@@ -90,6 +93,45 @@ export function ProjectOverview({
 
       <PbChartPanel key={project.testing_id} project={project} pbChartSettings={pbChartSettings} onPlans={onPlans} />
     </div>
+  )
+}
+
+function ShareLinkButton({ testingId }: { testingId: number }) {
+  const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  const handleCopy = async () => {
+    const ok = await copyTextToClipboard(buildProjectShareUrl(testingId))
+    if (!ok) {
+      return
+    }
+    setCopied(true)
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      type="button"
+      className={`share-link-button${copied ? ' copied' : ''}`}
+      onClick={handleCopy}
+      title={copied ? 'リンクをコピーしました' : 'このプロジェクトへのリンクをコピー'}
+      aria-label={copied ? 'リンクをコピーしました' : 'このプロジェクトへのリンクをコピー'}
+    >
+      {copied ? (
+        <Check className="share-link-icon" aria-hidden="true" />
+      ) : (
+        <Link2 className="share-link-icon" aria-hidden="true" />
+      )}
+    </button>
   )
 }
 

@@ -358,6 +358,37 @@
   overflow-wrap: anywhere;
 }
 
+.share-link-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.share-link-button:hover {
+  background: #f2f4f7;
+  color: var(--accent);
+}
+
+.share-link-button.copied {
+  color: #1f9d55;
+}
+
+.share-link-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.1;
+}
+
 .project-planned-period {
   margin-top: 5px;
   color: var(--muted);

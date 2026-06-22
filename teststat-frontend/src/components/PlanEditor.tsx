@@ -34,16 +34,23 @@ interface PlanResult {
   error: string | null
 }
 
-type PlanEditorMode = 'list' | 'create' | 'label' | 'label-edit'
+export type PlanEditorMode = 'list' | 'create' | 'label' | 'label-edit'
 
 export function PlanEditor({
   project,
+  mode,
   onBack,
+  onOpenScreen,
   onChanged,
   onDirtyChange,
 }: {
   project: ProjectItem
+  /** 表示モードは App の履歴スタックから渡る（ブラウザバックで一段ずつ戻れるようにするため）。 */
+  mode: PlanEditorMode
+  /** 一段戻る（サブ画面→一覧、一覧→概要）。未保存ガードは App 側で行う。 */
   onBack: () => void
+  /** サブ画面（計画線作成・識別子）へ一段進む。 */
+  onOpenScreen: (mode: Exclude<PlanEditorMode, 'list'>) => void
   onChanged: () => void
   onDirtyChange: (dirty: boolean) => void
 }) {
@@ -54,7 +61,6 @@ export function PlanEditor({
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
-  const [mode, setMode] = useState<PlanEditorMode>('list')
   const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
@@ -183,6 +189,10 @@ export function PlanEditor({
   const isCreatingNewVersion = plans.some((plan) =>
     targetPlanLabel === null ? plan.label === null : plan.label === targetPlanLabel,
   )
+  const closePlanSubscreen = () => {
+    onDirtyChange(false)
+    onBack()
+  }
   const deletePlans = (targetPlans: PlanItem[]) => {
     const replacementPlans = findReplacementPlansAfterDelete(plans, targetPlans)
     setSubmitting(true)
@@ -226,7 +236,7 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
-    setMode('label')
+    onOpenScreen('label')
   }
 
   const openLabelEditScreen = (planLabel: LabelEditTarget) => {
@@ -234,7 +244,7 @@ export function PlanEditor({
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
     setSourceUrlInput(planLabel.source_url ?? '')
-    setMode('label-edit')
+    onOpenScreen('label-edit')
   }
 
   const cancelLabelEdit = async () => {
@@ -256,7 +266,7 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
-    setMode('list')
+    closePlanSubscreen()
   }
 
   const cancelLabelCreate = async () => {
@@ -274,7 +284,7 @@ export function PlanEditor({
     setFormError(null)
     setLabelInput('')
     setSourceUrlInput('')
-    setMode('list')
+    closePlanSubscreen()
   }
 
   const submitPlanLabel = async (event: FormEvent) => {
@@ -303,7 +313,7 @@ export function PlanEditor({
         onChanged()
         setLabelInput('')
         setSourceUrlInput('')
-        setMode('list')
+        closePlanSubscreen()
       })
       .catch((err) => {
         if (isNotFoundError(err)) {
@@ -345,7 +355,7 @@ export function PlanEditor({
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
-        setMode('list')
+        closePlanSubscreen()
       })
       .catch((err) => {
         if (isNotFoundError(err)) {
@@ -379,7 +389,7 @@ export function PlanEditor({
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
-        setMode('list')
+        closePlanSubscreen()
       })
       .catch((err) => {
         if (isNotFoundError(err)) {
@@ -424,7 +434,7 @@ export function PlanEditor({
     setFormError(null)
     setForm(nextForm)
     setInitialCreateForm(nextForm)
-    setMode('create')
+    onOpenScreen('create')
   }
 
   const cancelCreate = async () => {
@@ -440,7 +450,7 @@ export function PlanEditor({
       }
     }
     setFormError(null)
-    setMode('list')
+    closePlanSubscreen()
   }
 
   const submitPlan = async (event: FormEvent) => {
@@ -515,7 +525,7 @@ export function PlanEditor({
       .then(() => {
         loadPlans()
         onChanged()
-        setMode('list')
+        closePlanSubscreen()
       })
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))

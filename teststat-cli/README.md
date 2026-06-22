@@ -385,9 +385,10 @@ cp config_sample.json config.json
 project_name: サンプルプロジェクト
 testing_id: 1001
 subtask_id: 999
+base_dir: input_sample
 files:
   - label: TEST001
-    path: input_sample/sample1.xlsx
+    path: sample1.xlsx
     subtask_id: 123
     target_sheets:
       - テスト項目
@@ -400,16 +401,17 @@ files:
       - 環境b
 
   - label: TEST002
-    path: input_sample/sample2.xlsx
+    path: sample2.xlsx
 ```
 
 ```yaml
 # project: ラッパーを使う旧形式（後方互換）
 project:
   project_name: サンプルプロジェクト
+  base_dir: input_sample
   files:
     - label: TEST001
-      path: input_sample/sample1.xlsx
+      path: sample1.xlsx
 ```
 
 | 項目 | 必須 | 説明 |
@@ -418,8 +420,11 @@ project:
 | `files` | 必須 | 処理対象のファイル定義リスト。1件以上指定します。 |
 | `testing_id` | 任意 | TestStatバックエンドへの進捗データ送信で使用するテスト識別ID。整数で指定します。 |
 | `subtask_id` | 任意 | プロジェクト全体のAPI連携で更新対象にするサブタスクID。全ファイルの合計進捗率と最も古い開始日を送信します。 |
+| `base_dir` | 任意 | ローカルの相対 `files[].path` を解決する共通ディレクトリ。絶対パスと SharePoint URL には適用されません。 |
 
 > 旧形式を使う場合は、上記項目を `project:` 配下にネストして記述します（例: `project.project_name`）。
+
+`base_dir` を指定すると、`files[].path` に `sample1.xlsx` や `sub/sample2.xlsx` のようなファイル名・相対パスだけを書けます。`files[].path` に `C:/...` などの絶対パスを指定した場合は、その値が優先されます。
 
 `project.files` の各要素では、以下の項目を指定できます。
 

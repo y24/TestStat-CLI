@@ -108,6 +108,66 @@ class ReadYamlProjectListTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._read("project: just-a-string\n")
 
+
+    def test_base_dir_applies_to_relative_local_paths(self):
+        """base_dir が指定されている場合、相対ローカルパスはその配下として解釈される"""
+        content = (
+            "project_name: base-dir\n"
+            "base_dir: C:/work/project\n"
+            "files:\n"
+            "- label: A\n"
+            "  path: sample1.xlsx\n"
+            "- label: B\n"
+            "  path: sub/sample2.xlsx\n"
+        )
+        result = self._read(content)
+        self.assertEqual(result["files"][0]["path"], os.path.normpath("C:/work/project/sample1.xlsx"))
+        self.assertEqual(result["files"][1]["path"], os.path.normpath("C:/work/project/sub/sample2.xlsx"))
+
+    def test_base_dir_does_not_override_absolute_local_path(self):
+        """files[].path が絶対パスの場合は base_dir よりも files[].path を優先する"""
+        absolute_path = os.path.abspath(os.path.join(os.sep, "override", "sample.xlsx"))
+        content = (
+            "project_name: base-dir\n"
+            "base_dir: C:/work/project\n"
+            "files:\n"
+            "- label: A\n"
+            f"  path: '{absolute_path}'\n"
+        )
+        result = self._read(content)
+        self.assertEqual(result["files"][0]["path"], os.path.normpath(absolute_path))
+
+    def test_base_dir_does_not_apply_to_remote_path(self):
+        """SharePoint URL には base_dir を適用しない"""
+        content = (
+            "project_name: remote\n"
+            "base_dir: C:/work/project\n"
+            "files:\n"
+            "- label: SharePoint\n"
+            '  path: "https://contoso.sharepoint.com/:x:/s/site/Eabcd123"\n'
+        )
+        result = self._read(content)
+        self.assertEqual(result["files"][0]["path"], "https://contoso.sharepoint.com/:x:/s/site/Eabcd123")
+        self.assertTrue(result["files"][0]["is_remote"])
+
+    def test_base_dir_in_legacy_format(self):
+        """旧形式でも project 配下の base_dir が有効になる"""
+        content = (
+            "project:\n"
+            "  project_name: base-dir\n"
+            "  base_dir: C:/work/project\n"
+            "  files:\n"
+            "  - label: A\n"
+            "    path: sample1.xlsx\n"
+        )
+        result = self._read(content)
+        self.assertEqual(result["files"][0]["path"], os.path.normpath("C:/work/project/sample1.xlsx"))
+
+    def test_invalid_base_dir_raises(self):
+        """base_dir が文字列でない場合はエラー"""
+        with self.assertRaises(ValueError):
+            self._read("project_name: foo\nbase_dir: 123\nfiles:\n- label: a\n  path: b.xlsx\n")
+
     def test_remote_path_in_new_format(self):
         """新形式でもリモートパスは is_remote=True として扱われる"""
         content = (

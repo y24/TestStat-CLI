@@ -19,6 +19,12 @@ def read_project_list_file(list_file_path):
     else:
         raise ValueError(f"サポートされていないファイル形式です: {file_extension} (対応形式: .yaml, .yml)")
 
+def _resolve_local_path(path, base_dir):
+    """base_dir が指定されている場合、相対ローカルパスをその配下へ解決する。"""
+    if os.path.isabs(path) or not base_dir:
+        return os.path.normpath(path)
+    return os.path.normpath(os.path.join(base_dir, path))
+
 def read_yaml_project_list(list_file_path):
     """プロジェクトリストファイル（YAML）を読み取る"""
     if not YAML_AVAILABLE:
@@ -57,6 +63,12 @@ def read_yaml_project_list(list_file_path):
     if not isinstance(project_data["files"], list):
         raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'files'がリストではありません")
 
+    base_dir = project_data.get("base_dir")
+    if base_dir is not None and not isinstance(base_dir, str):
+        raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'base_dir'は文字列で指定してください")
+    if isinstance(base_dir, str):
+        base_dir = os.path.normpath(base_dir.strip()) if base_dir.strip() else None
+
     testing_id = project_data.get("testing_id", None)
     if testing_id is not None and not isinstance(testing_id, int):
         raise ValueError(f"プロジェクトリストファイルの形式が不正です: 'testing_id'は整数で指定してください")
@@ -69,17 +81,21 @@ def read_yaml_project_list(list_file_path):
         
         if "path" not in file_info or "label" not in file_info:
             raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}]に'path'または'label'キーが見つかりません")
+        if not isinstance(file_info["path"], str):
+            raise ValueError(f"プロジェクトリストファイルの形式が不正です: files[{i}].pathは文字列で指定してください")
         
-        # リモート URL は normpath を適用せず、そのまま保持する
-        if RemoteSource.is_remote_path(file_info["path"]):
+        raw_path = file_info["path"].strip()
+
+        # リモート URL は normpath/base_dir を適用せず、そのまま保持する
+        if RemoteSource.is_remote_path(raw_path):
             item = {
-                "path": file_info["path"].strip(),
+                "path": raw_path,
                 "label": file_info["label"],
                 "is_remote": True
             }
         else:
             item = {
-                "path": os.path.normpath(file_info["path"]),
+                "path": _resolve_local_path(raw_path, base_dir),
                 "label": file_info["label"],
                 "is_remote": False
             }

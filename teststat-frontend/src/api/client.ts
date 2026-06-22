@@ -13,6 +13,7 @@ import type {
   PlanLabelCreatePayload,
   PlanLabelItem,
   PlanLabelUpdatePayload,
+  ProjectLabelUpdatePayload,
   PlanDetail,
   PlanItem,
   HolidayItem,
@@ -148,6 +149,17 @@ export const createPlanLabel = (testing_id: number, payload: PlanLabelCreatePayl
     method: 'POST',
     body: JSON.stringify(payload),
   })
+export const updateProjectLabel = (testing_id: number, payload: ProjectLabelUpdatePayload) =>
+  request<PlanLabelItem>(`/api/v1/projects/${testing_id}/labels`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+export const deleteProjectLabel = (testing_id: number, label: string) => {
+  const params = new URLSearchParams({ label })
+  return request<void>(`/api/v1/projects/${testing_id}/labels?${params.toString()}`, {
+    method: 'DELETE',
+  })
+}
 export const updatePlanLabel = (label_id: number, payload: PlanLabelUpdatePayload) =>
   request<PlanLabelItem>(`/api/v1/plan-labels/${label_id}`, {
     method: 'PATCH',

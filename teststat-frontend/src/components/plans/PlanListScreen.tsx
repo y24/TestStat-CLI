@@ -1,4 +1,4 @@
-import type { PlanItem, PlanLabelItem } from '../../api/types'
+import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
@@ -44,7 +44,7 @@ export function PlanListScreen({
   onBack: () => void
   onToggleOverall: (checked: boolean) => void
   onAddLabel: () => void
-  onEditLabel: (planLabel: PlanLabelItem) => void
+  onEditLabel: (planLabel: LabelEditTarget) => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
   onSaveModal: (changes: PlanVersionModalChanges) => void

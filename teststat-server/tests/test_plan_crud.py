@@ -1,13 +1,13 @@
 import os
 import sys
 import unittest
-from datetime import date
+from datetime import date, datetime
 
 SERVER_ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, SERVER_ROOT)
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
-from sqlalchemy import create_engine, event, text  # noqa: E402
+from sqlalchemy import create_engine, event, select, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401  — 全モデルを Base.metadata に登録
@@ -17,14 +17,23 @@ from app.crud.plan import (  # noqa: E402
     create_plan_label,
     delete_plan,
     delete_plan_label,
+    delete_project_label,
     get_plan_detail,
     list_plan_labels,
     list_plans,
     update_plan_label,
+    update_project_label,
 )
 from app.crud.project import create_project  # noqa: E402
+from app.models.progress import (  # noqa: E402
+    DailyPersonProgress,
+    DailyProgress,
+    FileProgress,
+    TestResultBugSnapshot as BugSnapshotModel,
+    Testing as TestingModel,
+)
 from app.database import Base  # noqa: E402
-from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelUpdate  # noqa: E402
+from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelUpdate, ProjectLabelUpdate  # noqa: E402
 from app.schemas.project import ProjectCreate  # noqa: E402
 
 
@@ -83,6 +92,63 @@ class TestPlanCRUD(unittest.TestCase):
         labels = list_plan_labels(self.db, 1001)
         self.assertEqual([label.label for label in labels], ["TEST001"])
 
+
+
+    def _insert_actual_label(self, label="CLI_LABEL"):
+        self.db.add(TestingModel(testing_id=1001, project_name="テストP"))
+        self.db.commit()
+        self.db.add_all([
+            FileProgress(
+                testing_id=1001, file_name="cli.xlsx", label=label, environment=None,
+                total_cases=10, available_cases=10, excluded_cases=0, completed=1, executed=1,
+                not_run=9, completed_rate=10, executed_rate=10, result_pass=1, result_fixed=0,
+                result_fail=0, result_blocked=0, result_suspend=0, result_na=0,
+                start_date=START, latest_update=START, sender="cli", sent_at=datetime(2026, 5, 1),
+            ),
+            DailyProgress(
+                testing_id=1001, file_name="cli.xlsx", label=label, environment=None, date=START,
+                result_pass=1, result_fixed=0, result_fail=0, result_blocked=0, result_suspend=0,
+                result_na=0, completed=1, executed=1, planned=None,
+            ),
+            DailyPersonProgress(
+                testing_id=1001, file_name="cli.xlsx", label=label, environment=None, date=START,
+                person="tester", count=1,
+            ),
+            BugSnapshotModel(
+                testing_id=1001, label=label, snapshot_date=START, detected_count=1,
+                suspend_count=0, fixed_count=0, sent_at=datetime(2026, 5, 1),
+            ),
+        ])
+        self.db.commit()
+
+    def test_update_project_label_renames_cli_actuals_and_plans(self):
+        self._insert_actual_label("CLI_LABEL")
+        create_plan(self.db, 1001, self._make_plan("CLI_LABEL"))
+
+        updated = update_project_label(
+            self.db,
+            1001,
+            ProjectLabelUpdate(old_label="CLI_LABEL", label="RENAMED_LABEL"),
+        )
+
+        self.assertEqual(updated.label, "RENAMED_LABEL")
+        self.assertEqual(self.db.scalar(select(FileProgress.label)), "RENAMED_LABEL")
+        self.assertEqual(self.db.scalar(select(DailyProgress.label)), "RENAMED_LABEL")
+        self.assertEqual(self.db.scalar(select(DailyPersonProgress.label)), "RENAMED_LABEL")
+        self.assertEqual(self.db.scalar(select(BugSnapshotModel.label)), "RENAMED_LABEL")
+        self.assertEqual([plan.label for plan in list_plans(self.db, 1001)], ["RENAMED_LABEL"])
+
+    def test_delete_project_label_deletes_cli_actuals_and_plans(self):
+        self._insert_actual_label("CLI_LABEL")
+        create_plan(self.db, 1001, self._make_plan("CLI_LABEL"))
+
+        delete_project_label(self.db, 1001, "CLI_LABEL")
+
+        self.assertIsNone(self.db.scalar(select(FileProgress)))
+        self.assertIsNone(self.db.scalar(select(DailyProgress)))
+        self.assertIsNone(self.db.scalar(select(DailyPersonProgress)))
+        self.assertIsNone(self.db.scalar(select(BugSnapshotModel)))
+        self.assertEqual(list_plans(self.db, 1001), [])
 
     def test_update_plan_label_renames_related_plans(self):
         label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
@@ -170,7 +236,6 @@ class TestPlanCRUD(unittest.TestCase):
 
     def test_delete_plan_cascades_daily(self):
         from app.models.plan import PlanDaily
-        from sqlalchemy import select
         plan = create_plan(self.db, 1001, self._make_plan())
         plan_id = plan.id
         delete_plan(self.db, plan_id)

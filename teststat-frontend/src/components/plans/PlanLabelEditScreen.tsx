@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react'
 import { ArrowLeft, Tag, Trash2 } from 'lucide-react'
-import type { PlanLabelItem } from '../../api/types'
+import type { LabelEditTarget } from '../../api/types'
 
 export function PlanLabelEditScreen({
   loading,
@@ -16,7 +16,7 @@ export function PlanLabelEditScreen({
 }: {
   loading: boolean
   error: string | null | undefined
-  planLabel: PlanLabelItem
+  planLabel: LabelEditTarget
   label: string
   formError: string | null
   submitting: boolean

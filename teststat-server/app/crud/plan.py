@@ -1,9 +1,10 @@
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.plan import Plan, PlanDaily, PlanLabel
 from app.models.project import Project
+from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot
 from app.schemas.plan import (
     PlanCreate,
     PlanDetail,
@@ -12,6 +13,7 @@ from app.schemas.plan import (
     PlanLabelCreate,
     PlanLabelItem,
     PlanLabelUpdate,
+    ProjectLabelUpdate,
 )
 
 
@@ -91,6 +93,28 @@ def _deactivate_label(db: Session, testing_id: int, label: str | None) -> None:
     )
 
 
+def _label_exists(db: Session, testing_id: int, label: str) -> bool:
+    queries = [
+        select(PlanLabel.id).where(PlanLabel.testing_id == testing_id, PlanLabel.label == label),
+        select(Plan.id).where(Plan.testing_id == testing_id, Plan.label == label),
+        select(FileProgress.id).where(FileProgress.testing_id == testing_id, FileProgress.label == label),
+        select(DailyProgress.id).where(DailyProgress.testing_id == testing_id, DailyProgress.label == label),
+        select(DailyPersonProgress.id).where(
+            DailyPersonProgress.testing_id == testing_id,
+            DailyPersonProgress.label == label,
+        ),
+        select(TestResultBugSnapshot.id).where(
+            TestResultBugSnapshot.testing_id == testing_id,
+            TestResultBugSnapshot.label == label,
+        ),
+    ]
+    return any(db.scalar(query) is not None for query in queries)
+
+
+def _project_label_exists(db: Session, testing_id: int, label: str) -> bool:
+    return _label_exists(db, testing_id, label)
+
+
 # ---------- public API ----------
 
 def list_plans(db: Session, testing_id: int) -> list[PlanItem]:
@@ -142,56 +166,68 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
     return PlanLabelItem.model_validate(label)
 
 
-def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> PlanLabelItem:
-    label = _require_plan_label(db, label_id)
-    if label.label == payload.label:
-        return PlanLabelItem.model_validate(label)
-
-    existing = db.scalar(
-        select(PlanLabel).where(
-            PlanLabel.testing_id == label.testing_id,
-            PlanLabel.label == payload.label,
-            PlanLabel.id != label.id,
+def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpdate) -> PlanLabelItem:
+    _require_project(db, testing_id)
+    if payload.old_label == payload.label:
+        existing = db.scalar(
+            select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.label)
         )
-    )
-    if existing is not None:
+        if existing is not None:
+            return PlanLabelItem.model_validate(existing)
+        return create_plan_label(db, testing_id, PlanLabelCreate(label=payload.label))
+
+    if not _project_label_exists(db, testing_id, payload.old_label):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="label not found")
+    if _label_exists(db, testing_id, payload.label):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already exists")
 
-    conflicting_plan = db.scalar(
-        select(Plan).where(
-            Plan.testing_id == label.testing_id,
-            Plan.label == payload.label,
-        )
+    label = db.scalar(
+        select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.old_label)
     )
-    if conflicting_plan is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already has plans")
+    if label is None:
+        label = PlanLabel(testing_id=testing_id, label=payload.label)
+        db.add(label)
+        db.flush()
+    else:
+        label.label = payload.label
 
-    old_label = label.label
-    label.label = payload.label
-    db.execute(
-        update(Plan)
-        .where(Plan.testing_id == label.testing_id, Plan.label == old_label)
-        .values(label=payload.label)
-    )
+    for model in (Plan, FileProgress, DailyProgress, DailyPersonProgress, TestResultBugSnapshot):
+        db.execute(
+            update(model)
+            .where(model.testing_id == testing_id, model.label == payload.old_label)
+            .values(label=payload.label)
+        )
     db.commit()
     db.refresh(label)
     return PlanLabelItem.model_validate(label)
 
 
+def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> PlanLabelItem:
+    label = _require_plan_label(db, label_id)
+    return update_project_label(
+        db,
+        label.testing_id,
+        ProjectLabelUpdate(old_label=label.label, label=payload.label),
+    )
+
+
+def delete_project_label(db: Session, testing_id: int, label: str) -> None:
+    _require_project(db, testing_id)
+    if not _project_label_exists(db, testing_id, label):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="label not found")
+
+    db.execute(delete(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == label))
+    db.execute(delete(Plan).where(Plan.testing_id == testing_id, Plan.label == label))
+    db.execute(delete(FileProgress).where(FileProgress.testing_id == testing_id, FileProgress.label == label))
+    db.execute(delete(DailyProgress).where(DailyProgress.testing_id == testing_id, DailyProgress.label == label))
+    db.execute(delete(DailyPersonProgress).where(DailyPersonProgress.testing_id == testing_id, DailyPersonProgress.label == label))
+    db.execute(delete(TestResultBugSnapshot).where(TestResultBugSnapshot.testing_id == testing_id, TestResultBugSnapshot.label == label))
+    db.commit()
+
+
 def delete_plan_label(db: Session, label_id: int) -> None:
     label = _require_plan_label(db, label_id)
-    plans = list(
-        db.scalars(
-            select(Plan).where(
-                Plan.testing_id == label.testing_id,
-                Plan.label == label.label,
-            )
-        )
-    )
-    for plan in plans:
-        db.delete(plan)
-    db.delete(label)
-    db.commit()
+    delete_project_label(db, label.testing_id, label.label)
 
 
 def get_plan_detail(db: Session, plan_id: int) -> PlanDetail:

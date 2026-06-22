@@ -8,14 +8,16 @@ from app.crud.plan import (
     create_plan_label,
     delete_plan,
     delete_plan_label,
+    delete_project_label,
     get_plan_detail,
     list_plan_labels,
     list_plans,
     update_plan_label,
+    update_project_label,
 )
 from app.database import get_db
 from app.schemas.pb_chart import PbChartResponse
-from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelUpdate
+from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelUpdate, ProjectLabelUpdate
 
 router = APIRouter(prefix="/api/v1", tags=["plans"])
 
@@ -41,6 +43,24 @@ def post_plan_label(
     db: Session = Depends(get_db),
 ) -> PlanLabelItem:
     return create_plan_label(db, testing_id, payload)
+
+
+@router.patch("/projects/{testing_id}/labels", response_model=PlanLabelItem)
+def patch_project_label(
+    testing_id: int,
+    payload: ProjectLabelUpdate,
+    db: Session = Depends(get_db),
+) -> PlanLabelItem:
+    return update_project_label(db, testing_id, payload)
+
+
+@router.delete("/projects/{testing_id}/labels", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project_label_route(
+    testing_id: int,
+    label: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+) -> None:
+    delete_project_label(db, testing_id, label.strip())
 
 
 @router.patch("/plan-labels/{label_id}", response_model=PlanLabelItem)

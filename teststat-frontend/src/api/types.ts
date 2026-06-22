@@ -151,6 +151,16 @@ export interface PlanLabelCreatePayload {
 
 export type PlanLabelUpdatePayload = PlanLabelCreatePayload
 
+export interface ProjectLabelUpdatePayload {
+  old_label: string
+  label: string
+}
+
+export interface LabelEditTarget {
+  id?: number
+  label: string
+}
+
 export interface PlanItem {
   id: number
   testing_id: number

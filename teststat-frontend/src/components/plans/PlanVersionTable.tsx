@@ -1,5 +1,5 @@
 import { ChartLine, Pencil, TriangleAlert } from 'lucide-react'
-import type { PlanItem, PlanLabelItem } from '../../api/types'
+import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
 export function PlanVersionTable({
@@ -29,7 +29,7 @@ export function PlanVersionTable({
   submitting: boolean
   onToggleOverall: (checked: boolean) => void
   onCreate: (label: string | null) => void
-  onEditLabel: (planLabel: PlanLabelItem) => void
+  onEditLabel: (planLabel: LabelEditTarget) => void
   onManage: (label: string | null) => void
   formatDate: (value: string) => string
 }) {
@@ -81,7 +81,7 @@ export function PlanVersionTable({
                   label === null ? plan.label === null : plan.label === label,
                 )
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
-                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? null
+                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label }
                 const actualAvailableCases =
                   label === null ? overallAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =

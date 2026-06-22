@@ -5,15 +5,15 @@ import {
   createPlan,
   createPlanLabel,
   deletePlan,
-  deletePlanLabel,
+  deleteProjectLabel,
   fetchHolidays,
   fetchPlanLabels,
   fetchPlans,
   fetchProgressDaily,
   fetchProgressFiles,
-  updatePlanLabel,
+  updateProjectLabel,
 } from '../api/client'
-import type { DailyProgressItem, FileProgressItem, PlanItem, PlanLabelItem, ProjectItem } from '../api/types'
+import type { DailyProgressItem, FileProgressItem, LabelEditTarget, PlanItem, PlanLabelItem, ProjectItem } from '../api/types'
 import { getTodayString } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 import { buildEvenDaily, countBusinessDays, parseDailyCsv } from '../utils/plans'
@@ -52,7 +52,7 @@ export function PlanEditor({
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
-  const [editingPlanLabel, setEditingPlanLabel] = useState<PlanLabelItem | null>(null)
+  const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [mode, setMode] = useState<PlanEditorMode>('list')
   const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
@@ -225,7 +225,7 @@ export function PlanEditor({
     setMode('label')
   }
 
-  const openLabelEditScreen = (planLabel: PlanLabelItem) => {
+  const openLabelEditScreen = (planLabel: LabelEditTarget) => {
     setFormError(null)
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
@@ -317,7 +317,7 @@ export function PlanEditor({
     }
 
     setSubmitting(true)
-    updatePlanLabel(editingPlanLabel.id, { label })
+    updateProjectLabel(project.testing_id, { old_label: editingPlanLabel.label, label })
       .then(() => {
         loadPlans()
         onChanged()
@@ -350,7 +350,7 @@ export function PlanEditor({
     }
 
     setSubmitting(true)
-    deletePlanLabel(editingPlanLabel.id)
+    deleteProjectLabel(project.testing_id, editingPlanLabel.label)
       .then(() => {
         loadPlans()
         onChanged()

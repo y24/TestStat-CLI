@@ -1332,6 +1332,10 @@
   animation: spin 0.8s linear infinite;
 }
 
+.header-actions .icon-text-button.is-refreshing .button-icon {
+  animation: spin 0.8s linear infinite;
+}
+
 .collect-error-note {
   color: #8a5a00;
   max-width: 220px;

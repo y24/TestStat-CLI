@@ -3,7 +3,7 @@ import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft, ClipboardList, Plus } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Plus, RefreshCw } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -18,6 +18,8 @@ export function PlanListScreen({
   useOverallPlan,
   submitting,
   collectingLabel,
+  collectingAll,
+  refreshableCount,
   collectErrors,
   modalLabel,
   selectedModalPlans,
@@ -26,6 +28,7 @@ export function PlanListScreen({
   onAddLabel,
   onEditLabel,
   onRefreshLabel,
+  onRefreshAll,
   onCreate,
   onManage,
   onSaveModal,
@@ -43,6 +46,8 @@ export function PlanListScreen({
   useOverallPlan: boolean
   submitting: boolean
   collectingLabel: string | null
+  collectingAll: boolean
+  refreshableCount: number
   collectErrors: Record<string, string>
   modalLabel: string | null | undefined
   selectedModalPlans: PlanItem[]
@@ -51,6 +56,7 @@ export function PlanListScreen({
   onAddLabel: () => void
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
+  onRefreshAll: () => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
   onSaveModal: (changes: PlanVersionModalChanges) => void
@@ -81,10 +87,22 @@ export function PlanListScreen({
           </div>
         </div>
         <div className="header-actions">
+          {!useOverallPlan && refreshableCount > 0 && (
+            <button
+              className={`secondary-button icon-text-button${collectingAll ? ' is-refreshing' : ''}`}
+              type="button"
+              disabled={submitting || collectingLabel !== null || collectingAll}
+              onClick={onRefreshAll}
+              title="URLが登録されている識別子をすべて取得して集計します"
+            >
+              <RefreshCw className="button-icon" aria-hidden="true" />
+              <span>{collectingAll ? '一括更新中...' : 'すべて更新'}</span>
+            </button>
+          )}
           <button
             className="primary-button icon-text-button"
             type="button"
-            disabled={submitting}
+            disabled={submitting || collectingAll}
             onClick={onAddLabel}
           >
             <Plus className="button-icon" aria-hidden="true" />

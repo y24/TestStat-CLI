@@ -68,6 +68,7 @@ export function PlanEditor({
   const [initialCreateForm, setInitialCreateForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [holidayDates, setHolidayDates] = useState<Set<string>>(() => new Set())
   const [collectingLabel, setCollectingLabel] = useState<string | null>(null)
+  const [collectingAll, setCollectingAll] = useState(false)
   const [collectErrors, setCollectErrors] = useState<Record<string, string>>({})
 
   const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
@@ -174,6 +175,9 @@ export function PlanEditor({
       ...plans.map((plan) => plan.label).filter((label): label is string => Boolean(label)),
     ]),
   ).sort((a, b) => a.localeCompare(b))
+  const refreshableLabels = planLabels
+    .filter((item) => Boolean(item.source_url && item.source_url.trim()))
+    .map((item) => item.label)
   const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
     if (file.label) {
       casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + file.available_cases
@@ -240,6 +244,41 @@ export function PlanEditor({
         setCollectErrors((prev) => ({ ...prev, [label]: getErrorMessage(err) }))
       })
       .finally(() => setCollectingLabel(null))
+  }
+
+  const handleRefreshAll = async () => {
+    if (collectingLabel !== null || collectingAll) {
+      return
+    }
+    const targets = refreshableLabels
+    if (targets.length === 0) {
+      return
+    }
+    setCollectingAll(true)
+    setCollectErrors({})
+    const errors: Record<string, string> = {}
+    try {
+      for (const label of targets) {
+        setCollectingLabel(label)
+        try {
+          const result = await collectLabel(project.testing_id, label)
+          const failure = result.failed[0]
+          if (failure) {
+            errors[label] = failure.message
+          } else if (result.targets === 0) {
+            errors[label] = 'URLが登録されていないため取得できませんでした'
+          }
+        } catch (err) {
+          errors[label] = getErrorMessage(err)
+        }
+        setCollectErrors({ ...errors })
+      }
+    } finally {
+      setCollectingLabel(null)
+      setCollectingAll(false)
+      loadPlans()
+      onChanged()
+    }
   }
 
   const handleToggleOverall = async (checked: boolean) => {
@@ -657,6 +696,8 @@ export function PlanEditor({
       useOverallPlan={useOverallPlan}
       submitting={submitting}
       collectingLabel={collectingLabel}
+      collectingAll={collectingAll}
+      refreshableCount={refreshableLabels.length}
       collectErrors={collectErrors}
       modalLabel={modalLabel}
       selectedModalPlans={selectedModalPlans}
@@ -665,6 +706,7 @@ export function PlanEditor({
       onAddLabel={openLabelCreateScreen}
       onEditLabel={openLabelEditScreen}
       onRefreshLabel={handleRefreshLabel}
+      onRefreshAll={handleRefreshAll}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}
       onSaveModal={handleSaveModalChanges}

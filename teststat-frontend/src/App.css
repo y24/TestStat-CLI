@@ -964,6 +964,7 @@
 .editor-form input[type='text'],
 .editor-form input[type='number'],
 .editor-form input[type='date'],
+.editor-form input[type='url'],
 .editor-form select,
 .editor-form textarea {
   width: 100%;
@@ -1985,3 +1986,4 @@
     flex: 1;
   }
 }
+

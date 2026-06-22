@@ -142,11 +142,13 @@ export interface PlanLabelItem {
   id: number
   testing_id: number
   label: string
+  source_url: string | null
   created_at: string
 }
 
 export interface PlanLabelCreatePayload {
   label: string
+  source_url?: string | null
 }
 
 export type PlanLabelUpdatePayload = PlanLabelCreatePayload
@@ -154,11 +156,13 @@ export type PlanLabelUpdatePayload = PlanLabelCreatePayload
 export interface ProjectLabelUpdatePayload {
   old_label: string
   label: string
+  source_url?: string | null
 }
 
 export interface LabelEditTarget {
   id?: number
   label: string
+  source_url?: string | null
 }
 
 export interface PlanItem {
@@ -246,3 +250,5 @@ export interface OpenBugItem {
   url: string | null
   is_suspended: boolean
 }
+
+

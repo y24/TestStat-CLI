@@ -310,3 +310,44 @@ class TestPlanCRUD(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestPlanLabelSourceUrl(unittest.TestCase):
+    def setUp(self):
+        self.db = make_session()
+        create_project(self.db, ProjectCreate(testing_id=2001, name="URL Test"))
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_create_update_and_clear_source_url(self):
+        created = create_plan_label(
+            self.db,
+            2001,
+            PlanLabelCreate(label="URL_LABEL", source_url="  https://contoso.sharepoint.com/:x:/s/a  "),
+        )
+        self.assertEqual(created.source_url, "https://contoso.sharepoint.com/:x:/s/a")
+
+        updated = update_plan_label(
+            self.db,
+            created.id,
+            PlanLabelUpdate(label="URL_LABEL", source_url="https://contoso.sharepoint.com/:x:/s/b"),
+        )
+        self.assertEqual(updated.label, "URL_LABEL")
+        self.assertEqual(updated.source_url, "https://contoso.sharepoint.com/:x:/s/b")
+
+        cleared = update_project_label(
+            self.db,
+            2001,
+            ProjectLabelUpdate(old_label="URL_LABEL", label="URL_RENAMED", source_url=""),
+        )
+        self.assertEqual(cleared.label, "URL_RENAMED")
+        self.assertIsNone(cleared.source_url)
+
+    def test_invalid_source_url_validation(self):
+        from pydantic import ValidationError
+
+        with self.assertRaises(ValidationError):
+            PlanLabelCreate(label="URL_LABEL", source_url="ftp://example.com/file.xlsx")
+
+if __name__ == "__main__":
+    unittest.main()

@@ -7,9 +7,11 @@ export function PlanLabelEditScreen({
   error,
   planLabel,
   label,
+  sourceUrl,
   formError,
   submitting,
   onLabelChange,
+  onSourceUrlChange,
   onCancel,
   onSubmit,
   onDelete,
@@ -18,13 +20,17 @@ export function PlanLabelEditScreen({
   error: string | null | undefined
   planLabel: LabelEditTarget
   label: string
+  sourceUrl: string
   formError: string | null
   submitting: boolean
   onLabelChange: (label: string) => void
+  onSourceUrlChange: (sourceUrl: string) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
   onDelete: () => void
 }) {
+  const unchanged = label.trim() === planLabel.label && sourceUrl.trim() === (planLabel.source_url ?? '')
+
   return (
     <div className="content-shell plan-screen">
       <header className="content-header">
@@ -64,8 +70,19 @@ export function PlanLabelEditScreen({
               required
             />
           </label>
+          <label>
+            <span>SharePoint 共有 URL（任意）</span>
+            <input
+              type="url"
+              value={sourceUrl}
+              disabled={submitting}
+              onChange={(event) => onSourceUrlChange(event.target.value)}
+              maxLength={2048}
+              placeholder="https://contoso.sharepoint.com/:x:/s/..."
+            />
+          </label>
           <div className="form-actions">
-            <button className="primary-button" type="submit" disabled={submitting || label.trim() === planLabel.label}>
+            <button className="primary-button" type="submit" disabled={submitting || unchanged}>
               {submitting ? '保存中...' : '保存'}
             </button>
             <button className="secondary-button" type="button" disabled={submitting} onClick={onCancel}>

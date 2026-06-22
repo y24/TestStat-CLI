@@ -1,4 +1,4 @@
-import { ChartLine, Pencil, TriangleAlert } from 'lucide-react'
+import { ChartLine, Link, Pencil, TriangleAlert } from 'lucide-react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayLabel } from '../../utils/plans'
 
@@ -81,7 +81,7 @@ export function PlanVersionTable({
                   label === null ? plan.label === null : plan.label === label,
                 )
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
-                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label }
+                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label, source_url: null }
                 const actualAvailableCases =
                   label === null ? overallAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
@@ -112,6 +112,12 @@ export function PlanVersionTable({
                     </td>
                     <td>
                       <strong>{displayLabel(label)}</strong>
+                      {registeredLabel?.source_url && (
+                        <span className="row-note plan-only-note" title="SharePoint URL 登録済み">
+                          <Link className="plan-only-note-icon" aria-hidden="true" />
+                          <span>URL 登録済み</span>
+                        </span>
+                      )}
                       {isPlanOnly && (
                         <span className="row-note plan-only-note">
                           <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
@@ -183,3 +189,5 @@ function formatDailyCount(value: number) {
   }
   return value.toFixed(1)
 }
+
+

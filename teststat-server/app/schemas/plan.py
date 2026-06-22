@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 class PlanLabelCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=255)
+    source_url: str | None = Field(None, max_length=2048)
 
     @field_validator("label")
     @classmethod
@@ -12,6 +13,17 @@ class PlanLabelCreate(BaseModel):
         normalized = value.strip()
         if not normalized:
             raise ValueError("label は必須です")
+        return normalized
+    @field_validator("source_url")
+    @classmethod
+    def normalize_source_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if not (normalized.startswith("http://") or normalized.startswith("https://")):
+            raise ValueError("source_url は http:// または https:// で始まる必要があります")
         return normalized
 
 
@@ -35,6 +47,7 @@ class PlanLabelItem(BaseModel):
     id: int
     testing_id: int
     label: str
+    source_url: str | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -88,3 +101,5 @@ class PlanItem(BaseModel):
 
 class PlanDetail(PlanItem):
     daily: list[PlanDailyItem]
+
+

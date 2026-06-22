@@ -390,4 +390,5 @@ schtasks /Create /TN "TestStat\CollectLabels" /TR "D:\Script\TestStat-CLI\testst
 
 ## 状態
 
-計画策定のみ（2026-06-22）。実装未着手。
+実装済み（2026-06-22）。DB マイグレーション適用と backend 手動再起動は運用者が実施する。タスクスケジューラ手順は [`docs/windows_server_task_scheduler_setup.md`](./windows_server_task_scheduler_setup.md) を参照。
+

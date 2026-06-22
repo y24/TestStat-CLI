@@ -52,6 +52,7 @@ export function PlanEditor({
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
+  const [sourceUrlInput, setSourceUrlInput] = useState('')
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [mode, setMode] = useState<PlanEditorMode>('list')
   const [useOverallPlan, setUseOverallPlan] = useState(false)
@@ -138,10 +139,12 @@ export function PlanEditor({
   useEffect(() => {
     onDirtyChange(
       (mode === 'create' && !isSamePlanForm(form, initialCreateForm)) ||
-        (mode === 'label' && labelInput.trim() !== '') ||
-        (mode === 'label-edit' && editingPlanLabel !== null && labelInput.trim() !== editingPlanLabel.label),
+        (mode === 'label' && (labelInput.trim() !== '' || sourceUrlInput.trim() !== '')) ||
+        (mode === 'label-edit' &&
+          editingPlanLabel !== null &&
+          (labelInput.trim() !== editingPlanLabel.label || sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? ''))),
     )
-  }, [editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange])
+  }, [editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput])
 
   useEffect(() => {
     return () => onDirtyChange(false)
@@ -222,6 +225,7 @@ export function PlanEditor({
     setFormError(null)
     setEditingPlanLabel(null)
     setLabelInput('')
+    setSourceUrlInput('')
     setMode('label')
   }
 
@@ -229,11 +233,15 @@ export function PlanEditor({
     setFormError(null)
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
+    setSourceUrlInput(planLabel.source_url ?? '')
     setMode('label-edit')
   }
 
   const cancelLabelEdit = async () => {
-    if (editingPlanLabel !== null && labelInput.trim() !== editingPlanLabel.label) {
+    if (
+      editingPlanLabel !== null &&
+      (labelInput.trim() !== editingPlanLabel.label || sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? ''))
+    ) {
       const confirmed = await confirm({
         title: '入力内容の破棄',
         message: 'データが破棄されますが、よろしいですか？',
@@ -247,11 +255,12 @@ export function PlanEditor({
     setFormError(null)
     setEditingPlanLabel(null)
     setLabelInput('')
+    setSourceUrlInput('')
     setMode('list')
   }
 
   const cancelLabelCreate = async () => {
-    if (labelInput.trim() !== '') {
+    if (labelInput.trim() !== '' || sourceUrlInput.trim() !== '') {
       const confirmed = await confirm({
         title: '入力内容の破棄',
         message: 'データが破棄されますが、よろしいですか？',
@@ -264,6 +273,7 @@ export function PlanEditor({
     }
     setFormError(null)
     setLabelInput('')
+    setSourceUrlInput('')
     setMode('list')
   }
 
@@ -272,6 +282,7 @@ export function PlanEditor({
     setFormError(null)
 
     const label = labelInput.trim()
+    const sourceUrl = normalizeSourceUrl(sourceUrlInput)
     if (!label) {
       setFormError('識別子を入力してください')
       return
@@ -280,13 +291,18 @@ export function PlanEditor({
       setFormError('同じ識別子がすでに存在します')
       return
     }
+    if (!isValidOptionalUrl(sourceUrl)) {
+      setFormError('SharePoint 共有 URL は http:// または https:// で始まる URL を入力してください')
+      return
+    }
 
     setSubmitting(true)
-    createPlanLabel(project.testing_id, { label })
+    createPlanLabel(project.testing_id, { label, source_url: sourceUrl })
       .then(() => {
         loadPlans()
         onChanged()
         setLabelInput('')
+        setSourceUrlInput('')
         setMode('list')
       })
       .catch((err) => {
@@ -307,6 +323,7 @@ export function PlanEditor({
     setFormError(null)
 
     const label = labelInput.trim()
+    const sourceUrl = normalizeSourceUrl(sourceUrlInput)
     if (!label) {
       setFormError('識別子を入力してください')
       return
@@ -315,14 +332,19 @@ export function PlanEditor({
       setFormError('同じ識別子がすでに存在します')
       return
     }
+    if (!isValidOptionalUrl(sourceUrl)) {
+      setFormError('SharePoint 共有 URL は http:// または https:// で始まる URL を入力してください')
+      return
+    }
 
     setSubmitting(true)
-    updateProjectLabel(project.testing_id, { old_label: editingPlanLabel.label, label })
+    updateProjectLabel(project.testing_id, { old_label: editingPlanLabel.label, label, source_url: sourceUrl })
       .then(() => {
         loadPlans()
         onChanged()
         setEditingPlanLabel(null)
         setLabelInput('')
+        setSourceUrlInput('')
         setMode('list')
       })
       .catch((err) => {
@@ -356,6 +378,7 @@ export function PlanEditor({
         onChanged()
         setEditingPlanLabel(null)
         setLabelInput('')
+        setSourceUrlInput('')
         setMode('list')
       })
       .catch((err) => {
@@ -525,9 +548,11 @@ export function PlanEditor({
         error={result?.error}
         planLabel={editingPlanLabel}
         label={labelInput}
+        sourceUrl={sourceUrlInput}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
+        onSourceUrlChange={setSourceUrlInput}
         onCancel={cancelLabelEdit}
         onSubmit={submitPlanLabelEdit}
         onDelete={handleDeletePlanLabel}
@@ -541,9 +566,11 @@ export function PlanEditor({
         loading={loading}
         error={result?.error}
         label={labelInput}
+        sourceUrl={sourceUrlInput}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
+        onSourceUrlChange={setSourceUrlInput}
         onCancel={cancelLabelCreate}
         onSubmit={submitPlanLabel}
       />
@@ -597,6 +624,15 @@ export function PlanEditor({
   )
 }
 
+
+function normalizeSourceUrl(value: string): string | null {
+  const normalized = value.trim()
+  return normalized === '' ? null : normalized
+}
+
+function isValidOptionalUrl(value: string | null): boolean {
+  return value === null || value.startsWith('http://') || value.startsWith('https://')
+}
 function findReplacementPlansAfterDelete(plans: PlanItem[], targetPlans: PlanItem[]): PlanItem[] {
   const deletingIds = new Set(targetPlans.map((plan) => plan.id))
   const deletedActivePlans = targetPlans.filter((plan) => plan.is_active)
@@ -732,3 +768,4 @@ function formatDailyCount(value: number) {
 function isNotFoundError(err: unknown) {
   return getErrorMessage(err).includes('404 Not Found')
 }
+

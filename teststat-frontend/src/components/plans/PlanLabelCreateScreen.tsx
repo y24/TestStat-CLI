@@ -5,18 +5,22 @@ export function PlanLabelCreateScreen({
   loading,
   error,
   label,
+  sourceUrl,
   formError,
   submitting,
   onLabelChange,
+  onSourceUrlChange,
   onCancel,
   onSubmit,
 }: {
   loading: boolean
   error: string | null | undefined
   label: string
+  sourceUrl: string
   formError: string | null
   submitting: boolean
   onLabelChange: (label: string) => void
+  onSourceUrlChange: (sourceUrl: string) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
 }) {
@@ -57,6 +61,17 @@ export function PlanLabelCreateScreen({
               maxLength={255}
               autoFocus
               required
+            />
+          </label>
+          <label>
+            <span>SharePoint 共有 URL（任意）</span>
+            <input
+              type="url"
+              value={sourceUrl}
+              disabled={submitting}
+              onChange={(event) => onSourceUrlChange(event.target.value)}
+              maxLength={2048}
+              placeholder="https://contoso.sharepoint.com/:x:/s/..."
             />
           </label>
           <div className="form-actions">

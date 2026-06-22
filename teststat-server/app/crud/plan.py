@@ -159,7 +159,7 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already exists")
 
-    label = PlanLabel(testing_id=testing_id, label=payload.label)
+    label = PlanLabel(testing_id=testing_id, label=payload.label, source_url=payload.source_url)
     db.add(label)
     db.commit()
     db.refresh(label)
@@ -173,8 +173,11 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
             select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.label)
         )
         if existing is not None:
+            existing.source_url = payload.source_url
+            db.commit()
+            db.refresh(existing)
             return PlanLabelItem.model_validate(existing)
-        return create_plan_label(db, testing_id, PlanLabelCreate(label=payload.label))
+        return create_plan_label(db, testing_id, PlanLabelCreate(label=payload.label, source_url=payload.source_url))
 
     if not _project_label_exists(db, testing_id, payload.old_label):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="label not found")
@@ -185,11 +188,12 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
         select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.old_label)
     )
     if label is None:
-        label = PlanLabel(testing_id=testing_id, label=payload.label)
+        label = PlanLabel(testing_id=testing_id, label=payload.label, source_url=payload.source_url)
         db.add(label)
         db.flush()
     else:
         label.label = payload.label
+        label.source_url = payload.source_url
 
     for model in (Plan, FileProgress, DailyProgress, DailyPersonProgress, TestResultBugSnapshot):
         db.execute(
@@ -207,7 +211,7 @@ def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> P
     return update_project_label(
         db,
         label.testing_id,
-        ProjectLabelUpdate(old_label=label.label, label=payload.label),
+        ProjectLabelUpdate(old_label=label.label, label=payload.label, source_url=payload.source_url),
     )
 
 
@@ -292,3 +296,4 @@ def delete_plan(db: Session, plan_id: int) -> None:
     plan = _require_plan(db, plan_id)
     db.delete(plan)
     db.commit()
+

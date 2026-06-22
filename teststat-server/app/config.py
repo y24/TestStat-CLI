@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     )
     azure_devops_bug_state_field: str = Field("System.State", alias="AZURE_DEVOPS_BUG_STATE_FIELD")
 
+    # === SharePoint URL 登録済み識別子の自動収集 ===
+    collect_enabled: bool = Field(True, alias="COLLECT_ENABLED")
+    tstat_command: str = Field("", alias="TSTAT_COMMAND")
+    tstat_config: str = Field("", alias="TSTAT_CONFIG")
+    collect_work_dir: str = Field("", alias="COLLECT_WORK_DIR")
+    collect_log_dir: str = Field("logs", alias="COLLECT_LOG_DIR")
+    collect_timeout_sec: int = Field(600, alias="COLLECT_TIMEOUT_SEC")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
@@ -78,3 +86,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+

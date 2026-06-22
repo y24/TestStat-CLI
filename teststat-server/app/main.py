@@ -8,6 +8,7 @@ from app.database import get_db
 from app.routers import (
     azure_devops_router,
     bug_router,
+    collect_router,
     holiday_router,
     progress_router,
     project_router,
@@ -34,9 +35,11 @@ app.include_router(holiday_router)
 app.include_router(setting_router)
 app.include_router(azure_devops_router)
 app.include_router(bug_router)
+app.include_router(collect_router)
 
 
 @app.get("/health")
 def health(db: Session = Depends(get_db)) -> dict[str, str]:
     db.execute(text("SELECT 1"))
     return {"status": "ok", "db": "connected"}
+

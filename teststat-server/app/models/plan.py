@@ -31,6 +31,7 @@ class PlanLabel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     testing_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
@@ -41,3 +42,5 @@ class PlanDaily(Base):
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, index=True)
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     planned_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+

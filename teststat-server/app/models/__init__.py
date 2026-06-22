@@ -2,7 +2,7 @@ from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress
 from app.models.project import Project
 from app.models.plan import Plan, PlanDaily, PlanLabel
 from app.models.holiday import Holiday
-from app.models.setting import ProgressStatusSetting
+from app.models.setting import PbChartSetting, ProgressStatusSetting
 from app.models.bug import BugSnapshot
 
 __all__ = [
@@ -16,6 +16,8 @@ __all__ = [
     "PlanDaily",
     "PlanLabel",
     "Holiday",
+    "PbChartSetting",
     "ProgressStatusSetting",
     "BugSnapshot",
 ]
+

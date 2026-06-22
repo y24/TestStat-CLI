@@ -10,9 +10,14 @@ from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401
-from app.crud.setting import get_progress_status_thresholds, update_progress_status_thresholds  # noqa: E402
+from app.crud.setting import (  # noqa: E402
+    get_pb_chart_settings,
+    get_progress_status_thresholds,
+    update_pb_chart_settings,
+    update_progress_status_thresholds,
+)
 from app.database import Base  # noqa: E402
-from app.schemas.setting import ProgressStatusThresholds  # noqa: E402
+from app.schemas.setting import PbChartSettings, ProgressStatusThresholds  # noqa: E402
 
 
 def make_session():
@@ -45,6 +50,18 @@ class TestSettingCRUD(unittest.TestCase):
         self.assertEqual(thresholds.caution, 95)
         self.assertEqual(thresholds.warning, 60)
 
+    def test_get_pb_chart_settings_returns_defaults(self):
+        settings = get_pb_chart_settings(self.db)
+
+        self.assertEqual(settings.bug_axis_max, 30)
+
+    def test_update_pb_chart_settings_persists_values(self):
+        update_pb_chart_settings(self.db, PbChartSettings(bug_axis_max=80))
+
+        settings = get_pb_chart_settings(self.db)
+        self.assertEqual(settings.bug_axis_max, 80)
+
 
 if __name__ == "__main__":
     unittest.main()
+

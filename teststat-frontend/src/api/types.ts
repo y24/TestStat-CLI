@@ -84,6 +84,10 @@ export interface ProgressStatusThresholds {
   warning: number
 }
 
+export interface PbChartSettings {
+  bug_axis_max: number
+}
+
 // === Azure DevOps 連携 ===
 
 export interface AzureDevOpsWorkItem {
@@ -253,5 +257,4 @@ export interface OpenBugItem {
   url: string | null
   is_suspended: boolean
 }
-
 

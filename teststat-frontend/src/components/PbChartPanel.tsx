@@ -22,6 +22,7 @@ import type {
   DailyProgressItem,
   FileProgressItem,
   OpenBugItem,
+  PbChartSettings,
   PbChartResponse,
   PlanItem,
   ProjectItem,
@@ -81,7 +82,15 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
   'N/A': 'na',
 }
 
-export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPlans?: () => void }) {
+export function PbChartPanel({
+  project,
+  pbChartSettings,
+  onPlans,
+}: {
+  project: ProjectItem
+  pbChartSettings: PbChartSettings
+  onPlans?: () => void
+}) {
   const [result, setResult] = useState<ChartResult | null>(null)
   const [selectedLabel, setSelectedLabel] = useState<string>('')
   const [layers, setLayers] = useState<ChartLayers>({
@@ -261,7 +270,7 @@ export function PbChartPanel({ project, onPlans }: { project: ProjectItem; onPla
       )}
       {!loading && !error && chart && chart.series.length > 0 && (
         <div className="chart-wrap">
-          <PbChart chart={chart} layers={effectiveLayers} />
+          <PbChart chart={chart} layers={effectiveLayers} bugAxisMax={pbChartSettings.bug_axis_max} />
         </div>
       )}
       {!loading && !error && (
@@ -355,7 +364,15 @@ function ChartLayerControls({
   )
 }
 
-function PbChart({ chart, layers }: { chart: PbChartResponse; layers: ChartLayers }) {
+function PbChart({
+  chart,
+  layers,
+  bugAxisMax,
+}: {
+  chart: PbChartResponse
+  layers: ChartLayers
+  bugAxisMax: number
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<ECharts | null>(null)
 
@@ -376,8 +393,8 @@ function PbChart({ chart, layers }: { chart: PbChartResponse; layers: ChartLayer
   }, [])
 
   useEffect(() => {
-    instanceRef.current?.setOption(buildPbChartOption(chart, layers), true)
-  }, [chart, layers])
+    instanceRef.current?.setOption(buildPbChartOption(chart, layers, bugAxisMax), true)
+  }, [chart, layers, bugAxisMax])
 
   return <div className="pb-chart" ref={containerRef} />
 }
@@ -668,3 +685,4 @@ function toRate(count: number, total: number) {
 function formatCountRate(count: number, rate: number) {
   return `${count} (${rate.toFixed(1)}%)`
 }
+

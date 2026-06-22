@@ -10,3 +10,8 @@ class ProgressStatusThresholds(BaseModel):
         if not (self.caution > self.warning):
             raise ValueError("しきい値は caution > warning の順で指定してください")
         return self
+
+
+class PbChartSettings(BaseModel):
+    bug_axis_max: int = Field(..., ge=1, le=100000)
+

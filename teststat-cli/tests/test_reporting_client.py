@@ -115,7 +115,7 @@ class ReportingClientSendTests(unittest.TestCase):
             return FakeResponse(body='{"testing_id":1001,"archived":true}')
 
         with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
-            success, msg = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+            success, msg = send_progress("http://localhost:18000/api", {"testing_id": 1001, "files": []})
 
         self.assertFalse(success)
         self.assertIn("アーカイブ済み", msg)
@@ -132,7 +132,7 @@ class ReportingClientSendTests(unittest.TestCase):
             return FakeResponse(body='{"testing_id":1001,"inserted_files":0,"inserted_daily_rows":0,"inserted_person_rows":0}')
 
         with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
-            success, _ = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+            success, _ = send_progress("http://localhost:18000/api", {"testing_id": 1001, "files": []})
 
         self.assertTrue(success)
         self.assertEqual([req.full_url for req in requests], [
@@ -150,7 +150,7 @@ class ReportingClientSendTests(unittest.TestCase):
             return FakeResponse(body='{"testing_id":1001,"inserted_files":0,"inserted_daily_rows":0,"inserted_person_rows":0}')
 
         with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
-            success, _ = send_progress("http://localhost:18000", {"testing_id": 1001, "files": []})
+            success, _ = send_progress("http://localhost:18000/api", {"testing_id": 1001, "files": []})
 
         self.assertTrue(success)
         self.assertEqual(len(requests), 2)

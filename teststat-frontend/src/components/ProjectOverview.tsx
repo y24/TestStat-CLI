@@ -1,4 +1,4 @@
-import type { ProjectItem } from '../api/types'
+import type { PbChartSettings, ProjectItem } from '../api/types'
 import { formatDate, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
@@ -12,12 +12,14 @@ import { ClipboardList, FolderKanban, Pencil } from 'lucide-react'
 export function ProjectOverview({
   project,
   progressStatusThresholds,
+  pbChartSettings,
   onCreate,
   onEdit,
   onPlans,
 }: {
   project: ProjectItem | null
   progressStatusThresholds: ProgressStatusThresholds
+  pbChartSettings: PbChartSettings
   onCreate: () => void
   onEdit: () => void
   onPlans: () => void
@@ -86,7 +88,7 @@ export function ProjectOverview({
         <StatusTile label="最終更新" value={formatDateTimeWithRelative(project.actuals_updated_at)} />
       </section>
 
-      <PbChartPanel key={project.testing_id} project={project} onPlans={onPlans} />
+      <PbChartPanel key={project.testing_id} project={project} pbChartSettings={pbChartSettings} onPlans={onPlans} />
     </div>
   )
 }
@@ -156,3 +158,4 @@ function getProgressStatusLabel(level: ProgressStatusLevel) {
   }
   return '状態なし'
 }
+

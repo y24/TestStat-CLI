@@ -53,14 +53,18 @@ def aggregate_results(filepath:str, settings, verbose_logger=None):
 
 def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_sheet, settings, verbose_logger=None, sheet_name_mapping=None):
     """全シートの集計データを統合"""
+    read_def = settings["read_definition"]
+    invalid_results = list(read_def.get("excluded", [])) + list(read_def.get("date_invalid_results", []))
+
     data_daily_total, no_date_data = DataAggregator.aggregate_daily_results(
         all_data, settings["test_status"]["results"],
         settings["test_status"]["labels"]["completed"], settings["test_status"]["completed_results"],
         settings["test_status"]["labels"]["executed"], settings["test_status"]["executed_results"],
-        settings["test_status"]["labels"]["planned"], all_plan_data
+        settings["test_status"]["labels"]["planned"], all_plan_data,
+        invalid_results=invalid_results
     )
 
-    data_by_name = DataAggregator.aggregate_daily_by_person(all_data)
+    data_by_name = DataAggregator.aggregate_daily_by_person(all_data, invalid_results=invalid_results)
     data_total = DataAggregator.calculate_total_results(
         data_daily_total, no_date_data,
         [settings["test_status"]["labels"][k] for k in ["completed", "executed", "planned"]]

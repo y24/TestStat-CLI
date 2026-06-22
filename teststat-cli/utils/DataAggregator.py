@@ -1,7 +1,8 @@
 from collections import defaultdict
 
-def aggregate_daily_results(data, results: list[str], completed_label:str, completed_results: list[str], executed_label:str, executed_results: list[str], plan_label:str, plan_data: list[str] = None):
+def aggregate_daily_results(data, results: list[str], completed_label:str, completed_results: list[str], executed_label:str, executed_results: list[str], plan_label:str, plan_data: list[str] = None, invalid_results: list[str] = None):
     """日付ごとのデータ集計"""
+    invalid_results = invalid_results or []
     result_count = defaultdict(lambda: defaultdict(int))
 
     def initialize_result_counts(results, date, result_count, completed_label, executed_label, plan_label):
@@ -24,7 +25,9 @@ def aggregate_daily_results(data, results: list[str], completed_label:str, compl
         else:
             result, name, date = row[0], row[1], row[2]
         
-        if not date: date = "no_date"
+        # 無効な結果（対象外・準備・N/A 等）は日付を無視し no_date に倒す。
+        # カウント自体は通常どおり行うため、N/A の完了数は no_date 経由で保持される。
+        if not date or result in invalid_results: date = "no_date"
         initialize_result_counts(results, date, result_count, completed_label, executed_label, plan_label)
 
         if result in results:
@@ -44,10 +47,11 @@ def aggregate_daily_results(data, results: list[str], completed_label:str, compl
             out_data[date] = counts
     return out_data, no_date_data
 
-def aggregate_daily_by_person(data):
+def aggregate_daily_by_person(data, invalid_results: list[str] = None):
     """データ集計（名前別）"""
+    invalid_results = invalid_results or []
     date_name_count = defaultdict(lambda: defaultdict(int))
-    data = [row for row in data if len(row) > 2 and row[2] not in ("", None)]
+    data = [row for row in data if len(row) > 2 and row[2] not in ("", None) and row[0] not in invalid_results]
 
     for row in data:
         result, name, date = row[0], row[1], row[2]

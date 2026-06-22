@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Settings } from 'lucide-react'
 import { createHoliday, fetchHolidays, syncHolidays } from '../api/client'
-import type { HolidayItem } from '../api/types'
+import type { HolidayItem, PbChartSettings } from '../api/types'
 import { formatDate } from '../utils/date'
 import { getErrorMessage } from '../utils/errors'
 import {
@@ -15,10 +15,14 @@ const HOLIDAY_COLLAPSED_ROWS = 6
 
 export function SettingsScreen({
   progressStatusThresholds,
+  pbChartSettings,
   onProgressStatusThresholdsChange,
+  onPbChartSettingsChange,
 }: {
   progressStatusThresholds: ProgressStatusThresholds
+  pbChartSettings: PbChartSettings
   onProgressStatusThresholdsChange: (thresholds: ProgressStatusThresholds) => Promise<ProgressStatusThresholds>
+  onPbChartSettingsChange: (settings: PbChartSettings) => Promise<PbChartSettings>
 }) {
   const [holidays, setHolidays] = useState<HolidayItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,6 +34,8 @@ export function SettingsScreen({
   const [holidayForm, setHolidayForm] = useState({ date: '', name: '' })
   const [thresholdForm, setThresholdForm] = useState(progressStatusThresholds)
   const [savingThresholds, setSavingThresholds] = useState(false)
+  const [pbChartForm, setPbChartForm] = useState(pbChartSettings)
+  const [savingPbChartSettings, setSavingPbChartSettings] = useState(false)
 
   const loadHolidays = () => {
     setLoading(true)
@@ -131,6 +137,40 @@ export function SettingsScreen({
       .finally(() => setSavingThresholds(false))
   }
 
+  const handleSavePbChartSettings = (event: FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    setMessage(null)
+
+    const nextBugAxisMax = Math.floor(Number(pbChartForm.bug_axis_max))
+    if (!Number.isFinite(nextBugAxisMax) || nextBugAxisMax < 1) {
+      setError('不具合件数の縦軸上限は1以上の整数にしてください。')
+      return
+    }
+
+    setSavingPbChartSettings(true)
+    onPbChartSettingsChange({ bug_axis_max: nextBugAxisMax })
+      .then((saved) => {
+        setPbChartForm(saved)
+        setMessage('PB図の設定を保存しました。')
+      })
+      .catch((err) => setError(getErrorMessage(err)))
+      .finally(() => setSavingPbChartSettings(false))
+  }
+
+  const handleResetPbChartSettings = () => {
+    setError(null)
+    setMessage(null)
+    setSavingPbChartSettings(true)
+    onPbChartSettingsChange({ bug_axis_max: 30 })
+      .then((saved) => {
+        setPbChartForm(saved)
+        setMessage('PB図の設定を初期値に戻しました。')
+      })
+      .catch((err) => setError(getErrorMessage(err)))
+      .finally(() => setSavingPbChartSettings(false))
+  }
+
   return (
     <div className="content-shell">
       <header className="content-header">
@@ -200,6 +240,43 @@ export function SettingsScreen({
             </button>
             <button className="primary-button" type="submit" disabled={savingThresholds}>
               {savingThresholds ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="settings-panel">
+        <div className="settings-section-header">
+          <div>
+            <div className="panel-title">PB図</div>
+            <div className="panel-subtitle">不具合件数の右側の縦軸に使用します。</div>
+          </div>
+        </div>
+        <form className="threshold-settings-form" onSubmit={handleSavePbChartSettings}>
+          <label>
+            <span>不具合件数の縦軸上限</span>
+            <input
+              type="number"
+              min="1"
+              max="100000"
+              step="1"
+              value={pbChartForm.bug_axis_max}
+              disabled={savingPbChartSettings}
+              onChange={(event) => setPbChartForm({ bug_axis_max: Number(event.target.value) })}
+              required
+            />
+          </label>
+          <div className="threshold-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleResetPbChartSettings}
+              disabled={savingPbChartSettings}
+            >
+              初期値に戻す
+            </button>
+            <button className="primary-button" type="submit" disabled={savingPbChartSettings}>
+              {savingPbChartSettings ? '保存中...' : '保存'}
             </button>
           </div>
         </form>
@@ -295,3 +372,4 @@ function upsertHolidayItem(holidays: HolidayItem[], holiday: HolidayItem) {
     : [...holidays, holiday]
   return next.sort((a, b) => a.date.localeCompare(b.date))
 }
+

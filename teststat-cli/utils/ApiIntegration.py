@@ -19,7 +19,7 @@ def update_subtask_progress(base_url, subtask_id, progress_percent, logger=None,
     if not base_url or not subtask_id:
         return False, "APIのベースURLまたはサブタスクIDが設定されていません。"
         
-    url = f"{base_url.rstrip('/')}/api/subtasks/{subtask_id}"
+    url = f"{base_url.rstrip('/')}/subtasks/{subtask_id}"
     
     # ペイロードの構築（進捗率のみ必須とし、その他は拡張用kwargsとして受け取る）
     payload = {

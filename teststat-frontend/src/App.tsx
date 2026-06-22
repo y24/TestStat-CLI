@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import {
   fetchHealth,
+  fetchPbChartSettings,
   fetchProgressStatusThresholds,
   fetchProjects,
   updateProjectOrder,
+  updatePbChartSettings,
   updateProgressStatusThresholds,
 } from './api/client'
-import type { ProjectItem } from './api/types'
+import type { PbChartSettings, ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { useConfirmDialog } from './components/confirmDialogContext'
 import { PlanEditor } from './components/PlanEditor'
@@ -44,6 +46,7 @@ function AppContent() {
   const [progressStatusThresholds, setProgressStatusThresholds] = useState<ProgressStatusThresholds>(
     DEFAULT_PROGRESS_STATUS_THRESHOLDS,
   )
+  const [pbChartSettings, setPbChartSettings] = useState<PbChartSettings>({ bug_axis_max: 30 })
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.testing_id === selectedTestingId) ?? null,
@@ -89,6 +92,9 @@ function AppContent() {
       .finally(() => setLoadingProjects(false))
     fetchProgressStatusThresholds()
       .then(setProgressStatusThresholds)
+      .catch((err) => setError(getErrorMessage(err)))
+    fetchPbChartSettings()
+      .then(setPbChartSettings)
       .catch((err) => setError(getErrorMessage(err)))
   }, [])
 
@@ -190,6 +196,12 @@ function AppContent() {
     return saved
   }
 
+  const handlePbChartSettingsChange = async (settings: PbChartSettings) => {
+    const saved = await updatePbChartSettings(settings)
+    setPbChartSettings(saved)
+    return saved
+  }
+
   return (
     <div className="app-layout" aria-busy={loadingProjects}>
       <Sidebar
@@ -254,6 +266,7 @@ function AppContent() {
               <ProjectOverview
                 project={selectedProject}
                 progressStatusThresholds={progressStatusThresholds}
+                pbChartSettings={pbChartSettings}
                 onCreate={() => setViewMode('new')}
                 onEdit={() => setViewMode('edit')}
                 onPlans={() => setViewMode('plans')}
@@ -271,9 +284,11 @@ function AppContent() {
             )}
             {viewMode === 'settings' && (
               <SettingsScreen
-                key={`${progressStatusThresholds.caution}-${progressStatusThresholds.warning}`}
+                key={`${progressStatusThresholds.caution}-${progressStatusThresholds.warning}-${pbChartSettings.bug_axis_max}`}
                 progressStatusThresholds={progressStatusThresholds}
+                pbChartSettings={pbChartSettings}
                 onProgressStatusThresholdsChange={handleProgressStatusThresholdsChange}
+                onPbChartSettingsChange={handlePbChartSettingsChange}
               />
             )}
           </>
@@ -291,3 +306,4 @@ function ProjectLoading() {
     </div>
   )
 }
+

@@ -126,7 +126,7 @@ def build_progress_payload(project_info, results, sender=None):
 
 
 def _get_project_status(base_url, testing_id, timeout=10):
-    url = f"{base_url.rstrip('/')}/api/v1/projects/{testing_id}"
+    url = f"{base_url.rstrip('/')}/v1/projects/{testing_id}"
     req = urllib.request.Request(url, method="GET")
 
     try:
@@ -158,7 +158,7 @@ def send_progress(base_url, payload, timeout=10, logger=None):
         if project and project.get("archived"):
             return False, f"testing_id={testing_id} はアーカイブ済みのため進捗データを送信しません。"
 
-    url = f"{base_url.rstrip('/')}/api/v1/progress"
+    url = f"{base_url.rstrip('/')}/v1/progress"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json; charset=utf-8")

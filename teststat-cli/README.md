@@ -484,14 +484,14 @@ project:
 {
   "reporting_api": {
     "enabled": true,
-    "base_url": "http://your-teststat-server:18000",
+    "base_url": "http://your-teststat-server:18000/api",
     "sender": null
   }
 }
 ```
 
 - `enabled`: `false` にすると進捗データ送信をスキップします（デフォルトは `true`）。
-- `base_url`: TestStatサーバーのベースURLを指定します。`-l, --list` でYAMLを指定した際に `project.testing_id` が設定されていると、`{base_url}/api/v1/progress` へ集計結果を送信します。`http://<server-name>/tstat` のように指定します。
+- `base_url`: TestStatサーバーのベースURLを末尾の `/api` まで含めて指定します。`-l, --list` でYAMLを指定した際に `project.testing_id` が設定されていると、`{base_url}/v1/progress` へ集計結果を送信します。`http://<server-name>/tstat/api` のように指定します。
 - `sender`: 送信者名を文字列で指定します（任意）。`null` の場合は送信者情報を含みません。
 
 **WBS管理ツールへの進捗率送信（`wbs_api`）**
@@ -502,13 +502,13 @@ project:
 {
   "wbs_api": {
     "enabled": true,
-    "base_url": "http://your-wbs-tool.com"
+    "base_url": "http://your-wbs-tool.com/api"
   }
 }
 ```
 
 - `enabled`: `true` に設定するとAPI連携が有効になります（デフォルトは `false`）。
-- `base_url`: WBS管理ツールのベースURLを指定します。`/api` はツール側で付与します。
+- `base_url`: WBS管理ツールのベースURLを末尾の `/api` まで含めて指定します。
 
 #### 2. プロジェクトリスト（YAML）の設定
 
@@ -527,7 +527,7 @@ project:
 ```
 
 `project.testing_id` は、TestStatバックエンドに送信する進捗データを識別するためのIDです。
-`-l, --list` でYAMLを指定して実行した場合、`project.testing_id` が設定されていると集計結果を `{reporting_api.base_url}/api/v1/progress` へ送信します。
+`-l, --list` でYAMLを指定して実行した場合、`project.testing_id` が設定されていると集計結果を `{reporting_api.base_url}/v1/progress` へ送信します。
 `testing_id` は整数で指定してください。未設定の場合、通常の集計処理は継続されますが、TestStatバックエンドへの進捗データ送信はスキップされ、警告が表示されます。
 
 `project.subtask_id` が設定されている場合は、全ファイルの合計の `完了数 / 実施対象数` から進捗率を算出し、全ファイルで最も古い実施日を `actual_start_date` として送信します。
@@ -539,7 +539,7 @@ project:
 本ツールは集計完了後、指定された `subtask_id` ごとに以下のリクエストを送信します。
 
 - **HTTPメソッド**: `PATCH`
-- **URL**: `{base_url}/api/subtasks/{subtask_id}`
+- **URL**: `{base_url}/subtasks/{subtask_id}`
 - **Content-Type**: `application/json`
 - **リクエストボディ**:
 

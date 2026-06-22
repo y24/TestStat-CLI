@@ -5,7 +5,7 @@ from utils.ApiIntegration import update_subtask_progress
 
 
 class ApiIntegrationTests(unittest.TestCase):
-    def test_update_subtask_progress_adds_api_path_to_base_url(self):
+    def test_update_subtask_progress_appends_subtasks_path_to_base_url(self):
         requests = []
 
         class FakeResponse:
@@ -22,7 +22,7 @@ class ApiIntegrationTests(unittest.TestCase):
             return FakeResponse()
 
         with patch("utils.ApiIntegration.urllib.request.urlopen", side_effect=fake_urlopen):
-            success, msg = update_subtask_progress("http://localhost:5173", 123, 85)
+            success, msg = update_subtask_progress("http://localhost:5173/api", 123, 85)
 
         self.assertTrue(success)
         self.assertEqual(msg, "")
@@ -45,7 +45,7 @@ class ApiIntegrationTests(unittest.TestCase):
             return FakeResponse()
 
         with patch("utils.ApiIntegration.urllib.request.urlopen", side_effect=fake_urlopen):
-            success, _ = update_subtask_progress("http://localhost:5173/", 123, 85)
+            success, _ = update_subtask_progress("http://localhost:5173/api/", 123, 85)
 
         self.assertTrue(success)
         self.assertEqual(requests[0].full_url, "http://localhost:5173/api/subtasks/123")

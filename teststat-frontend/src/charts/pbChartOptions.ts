@@ -22,12 +22,17 @@ const chartFontFamily =
   '"Yu Gothic", "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif'
 
 // 不具合の右軸スケールは段階的に: 30 → 50 → 70 → 90 …（少件数で全体を占有しないように）。
-function steppedBugMax(peak: number): number {
-  if (peak <= 30) return 30
-  return Math.ceil((peak - 30) / 20) * 20 + 30
+function steppedBugMax(peak: number, baseMax: number): number {
+  const normalizedBaseMax = Math.max(1, Math.floor(baseMax))
+  if (peak <= normalizedBaseMax) return normalizedBaseMax
+  return Math.ceil((peak - normalizedBaseMax) / 20) * 20 + normalizedBaseMax
 }
 
-export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers): PbChartOption {
+export function buildPbChartOption(
+  chart: PbChartResponse,
+  layers: ChartLayers,
+  bugAxisMax: number,
+): PbChartOption {
   const dates = chart.series.map((item) => item.date)
   const series: PbChartOption['series'] = []
   const hasBugData =
@@ -235,7 +240,7 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
             name: '件数（不具合）',
             position: 'right',
             min: 0,
-            max: steppedBugMax(bugPeak),
+            max: steppedBugMax(bugPeak, bugAxisMax),
             minInterval: 1,
             nameTextStyle: { color: '#7b8794' },
             splitLine: { show: false },
@@ -252,3 +257,4 @@ export function buildPbChartOption(chart: PbChartResponse, layers: ChartLayers):
     series,
   }
 }
+

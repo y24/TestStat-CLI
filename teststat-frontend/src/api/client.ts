@@ -20,6 +20,7 @@ import type {
   HolidayCreatePayload,
   HolidaySyncResult,
   ProgressStatusThresholds,
+  PbChartSettings,
   AzureDevOpsWorkItem,
   BugSyncResult,
   OpenBugItem,
@@ -217,3 +218,11 @@ export const updateProgressStatusThresholds = (payload: ProgressStatusThresholds
     method: 'PATCH',
     body: JSON.stringify(payload),
   })
+export const fetchPbChartSettings = () =>
+  get<PbChartSettings>('/api/v1/settings/pb-chart')
+export const updatePbChartSettings = (payload: PbChartSettings) =>
+  request<PbChartSettings>('/api/v1/settings/pb-chart', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+

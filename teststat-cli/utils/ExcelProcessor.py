@@ -43,6 +43,9 @@ def process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=None
 
     sets = Utility.transpose_lists(result_rows, person_rows, date_rows)
     data, env_data, all_plan_data, sheet_name_mapping = [], {}, [], {}
+
+    read_definition = settings.get("read_definition", {})
+    invalid_results = list(read_definition.get("excluded", [])) + list(read_definition.get("date_invalid_results", []))
     
     for index, set_ in enumerate(sets):
         set_name = Excel.get_cell_value(sheet=sheet, col=set_[0], row=1, replace_newline=True) or f"セット{index + 1}"
@@ -74,7 +77,8 @@ def process_sheet(workbook, sheet_name: str, settings: dict, verbose_logger=None
             executed_label=settings["test_status"]["labels"]["executed"],
             executed_results=settings["test_status"]["executed_results"],
             plan_label=settings["test_status"]["labels"]["planned"],
-            plan_data=plan_data
+            plan_data=plan_data,
+            invalid_results=invalid_results
         )
         sheet_name_mapping[set_name] = sheet_name
 

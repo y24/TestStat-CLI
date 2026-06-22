@@ -76,7 +76,7 @@ export function PlanVersionTable({
                 <th className="plan-table-centered-value">版</th>
                 <th className="plan-table-centered-value">項目数</th>
                 <th className="plan-table-centered-value">営業日数</th>
-                <th className="plan-table-centered-value">1日あたり項目数</th>
+                <th className="plan-table-centered-value">項目数/1d</th>
                 <th>期間</th>
                 <th>計画</th>
               </tr>

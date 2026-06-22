@@ -5,7 +5,6 @@ import {
   deleteBugCountData,
   deleteProject,
   fetchAzureDevOpsWorkItem,
-  fetchProgressSummary,
   updateProject,
 } from '../api/client'
 import type { ProjectItem } from '../api/types'
@@ -91,49 +90,6 @@ export function ProjectEditor({
   useEffect(() => {
     return () => onDirtyChange(false)
   }, [onDirtyChange])
-
-  useEffect(() => {
-    if (mode !== 'new') {
-      return
-    }
-
-    const testingId = Number(form.testing_id)
-    if (!Number.isInteger(testingId) || testingId <= 0) {
-      autoFilledNameRef.current = null
-      return
-    }
-
-    let active = true
-    const timeoutId = window.setTimeout(() => {
-      fetchProgressSummary(testingId)
-        .then((summary) => {
-          if (!active) {
-            return
-          }
-          setForm((current) => {
-            const canAutoFill =
-              !current.name.trim() ||
-              (autoFilledNameRef.current !== null && current.name === autoFilledNameRef.current)
-            autoFilledNameRef.current = summary.project_name
-            if (!canAutoFill) {
-              return current
-            }
-            return { ...current, name: summary.project_name }
-          })
-        })
-        .catch(() => {
-          if (!active) {
-            return
-          }
-          autoFilledNameRef.current = null
-        })
-    }, 300)
-
-    return () => {
-      active = false
-      window.clearTimeout(timeoutId)
-    }
-  }, [form.testing_id, mode])
 
   const handleAzureFetch = () => {
     if (!testingIdValid) {

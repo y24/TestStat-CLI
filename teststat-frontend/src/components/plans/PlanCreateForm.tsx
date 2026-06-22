@@ -7,7 +7,7 @@ import {
   calculateEndDateByBusinessDays,
   calculateEndDateByDailyCount,
   countBusinessDays,
-  displayLabel,
+  displayPlanLabel,
   parseDailyCsv,
 } from '../../utils/plans'
 import type { PlanFormState, PlanInputMode } from './planFormTypes'
@@ -132,7 +132,7 @@ export function PlanCreateForm({
     <form className="editor-form plan-form wide" onSubmit={onSubmit}>
       <div className="create-target">
         <div>
-          <div className="panel-title">対象: {displayLabel(targetLabel)}</div>
+          <div className="panel-title">対象: {displayPlanLabel(targetLabel)}</div>
         </div>
       </div>
       {formError && <div className="form-error">{formError}</div>}

@@ -62,7 +62,6 @@ export function PlanEditor({
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
-  const [useOverallPlan, setUseOverallPlan] = useState(false)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
   const [initialCreateForm, setInitialCreateForm] = useState<PlanFormState>(() => createInitialPlanForm())
@@ -106,9 +105,6 @@ export function PlanEditor({
       .then(([plans, planLabels, files, daily]) => {
         if (!ignore) {
           setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null })
-          const hasOverall = plans.some((plan) => plan.label === null)
-          const hasIndividual = plans.some((plan) => plan.label !== null)
-          setUseOverallPlan(hasOverall && !hasIndividual)
         }
       })
       .catch((err) => {
@@ -184,8 +180,11 @@ export function PlanEditor({
     }
     return casesByLabel
   }, {})
-  const overallAvailableCases = Object.values(availableCasesByLabel).reduce(
-    (total, count) => total + count,
+  // 未設定（label なし）バケット: label を持たないファイルの集計。識別子別の行と共存させる。
+  const unlabeledFiles = files.filter((file) => !file.label)
+  const hasUnlabeledData = unlabeledFiles.length > 0
+  const unlabeledAvailableCases = unlabeledFiles.reduce(
+    (total, file) => total + file.available_cases,
     0,
   )
   const selectedModalPlans =
@@ -200,19 +199,6 @@ export function PlanEditor({
     onDirtyChange(false)
     onBack()
   }
-  const deletePlans = (targetPlans: PlanItem[]) => {
-    const replacementPlans = findReplacementPlansAfterDelete(plans, targetPlans)
-    setSubmitting(true)
-    Promise.all(targetPlans.map((plan) => deletePlan(plan.id)))
-      .then(() => Promise.all(replacementPlans.map((plan) => activatePlan(plan.id))))
-      .then(() => {
-        loadPlans()
-        onChanged()
-      })
-      .catch((err) => setFormError(getErrorMessage(err)))
-      .finally(() => setSubmitting(false))
-  }
-
   const handleRefreshLabel = (label: string) => {
     if (collectingLabel !== null) {
       return
@@ -279,31 +265,6 @@ export function PlanEditor({
       loadPlans()
       onChanged()
     }
-  }
-
-  const handleToggleOverall = async (checked: boolean) => {
-    if (checked === useOverallPlan || submitting) {
-      return
-    }
-    const conflictingPlans = plans.filter((plan) => (checked ? plan.label !== null : plan.label === null))
-    if (conflictingPlans.length === 0) {
-      setUseOverallPlan(checked)
-      return
-    }
-
-    const confirmed = await confirm({
-      title: '計画の切り替え',
-      message: checked
-        ? '全体計画に切り替えると、入力済みの個別計画はすべて削除されます。続行しますか。'
-        : '個別計画に切り替えると、入力済みの全体計画は削除されます。続行しますか。',
-      confirmLabel: '削除して切り替え',
-      danger: true,
-    })
-    if (!confirmed) {
-      return
-    }
-    setUseOverallPlan(checked)
-    deletePlans(conflictingPlans)
   }
 
   const openLabelCreateScreen = () => {
@@ -489,8 +450,8 @@ export function PlanEditor({
     const initialForm = createInitialPlanForm()
     const plannedTotal =
       label === null
-        ? overallAvailableCases > 0
-          ? String(overallAvailableCases)
+        ? unlabeledAvailableCases > 0
+          ? String(unlabeledAvailableCases)
           : ''
         : availableCasesByLabel[label] !== undefined
           ? String(availableCasesByLabel[label])
@@ -564,39 +525,17 @@ export function PlanEditor({
     }
 
     const targetLabel = form.label.trim() || null
-    const conflictingPlans = plans.filter((plan) =>
-      targetLabel === null ? plan.label !== null : plan.label === null,
-    )
-    if (conflictingPlans.length > 0) {
-      const confirmed = await confirm({
-        title: '既存計画の削除',
-        message: targetLabel === null
-          ? '全体計画を作成するため、入力済みの個別計画をすべて削除します。続行しますか。'
-          : '個別計画を作成するため、入力済みの全体計画を削除します。続行しますか。',
-        confirmLabel: '削除して作成',
-        danger: true,
-      })
-      if (!confirmed) {
-        return
-      }
-    }
 
     setSubmitting(true)
-    const cleanup = conflictingPlans.length > 0
-      ? Promise.all(conflictingPlans.map((plan) => deletePlan(plan.id)))
-      : Promise.resolve()
-    cleanup
-      .then(() =>
-        createPlan(project.testing_id, {
-          label: targetLabel,
-          reason: form.reason.trim() || null,
-          planned_total_cases: plannedTotal,
-          start_date: form.start_date,
-          end_date: form.end_date,
-          activate: form.activate,
-          daily,
-        }),
-      )
+    createPlan(project.testing_id, {
+      label: targetLabel,
+      reason: form.reason.trim() || null,
+      planned_total_cases: plannedTotal,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      activate: form.activate,
+      daily,
+    })
       .then(() => {
         loadPlans()
         onChanged()
@@ -689,11 +628,11 @@ export function PlanEditor({
       labels={labels}
       actualLabels={actualLabels}
       availableCasesByLabel={availableCasesByLabel}
-      overallAvailableCases={overallAvailableCases}
+      unlabeledAvailableCases={unlabeledAvailableCases}
+      hasUnlabeledData={hasUnlabeledData}
       plans={plans}
       planLabels={planLabels}
       holidays={holidayDates}
-      useOverallPlan={useOverallPlan}
       submitting={submitting}
       collectingLabel={collectingLabel}
       collectingAll={collectingAll}
@@ -702,7 +641,6 @@ export function PlanEditor({
       modalLabel={modalLabel}
       selectedModalPlans={selectedModalPlans}
       onBack={onBack}
-      onToggleOverall={handleToggleOverall}
       onAddLabel={openLabelCreateScreen}
       onEditLabel={openLabelEditScreen}
       onRefreshLabel={handleRefreshLabel}
@@ -724,37 +662,6 @@ function normalizeSourceUrl(value: string): string | null {
 function isValidOptionalUrl(value: string | null): boolean {
   return value === null || value.startsWith('http://') || value.startsWith('https://')
 }
-function findReplacementPlansAfterDelete(plans: PlanItem[], targetPlans: PlanItem[]): PlanItem[] {
-  const deletingIds = new Set(targetPlans.map((plan) => plan.id))
-  const deletedActivePlans = targetPlans.filter((plan) => plan.is_active)
-  const replacementPlans: PlanItem[] = []
-
-  deletedActivePlans.forEach((deletedPlan) => {
-    const alreadyQueued = replacementPlans.some((plan) => plan.label === deletedPlan.label)
-    if (alreadyQueued) {
-      return
-    }
-
-    const remainingVersions = plans.filter(
-      (plan) => plan.label === deletedPlan.label && !deletingIds.has(plan.id),
-    )
-    const alreadyActive = remainingVersions.some((plan) => plan.is_active)
-    if (alreadyActive) {
-      return
-    }
-
-    const latestVersion = remainingVersions.reduce<PlanItem | null>(
-      (latest, plan) => (latest === null || plan.version > latest.version ? plan : latest),
-      null,
-    )
-    if (latestVersion) {
-      replacementPlans.push(latestVersion)
-    }
-  })
-
-  return replacementPlans
-}
-
 function createInitialPlanForm(): PlanFormState {
   const today = getTodayString()
   return {

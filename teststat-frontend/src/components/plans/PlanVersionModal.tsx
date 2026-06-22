@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { PlanItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
-import { displayLabel } from '../../utils/plans'
+import { displayPlanLabel } from '../../utils/plans'
 import { useConfirmDialog } from '../confirmDialogContext'
 
 export interface PlanVersionModalChanges {
@@ -70,7 +70,7 @@ export function PlanVersionModal({
       >
         <div className="modal-header">
           <div>
-            <div className="eyebrow">{displayLabel(label)}</div>
+            <div className="eyebrow">{displayPlanLabel(label)}</div>
             <h2 id="plan-version-modal-title">版の変更/削除</h2>
           </div>
           <button className="icon-button modal-close" type="button" onClick={handleCancel} aria-label="閉じる">

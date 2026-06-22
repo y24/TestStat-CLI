@@ -4,6 +4,12 @@ export function displayLabel(label: string | null) {
   return label || '全体'
 }
 
+// 計画管理画面では label なし（null/空）を「(未設定)」のバケットとして扱う。
+// ダッシュボードの集計表示（displayLabel→「全体」）とは意味が異なるため別関数にする。
+export function displayPlanLabel(label: string | null) {
+  return label || '(未設定)'
+}
+
 export function buildEvenDaily(start: string, end: string, total: number, holidays: Set<string> = new Set()) {
   const dates = enumerateDates(start, end)
   if (dates.length === 0) {

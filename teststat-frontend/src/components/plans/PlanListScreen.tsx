@@ -11,11 +11,11 @@ export function PlanListScreen({
   labels,
   actualLabels,
   availableCasesByLabel,
-  overallAvailableCases,
+  unlabeledAvailableCases,
+  hasUnlabeledData,
   plans,
   planLabels,
   holidays,
-  useOverallPlan,
   submitting,
   collectingLabel,
   collectingAll,
@@ -24,7 +24,6 @@ export function PlanListScreen({
   modalLabel,
   selectedModalPlans,
   onBack,
-  onToggleOverall,
   onAddLabel,
   onEditLabel,
   onRefreshLabel,
@@ -39,11 +38,11 @@ export function PlanListScreen({
   labels: string[]
   actualLabels: string[]
   availableCasesByLabel: Record<string, number>
-  overallAvailableCases: number
+  unlabeledAvailableCases: number
+  hasUnlabeledData: boolean
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
   holidays: Set<string>
-  useOverallPlan: boolean
   submitting: boolean
   collectingLabel: string | null
   collectingAll: boolean
@@ -52,7 +51,6 @@ export function PlanListScreen({
   modalLabel: string | null | undefined
   selectedModalPlans: PlanItem[]
   onBack: () => void
-  onToggleOverall: (checked: boolean) => void
   onAddLabel: () => void
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
@@ -62,7 +60,7 @@ export function PlanListScreen({
   onSaveModal: (changes: PlanVersionModalChanges) => void
   onCloseModal: () => void
 }) {
-  const modalResetKey = `${modalLabel ?? 'overall'}:${selectedModalPlans
+  const modalResetKey = `${modalLabel ?? 'unlabeled'}:${selectedModalPlans
     .map((plan) => `${plan.id}:${plan.is_active}`)
     .join(',')}`
 
@@ -87,7 +85,7 @@ export function PlanListScreen({
           </div>
         </div>
         <div className="header-actions">
-          {!useOverallPlan && refreshableCount > 0 && (
+          {refreshableCount > 0 && (
             <button
               className={`secondary-button icon-text-button${collectingAll ? ' is-refreshing' : ''}`}
               type="button"
@@ -118,15 +116,14 @@ export function PlanListScreen({
           labels={labels}
           actualLabels={actualLabels}
           availableCasesByLabel={availableCasesByLabel}
-          overallAvailableCases={overallAvailableCases}
+          unlabeledAvailableCases={unlabeledAvailableCases}
+          hasUnlabeledData={hasUnlabeledData}
           plans={plans}
           planLabels={planLabels}
           holidays={holidays}
-          useOverallPlan={useOverallPlan}
           submitting={submitting}
           collectingLabel={collectingLabel}
           collectErrors={collectErrors}
-          onToggleOverall={onToggleOverall}
           onCreate={onCreate}
           onEditLabel={onEditLabel}
           onRefreshLabel={onRefreshLabel}

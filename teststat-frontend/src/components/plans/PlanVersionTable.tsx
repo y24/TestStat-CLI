@@ -1,20 +1,19 @@
 import { ChartLine, FileSpreadsheet, Pencil, RefreshCw, TriangleAlert } from 'lucide-react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
-import { countBusinessDays, displayLabel } from '../../utils/plans'
+import { countBusinessDays, displayPlanLabel } from '../../utils/plans'
 
 export function PlanVersionTable({
   labels,
   actualLabels,
   availableCasesByLabel,
-  overallAvailableCases,
+  unlabeledAvailableCases,
+  hasUnlabeledData,
   plans,
   planLabels,
   holidays,
-  useOverallPlan,
   submitting,
   collectingLabel,
   collectErrors,
-  onToggleOverall,
   onCreate,
   onEditLabel,
   onRefreshLabel,
@@ -24,22 +23,23 @@ export function PlanVersionTable({
   labels: string[]
   actualLabels: string[]
   availableCasesByLabel: Record<string, number>
-  overallAvailableCases: number
+  unlabeledAvailableCases: number
+  hasUnlabeledData: boolean
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
   holidays: Set<string>
-  useOverallPlan: boolean
   submitting: boolean
   collectingLabel: string | null
   collectErrors: Record<string, string>
-  onToggleOverall: (checked: boolean) => void
   onCreate: (label: string | null) => void
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
   onManage: (label: string | null) => void
   formatDate: (value: string) => string
 }) {
-  const rows = useOverallPlan ? [null] : labels
+  // label なし（未設定）のデータ／計画があれば、識別子別の行と並べて最上段に表示する。
+  const showUnlabeledRow = hasUnlabeledData || plans.some((plan) => plan.label === null)
+  const rows: (string | null)[] = showUnlabeledRow ? [null, ...labels] : labels
   const actualLabelSet = new Set(actualLabels)
   const registeredLabelMap = new Map(planLabels.map((item) => [item.label, item]))
 
@@ -48,25 +48,13 @@ export function PlanVersionTable({
       <div className="plan-panel-header">
         <div>
           <div className="panel-title">テスト一覧</div>
-          <div className="panel-subtitle">
-            {useOverallPlan ? '全体計画を1つだけ管理します。' : '識別子ごとに計画を管理します。'}
-          </div>
+          <div className="panel-subtitle">識別子ごとに計画を管理します。</div>
         </div>
-        <label className="switch-row">
-          <span>全体計画</span>
-          <input
-            type="checkbox"
-            checked={useOverallPlan}
-            disabled={submitting}
-            onChange={(event) => onToggleOverall(event.target.checked)}
-          />
-          <span className="switch-track" aria-hidden="true" />
-        </label>
       </div>
-      {!useOverallPlan && labels.length === 0 && (
+      {rows.length === 0 && (
         <div className="muted-block">送信されたデータがまだありません。</div>
       )}
-      {(useOverallPlan || labels.length > 0) && (
+      {rows.length > 0 && (
         <div className="plan-table-wrap">
           <table className="plan-table">
             <thead>
@@ -89,7 +77,7 @@ export function PlanVersionTable({
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
                 const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label, source_url: null }
                 const actualAvailableCases =
-                  label === null ? overallAvailableCases : availableCasesByLabel[label]
+                  label === null ? unlabeledAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
                   activePlan?.planned_total_cases ?? actualAvailableCases ?? null
                 const isPlanOnly = label !== null && !actualLabelSet.has(label)
@@ -139,7 +127,7 @@ export function PlanVersionTable({
                       )}
                     </td>
                     <td>
-                      <strong>{displayLabel(label)}</strong>
+                      <strong>{displayPlanLabel(label)}</strong>
                       {registeredLabel?.source_url && (
                         <a
                           href={registeredLabel.source_url}

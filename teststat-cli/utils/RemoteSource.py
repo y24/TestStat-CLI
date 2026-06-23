@@ -56,7 +56,11 @@ def _format_bytes(value):
 
 
 class DownloadProgress:
-    """SharePoint ダウンロードの進捗をコンソールへ表示する。"""
+    """SharePoint ダウンロードの進捗を1行で表示する。
+
+    URL 解決・トークン取得・ダウンロード本体まで、すべて同一行を上書き表示し、
+    完了時には行をクリアしてコンソールに何も残さない。
+    """
 
     def __init__(self, label=None, file_name=None, item_index=None, item_total=None,
                  stream=None, enabled=True):
@@ -75,29 +79,42 @@ class DownloadProgress:
             return f"[{self.item_index}/{self.item_total}]"
         return ""
 
-    def status(self, message, include_context=False):
+    def _render(self, body):
+        """同一行を上書きして表示する（改行しない）。"""
         if not self.enabled:
             return
         prefix = self._prefix()
         head = f"{prefix} " if prefix else ""
-        context = f": label={self.label}, file={self.file_name}" if include_context else ""
-        print(f"{head}{message}{context}", file=self.stream)
+        line = f"\r{head}{body}"
+        padding = " " * max(self._last_length - len(line), 0)
+        print(line + padding, end="", file=self.stream)
+        self._last_length = len(line)
         try:
             self.stream.flush()
         except Exception:
             pass
+
+    def _clear(self):
+        """表示中の行をクリアし、カーソルを行頭へ戻す。"""
+        if not self.enabled or not self._last_length:
+            return
+        print("\r" + " " * self._last_length + "\r", end="", file=self.stream)
+        self._last_length = 0
+        try:
+            self.stream.flush()
+        except Exception:
+            pass
+
+    def status(self, message, include_context=False):
+        # include_context は後方互換のため受け取るが、1行表示では付与しない。
+        self._render(message)
 
     def start(self, total_bytes=None):
         if not self.enabled:
             return
         self._started = True
         total = _format_bytes(total_bytes) if total_bytes else "size unknown"
-        prefix = self._prefix()
-        head = f"{prefix} " if prefix else ""
-        print(
-            f"{head}SharePoint ファイルをダウンロード中: {self.file_name} ({total})",
-            file=self.stream,
-        )
+        self._render(f"ダウンロード中: {self.file_name} ({total})")
 
     def update(self, downloaded_bytes, total_bytes=None, force=False):
         if not self.enabled:
@@ -107,8 +124,6 @@ class DownloadProgress:
             return
         self._last_render = now
 
-        prefix = self._prefix()
-        head = f"{prefix} " if prefix else ""
         if total_bytes:
             ratio = min(max(downloaded_bytes / total_bytes, 0), 1)
             percent = ratio * 100
@@ -120,28 +135,15 @@ class DownloadProgress:
             bar = "#" * 8
             detail = f"{_format_bytes(downloaded_bytes)} downloaded"
 
-        line = f"\r{head}[{bar}] {detail}"
-        padding = " " * max(self._last_length - len(line), 0)
-        print(line + padding, end="", file=self.stream)
-        self._last_length = len(line)
-        try:
-            self.stream.flush()
-        except Exception:
-            pass
+        self._render(f"{self.file_name} [{bar}] {detail}")
 
     def finish(self, dest_path, downloaded_bytes=None):
         if not self.enabled:
             return
         if self._started:
             self.update(downloaded_bytes or 0, downloaded_bytes or None, force=True)
-            print(file=self.stream)
-        prefix = self._prefix()
-        head = f"{prefix} " if prefix else ""
-        print(f"{head}SharePoint ファイルのダウンロード完了: {dest_path}", file=self.stream)
-        try:
-            self.stream.flush()
-        except Exception:
-            pass
+        # 完了時は行をクリアし、コンソールに何も残さない。
+        self._clear()
 
 
 def _shorten_message(value, limit=800):
@@ -479,6 +481,7 @@ class RemoteFileManager:
             if self.logger:
                 self.logger.log(f"キャッシュ済みのファイルを再利用します: {url}")
             progress.status("キャッシュ済みのSharePointファイルを再利用します")
+            progress.finish(self._cache[url])
             return self._cache[url]
 
         temp_dir = self._ensure_temp_dir()

@@ -208,7 +208,7 @@ export function PbChartPanel({
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
   const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
-  // Block件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
+  // Blocked件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
   const blockedCount = daily.reduce((sum, item) => sum + item.Blocked, 0)
   // 未解決チケットは「未解決チケット一覧」と同じ母数（見送りを除く未解決バグ）。
   const bugDataFetched = usesTestResultBugs || Boolean(chart?.has_bugs)
@@ -223,7 +223,7 @@ export function PbChartPanel({
           value={formatRate(project.actual_vs_plan_rate)}
           statusLevel={planStatusLevel}
         />
-        <StatusTile label="Block件数" value={loading ? '-' : String(blockedCount)} />
+        <StatusTile label="Blocked件数" value={loading ? '-' : String(blockedCount)} />
         <StatusTile
           label="未解決チケット件数"
           value={loading || !bugDataFetched ? '-' : String(openTicketCount)}

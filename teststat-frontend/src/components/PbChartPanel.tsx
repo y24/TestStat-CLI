@@ -575,7 +575,6 @@ function ProgressBreakdown({
               <thead>
                 <tr>
                   <th>種別</th>
-                  <th>環境</th>
                   <th>合計</th>
                   {resultKeys.map((key) => (
                     <th key={key}>
@@ -591,7 +590,6 @@ function ProgressBreakdown({
                     <td className="breakdown-file-cell" title={row.file}>
                       {row.file}
                     </td>
-                    <td>{row.env}</td>
                     <td>{row.total}</td>
                     {resultKeys.map((key) => (
                       <td key={key}>{row.results[key]}</td>

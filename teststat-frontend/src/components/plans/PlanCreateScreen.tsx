@@ -48,7 +48,7 @@ export function PlanCreateScreen({
           <div>
             <h1 className="title-with-icon">
               <ChartLine className="title-icon" aria-hidden="true" />
-              <span>計画線の作成</span>
+              <span>計画の作成</span>
             </h1>
           </div>
         </div>

@@ -755,6 +755,29 @@
   text-decoration: underline;
 }
 
+.bug-state-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 22px;
+  border: 1px solid #d8dee8;
+  border-radius: 999px;
+  background: #f7f9fb;
+  color: #5f6b7a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 2px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bug-state-badge-empty {
+  color: var(--muted);
+}
+
 .result-header {
   display: inline-flex;
   align-items: center;
@@ -1970,6 +1993,93 @@
   justify-content: flex-end;
 }
 
+.bug-state-color-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.bug-state-color-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bug-state-color-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.4fr) minmax(130px, 1fr) repeat(3, 70px) minmax(110px, 0.8fr) 36px;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #d7dde7;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.bug-state-color-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bug-state-color-row input[type='text'],
+.bug-state-color-row select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  padding: 7px 9px;
+}
+
+.bug-state-color-field input[type='color'] {
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  padding: 3px;
+}
+
+.bug-state-color-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 36px;
+}
+
+.bug-state-color-preview .bug-state-badge {
+  max-width: 100%;
+}
+
+.bug-state-color-actions {
+  justify-content: flex-end;
+}
+
+.danger-icon-button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  color: #b4234f;
+}
+
+.danger-icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .holiday-add-form {
   display: grid;
   grid-template-columns: 180px minmax(220px, 1fr) auto;
@@ -2095,6 +2205,15 @@
 
   .threshold-actions button {
     flex: 1;
+  }
+
+
+  .bug-state-color-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bug-state-color-actions {
+    justify-content: stretch;
   }
 
   .pb-chart {

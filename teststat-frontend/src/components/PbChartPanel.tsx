@@ -22,6 +22,8 @@ import type {
   DailyProgressItem,
   FileProgressItem,
   OpenBugItem,
+  BugStateColorSettings,
+  BugStateColorSetting,
   PbChartSettings,
   PbChartResponse,
   PlanItem,
@@ -90,11 +92,13 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
 export function PbChartPanel({
   project,
   pbChartSettings,
+  bugStateColorSettings,
   progressStatusThresholds,
   onPlans,
 }: {
   project: ProjectItem
   pbChartSettings: PbChartSettings
+  bugStateColorSettings: BugStateColorSettings
   progressStatusThresholds: ProgressStatusThresholds
   onPlans?: () => void
 }) {
@@ -306,6 +310,7 @@ export function PbChartPanel({
           selectedLabel={label}
           openBugs={bugsAllowed ? openBugs : []}
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
+          bugStateColors={bugStateColorSettings.items}
         />
       )}
     </section>
@@ -487,12 +492,14 @@ function ProgressBreakdown({
   selectedLabel,
   openBugs,
   bugDataFetched,
+  bugStateColors,
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
   selectedLabel: string | null
   openBugs: OpenBugItem[]
   bugDataFetched: boolean
+  bugStateColors: BugStateColorSetting[]
 }) {
   const rows = buildBreakdownRows(files, daily, selectedLabel)
   if (rows.length === 0 && !bugDataFetched && openBugs.length === 0) {
@@ -600,12 +607,20 @@ function ProgressBreakdown({
         )}
       </section>
 
-      <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} />
+      <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} bugStateColors={bugStateColors} />
     </div>
   )
 }
 
-function OpenBugList({ bugs, bugDataFetched }: { bugs: OpenBugItem[]; bugDataFetched: boolean }) {
+function OpenBugList({
+  bugs,
+  bugDataFetched,
+  bugStateColors,
+}: {
+  bugs: OpenBugItem[]
+  bugDataFetched: boolean
+  bugStateColors: BugStateColorSetting[]
+}) {
   const openBugs = bugs.filter((bug) => !bug.is_suspended)
   const suspendedBugs = bugs.filter((bug) => bug.is_suspended)
   return (
@@ -615,12 +630,14 @@ function OpenBugList({ bugs, bugDataFetched }: { bugs: OpenBugItem[]; bugDataFet
         ariaLabel="未解決の不具合チケット一覧"
         bugs={openBugs}
         emptyText={bugDataFetched ? '未解決の不具合チケットはありません' : '不具合データ未取得です'}
+        bugStateColors={bugStateColors}
       />
       <BugListSection
         title="対応見送りチケット一覧"
         ariaLabel="対応見送りの不具合チケット一覧"
         bugs={suspendedBugs}
         emptyText={bugDataFetched ? '対応見送りの不具合チケットはありません' : '不具合データ未取得です'}
+        bugStateColors={bugStateColors}
       />
     </>
   )
@@ -631,12 +648,15 @@ function BugListSection({
   ariaLabel,
   bugs,
   emptyText,
+  bugStateColors,
 }: {
   title: string
   ariaLabel: string
   bugs: OpenBugItem[]
   emptyText: string
+  bugStateColors: BugStateColorSetting[]
 }) {
+  const colorByState = buildBugStateColorMap(bugStateColors)
   return (
     <section className="breakdown-block" aria-label={ariaLabel}>
       <h3>{title}</h3>
@@ -665,7 +685,7 @@ function BugListSection({
                   <td className="open-bug-title-cell" title={bug.title ?? ''}>
                     {bug.title || '-'}
                   </td>
-                  <td className="open-bug-state-cell">{bug.state || '-'}</td>
+                  <td className="open-bug-state-cell"><BugStateBadge state={bug.state} color={bug.state ? colorByState.get(bug.state.toLocaleLowerCase()) : undefined} /></td>
                 </tr>
               ))}
             </tbody>
@@ -676,6 +696,29 @@ function BugListSection({
       )}
     </section>
   )
+}
+
+
+function BugStateBadge({ state, color }: { state: string | null; color?: BugStateColorSetting }) {
+  if (!state) {
+    return <span className="bug-state-badge bug-state-badge-empty">-</span>
+  }
+  const style = color
+    ? {
+        backgroundColor: color.background_color,
+        borderColor: color.border_color,
+        color: color.text_color,
+      }
+    : undefined
+  return (
+    <span className="bug-state-badge" style={style} title={state}>
+      {state}
+    </span>
+  )
+}
+
+function buildBugStateColorMap(settings: BugStateColorSetting[]) {
+  return new Map(settings.map((setting) => [setting.state.toLocaleLowerCase(), setting]))
 }
 
 function ResultHeader({ result }: { result: ResultKey }) {

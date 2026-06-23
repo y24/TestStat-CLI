@@ -21,6 +21,7 @@ import type {
   HolidaySyncResult,
   ProgressStatusThresholds,
   PbChartSettings,
+  BugStateColorSettings,
   AzureDevOpsWorkItem,
   BugSyncResult,
   OpenBugItem,
@@ -234,3 +235,10 @@ export const updatePbChartSettings = (payload: PbChartSettings) =>
     body: JSON.stringify(payload),
   })
 
+export const fetchBugStateColorSettings = () =>
+  get<BugStateColorSettings>('/api/v1/settings/bug-state-colors')
+export const updateBugStateColorSettings = (payload: BugStateColorSettings) =>
+  request<BugStateColorSettings>('/api/v1/settings/bug-state-colors', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })

@@ -88,6 +88,17 @@ export interface PbChartSettings {
   bug_axis_max: number
 }
 
+export interface BugStateColorSetting {
+  state: string
+  background_color: string
+  text_color: string
+  border_color: string
+}
+
+export interface BugStateColorSettings {
+  items: BugStateColorSetting[]
+}
+
 // === Azure DevOps 連携 ===
 
 export interface AzureDevOpsWorkItem {

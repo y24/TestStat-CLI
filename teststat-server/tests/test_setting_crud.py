@@ -11,13 +11,20 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401
 from app.crud.setting import (  # noqa: E402
+    get_bug_state_color_settings,
+    update_bug_state_color_settings,
     get_pb_chart_settings,
     get_progress_status_thresholds,
     update_pb_chart_settings,
     update_progress_status_thresholds,
 )
 from app.database import Base  # noqa: E402
-from app.schemas.setting import PbChartSettings, ProgressStatusThresholds  # noqa: E402
+from app.schemas.setting import (  # noqa: E402
+    BugStateColorSetting,
+    BugStateColorSettings,
+    PbChartSettings,
+    ProgressStatusThresholds,
+)
 
 
 def make_session():
@@ -60,6 +67,44 @@ class TestSettingCRUD(unittest.TestCase):
 
         settings = get_pb_chart_settings(self.db)
         self.assertEqual(settings.bug_axis_max, 80)
+
+    def test_get_bug_state_color_settings_returns_defaults(self):
+        settings = get_bug_state_color_settings(self.db)
+
+        self.assertEqual([item.state for item in settings.items], [
+            "New",
+            "In Progress",
+            "Dev In Progress",
+            "Resolved",
+            "Done",
+            "Suspend",
+        ])
+        self.assertEqual(settings.items[0].background_color, "#f7f9fb")
+
+    def test_update_bug_state_color_settings_persists_values(self):
+        update_bug_state_color_settings(
+            self.db,
+            BugStateColorSettings(
+                items=[
+                    BugStateColorSetting(
+                        state="Active",
+                        background_color="#eef9ff",
+                        text_color="#0369a1",
+                        border_color="#bae6fd",
+                    ),
+                    BugStateColorSetting(
+                        state="Closed",
+                        background_color="#edf8f3",
+                        text_color="#147d54",
+                        border_color="#bfdacb",
+                    ),
+                ]
+            ),
+        )
+
+        settings = get_bug_state_color_settings(self.db)
+        self.assertEqual([item.state for item in settings.items], ["Active", "Closed"])
+        self.assertEqual(settings.items[1].text_color, "#147d54")
 
 
 if __name__ == "__main__":

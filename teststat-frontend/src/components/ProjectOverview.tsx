@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PbChartSettings, ProjectItem } from '../api/types'
+import type { BugStateColorSettings, PbChartSettings, ProjectItem } from '../api/types'
 import { formatDate } from '../utils/date'
 import { buildProjectShareUrl, copyTextToClipboard } from '../utils/shareLink'
 import type { ProgressStatusThresholds } from '../utils/statusThresholds'
@@ -11,6 +11,7 @@ export function ProjectOverview({
   project,
   progressStatusThresholds,
   pbChartSettings,
+  bugStateColorSettings,
   onCreate,
   onEdit,
   onPlans,
@@ -18,6 +19,7 @@ export function ProjectOverview({
   project: ProjectItem | null
   progressStatusThresholds: ProgressStatusThresholds
   pbChartSettings: PbChartSettings
+  bugStateColorSettings: BugStateColorSettings
   onCreate: () => void
   onEdit: () => void
   onPlans: () => void
@@ -79,6 +81,7 @@ export function ProjectOverview({
         key={project.testing_id}
         project={project}
         pbChartSettings={pbChartSettings}
+        bugStateColorSettings={bugStateColorSettings}
         progressStatusThresholds={progressStatusThresholds}
         onPlans={onPlans}
       />

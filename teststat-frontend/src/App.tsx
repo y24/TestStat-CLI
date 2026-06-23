@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
+  fetchBugStateColorSettings,
   fetchHealth,
   fetchPbChartSettings,
   fetchProgressStatusThresholds,
   fetchProjects,
   updateProjectOrder,
+  updateBugStateColorSettings,
   updatePbChartSettings,
   updateProgressStatusThresholds,
 } from './api/client'
-import type { PbChartSettings, ProjectItem } from './api/types'
+import type { BugStateColorSettings, PbChartSettings, ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { useConfirmDialog } from './components/confirmDialogContext'
 import { PlanEditor } from './components/PlanEditor'
@@ -27,6 +29,17 @@ import {
   type ProgressStatusThresholds,
 } from './utils/statusThresholds'
 import { getStoredSelectedTestingId, setStoredSelectedTestingId } from './utils/uiStateStorage'
+
+const DEFAULT_BUG_STATE_COLOR_SETTINGS: BugStateColorSettings = {
+  items: [
+    { state: 'New', background_color: '#f7f9fb', text_color: '#5f6b7a', border_color: '#d8dee8' },
+    { state: 'In Progress', background_color: '#eef9ff', text_color: '#0369a1', border_color: '#bae6fd' },
+    { state: 'Dev In Progress', background_color: '#f5f0ff', text_color: '#6b46c1', border_color: '#ddd0ff' },
+    { state: 'Resolved', background_color: '#e9d5ff', text_color: '#581c87', border_color: '#c084fc' },
+    { state: 'Done', background_color: '#edf8f3', text_color: '#147d54', border_color: '#bfdacb' },
+    { state: 'Suspend', background_color: '#fff8e6', text_color: '#8a5a00', border_color: '#f5d58a' },
+  ],
+}
 
 const DISCARD_CONFIRM_OPTIONS = {
   title: '入力内容の破棄',
@@ -58,6 +71,9 @@ function AppContent() {
     DEFAULT_PROGRESS_STATUS_THRESHOLDS,
   )
   const [pbChartSettings, setPbChartSettings] = useState<PbChartSettings>({ bug_axis_max: 30 })
+  const [bugStateColorSettings, setBugStateColorSettings] = useState<BugStateColorSettings>(
+    DEFAULT_BUG_STATE_COLOR_SETTINGS,
+  )
 
   // popstate ハンドラから最新値を同期的に参照するための ref。
   const viewModeRef = useRef(viewMode)
@@ -168,6 +184,9 @@ function AppContent() {
       .catch((err) => setError(getErrorMessage(err)))
     fetchPbChartSettings()
       .then(setPbChartSettings)
+      .catch((err) => setError(getErrorMessage(err)))
+    fetchBugStateColorSettings()
+      .then(setBugStateColorSettings)
       .catch((err) => setError(getErrorMessage(err)))
   }, [])
 
@@ -305,6 +324,12 @@ function AppContent() {
     return saved
   }
 
+  const handleBugStateColorSettingsChange = async (settings: BugStateColorSettings) => {
+    const saved = await updateBugStateColorSettings(settings)
+    setBugStateColorSettings(saved)
+    return saved
+  }
+
   return (
     <div className="app-layout" aria-busy={loadingProjects}>
       <Sidebar
@@ -370,6 +395,7 @@ function AppContent() {
                 project={selectedProject}
                 progressStatusThresholds={progressStatusThresholds}
                 pbChartSettings={pbChartSettings}
+                bugStateColorSettings={bugStateColorSettings}
                 onCreate={() => openSubview('new')}
                 onEdit={() => openSubview('edit')}
                 onPlans={() => openSubview('plans')}
@@ -387,11 +413,13 @@ function AppContent() {
             )}
             {viewMode === 'settings' && (
               <SettingsScreen
-                key={`${progressStatusThresholds.caution}-${progressStatusThresholds.warning}-${pbChartSettings.bug_axis_max}`}
+                key={`${progressStatusThresholds.caution}-${progressStatusThresholds.warning}-${pbChartSettings.bug_axis_max}-${JSON.stringify(bugStateColorSettings.items)}`}
                 progressStatusThresholds={progressStatusThresholds}
                 pbChartSettings={pbChartSettings}
+                bugStateColorSettings={bugStateColorSettings}
                 onProgressStatusThresholdsChange={handleProgressStatusThresholdsChange}
                 onPbChartSettingsChange={handlePbChartSettingsChange}
+                onBugStateColorSettingsChange={handleBugStateColorSettingsChange}
               />
             )}
           </>

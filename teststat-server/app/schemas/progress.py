@@ -31,6 +31,11 @@ class FileProgressIn(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     label: str | None = Field(None, max_length=255)
     source_url: str | None = Field(None, max_length=2048)
+    target_sheets: list[str] | None = None
+    ignore_sheets: list[str] | None = None
+    include_hidden_sheets: bool | None = None
+    target_environments: list[str] | None = None
+    ignore_environments: list[str] | None = None
     environment: str | None = Field(None, max_length=255)
     total_cases: int = Field(..., ge=0)
     available_cases: int = Field(..., ge=0)
@@ -57,6 +62,20 @@ class FileProgressIn(BaseModel):
             return None
         if not (normalized.startswith("http://") or normalized.startswith("https://")):
             raise ValueError("source_url must start with http:// or https://")
+        return normalized
+
+    @field_validator("target_sheets", "ignore_sheets", "target_environments", "ignore_environments")
+    @classmethod
+    def normalize_keyword_list(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized: list[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("list items must be strings")
+            text = item.strip()
+            if text:
+                normalized.append(text)
         return normalized
 
 

@@ -11,6 +11,15 @@ from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress
 from app.schemas.progress import DailyProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
 
 
+PLAN_LABEL_OPTION_FIELDS = (
+    "target_sheets",
+    "ignore_sheets",
+    "include_hidden_sheets",
+    "target_environments",
+    "ignore_environments",
+)
+
+
 def _validate_replace_payload(payload: ProgressRequest) -> None:
     if not payload.files:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="files must not be empty")
@@ -41,14 +50,23 @@ def _ensure_project_accepts_progress(db: Session, testing_id: int) -> None:
         )
 
 
-def _sync_source_urls(db: Session, payload: ProgressRequest) -> None:
-    source_urls_by_label: dict[str, str] = {}
+def _sync_plan_label_metadata(db: Session, payload: ProgressRequest) -> None:
+    updates_by_label: dict[str, dict[str, object]] = {}
     for file in payload.files:
         label = file.label.strip() if file.label else ""
-        if label and file.source_url and label not in source_urls_by_label:
-            source_urls_by_label[label] = file.source_url
+        if not label:
+            continue
 
-    for label, source_url in source_urls_by_label.items():
+        updates = updates_by_label.setdefault(label, {})
+        if file.source_url and "source_url" not in updates:
+            updates["source_url"] = file.source_url
+        for field in PLAN_LABEL_OPTION_FIELDS:
+            if field in file.model_fields_set and field not in updates:
+                updates[field] = getattr(file, field)
+
+    for label, updates in updates_by_label.items():
+        if not updates:
+            continue
         plan_label = db.scalar(
             select(PlanLabel).where(
                 PlanLabel.testing_id == payload.testing_id,
@@ -56,9 +74,10 @@ def _sync_source_urls(db: Session, payload: ProgressRequest) -> None:
             )
         )
         if plan_label is None:
-            db.add(PlanLabel(testing_id=payload.testing_id, label=label, source_url=source_url))
+            db.add(PlanLabel(testing_id=payload.testing_id, label=label, **updates))
         else:
-            plan_label.source_url = source_url
+            for field, value in updates.items():
+                setattr(plan_label, field, value)
 
 
 def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostResponse:
@@ -66,7 +85,7 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
     _ensure_project_accepts_progress(db, payload.testing_id)
 
     _get_or_create_testing(db, payload.testing_id, payload.project_name)
-    _sync_source_urls(db, payload)
+    _sync_plan_label_metadata(db, payload)
 
     db.execute(delete(FileProgress).where(FileProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyProgress).where(DailyProgress.testing_id == payload.testing_id))

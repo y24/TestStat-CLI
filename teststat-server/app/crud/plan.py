@@ -159,7 +159,16 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="label already exists")
 
-    label = PlanLabel(testing_id=testing_id, label=payload.label, source_url=payload.source_url)
+    label = PlanLabel(
+        testing_id=testing_id,
+        label=payload.label,
+        source_url=payload.source_url,
+        target_sheets=payload.target_sheets,
+        ignore_sheets=payload.ignore_sheets,
+        include_hidden_sheets=payload.include_hidden_sheets,
+        target_environments=payload.target_environments,
+        ignore_environments=payload.ignore_environments,
+    )
     db.add(label)
     db.commit()
     db.refresh(label)
@@ -174,6 +183,11 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
         )
         if existing is not None:
             existing.source_url = payload.source_url
+            existing.target_sheets = payload.target_sheets
+            existing.ignore_sheets = payload.ignore_sheets
+            existing.include_hidden_sheets = payload.include_hidden_sheets
+            existing.target_environments = payload.target_environments
+            existing.ignore_environments = payload.ignore_environments
             db.commit()
             db.refresh(existing)
             return PlanLabelItem.model_validate(existing)
@@ -188,12 +202,26 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
         select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.old_label)
     )
     if label is None:
-        label = PlanLabel(testing_id=testing_id, label=payload.label, source_url=payload.source_url)
+        label = PlanLabel(
+            testing_id=testing_id,
+            label=payload.label,
+            source_url=payload.source_url,
+            target_sheets=payload.target_sheets,
+            ignore_sheets=payload.ignore_sheets,
+            include_hidden_sheets=payload.include_hidden_sheets,
+            target_environments=payload.target_environments,
+            ignore_environments=payload.ignore_environments,
+        )
         db.add(label)
         db.flush()
     else:
         label.label = payload.label
         label.source_url = payload.source_url
+        label.target_sheets = payload.target_sheets
+        label.ignore_sheets = payload.ignore_sheets
+        label.include_hidden_sheets = payload.include_hidden_sheets
+        label.target_environments = payload.target_environments
+        label.ignore_environments = payload.ignore_environments
 
     for model in (Plan, FileProgress, DailyProgress, DailyPersonProgress, TestResultBugSnapshot):
         db.execute(

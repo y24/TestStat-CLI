@@ -6,6 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 class PlanLabelCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=255)
     source_url: str | None = Field(None, max_length=2048)
+    target_sheets: list[str] | None = None
+    ignore_sheets: list[str] | None = None
+    include_hidden_sheets: bool | None = None
+    target_environments: list[str] | None = None
+    ignore_environments: list[str] | None = None
 
     @field_validator("label")
     @classmethod
@@ -25,6 +30,20 @@ class PlanLabelCreate(BaseModel):
         if not (normalized.startswith("http://") or normalized.startswith("https://")):
             raise ValueError("source_url は http:// または https:// で始まる必要があります")
         return normalized
+
+    @field_validator("target_sheets", "ignore_sheets", "target_environments", "ignore_environments")
+    @classmethod
+    def normalize_keyword_list(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized: list[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("リスト項目は文字列で指定してください")
+            text = item.strip()
+            if text:
+                normalized.append(text)
+        return normalized or None
 
 
 class PlanLabelUpdate(PlanLabelCreate):
@@ -48,6 +67,11 @@ class PlanLabelItem(BaseModel):
     testing_id: int
     label: str
     source_url: str | None
+    target_sheets: list[str] | None
+    ignore_sheets: list[str] | None
+    include_hidden_sheets: bool | None
+    target_environments: list[str] | None
+    ignore_environments: list[str] | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

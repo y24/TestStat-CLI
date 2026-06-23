@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -35,6 +35,11 @@ class PlanLabel(Base):
     testing_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(2048))
+    target_sheets: Mapped[list[str] | None] = mapped_column(JSON)
+    ignore_sheets: Mapped[list[str] | None] = mapped_column(JSON)
+    include_hidden_sheets: Mapped[bool | None] = mapped_column(Boolean)
+    target_environments: Mapped[list[str] | None] = mapped_column(JSON)
+    ignore_environments: Mapped[list[str] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 

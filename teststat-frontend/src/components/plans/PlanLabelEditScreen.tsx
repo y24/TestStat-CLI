@@ -1,36 +1,39 @@
 import type { FormEvent } from 'react'
 import { ArrowLeft, Tag, Trash2 } from 'lucide-react'
-import type { LabelEditTarget } from '../../api/types'
+import { PlanLabelCliOptionsFields } from './PlanLabelCliOptionsFields'
+import type { LabelCliOptionsInput } from './PlanLabelCliOptionsFields'
 
 export function PlanLabelEditScreen({
   loading,
   error,
-  planLabel,
   label,
   sourceUrl,
+  cliOptions,
+  unchanged,
   formError,
   submitting,
   onLabelChange,
   onSourceUrlChange,
+  onCliOptionsChange,
   onCancel,
   onSubmit,
   onDelete,
 }: {
   loading: boolean
   error: string | null | undefined
-  planLabel: LabelEditTarget
   label: string
   sourceUrl: string
+  cliOptions: LabelCliOptionsInput
+  unchanged: boolean
   formError: string | null
   submitting: boolean
   onLabelChange: (label: string) => void
   onSourceUrlChange: (sourceUrl: string) => void
+  onCliOptionsChange: (cliOptions: LabelCliOptionsInput) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
   onDelete: () => void
 }) {
-  const unchanged = label.trim() === planLabel.label && sourceUrl.trim() === (planLabel.source_url ?? '')
-
   return (
     <div className="content-shell plan-screen">
       <header className="content-header">
@@ -71,7 +74,7 @@ export function PlanLabelEditScreen({
             />
           </label>
           <label>
-            <span>SharePoint 共有 URL（任意）</span>
+            <span>SharePoint 共有 URL</span>
             <input
               type="url"
               value={sourceUrl}
@@ -81,6 +84,7 @@ export function PlanLabelEditScreen({
               placeholder="https://contoso.sharepoint.com/:x:/s/..."
             />
           </label>
+          <PlanLabelCliOptionsFields value={cliOptions} disabled={submitting} onChange={onCliOptionsChange} />
           <div className="form-actions">
             <button className="primary-button" type="submit" disabled={submitting || unchanged}>
               {submitting ? '保存中...' : '保存'}

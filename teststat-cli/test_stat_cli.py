@@ -488,8 +488,15 @@ def main():
             result = ReadData.aggregate_results(filepath, file_settings, verbose_logger)
             if task["label"]:
                 result["label"] = task["label"]
-            if "target_environments" in task["overrides"]:
-                result["target_environments"] = task["overrides"]["target_environments"]
+            for option_key in (
+                "target_sheets",
+                "ignore_sheets",
+                "include_hidden_sheets",
+                "target_environments",
+                "ignore_environments",
+            ):
+                if option_key in task["overrides"]:
+                    result[option_key] = task["overrides"][option_key]
             if _has_subtask_id(task.get("subtask_id")):
                 result["subtask_id"] = task["subtask_id"]
             if task.get("source_url"):
@@ -502,6 +509,8 @@ def main():
                 error_result["label"] = task["label"]
             if task.get("source_url"):
                 error_result["source_url"] = task["source_url"]
+            for option_key, option_value in task.get("overrides", {}).items():
+                error_result[option_key] = option_value
             results.append((filepath, error_result))
             if args.verbose:
                 print(f"詳細エラー情報: {traceback.format_exc()}")

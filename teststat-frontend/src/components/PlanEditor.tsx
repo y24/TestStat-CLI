@@ -24,6 +24,7 @@ import { PlanLabelCreateScreen } from './plans/PlanLabelCreateScreen'
 import { PlanLabelEditScreen } from './plans/PlanLabelEditScreen'
 import { PlanListScreen } from './plans/PlanListScreen'
 import type { PlanFormState } from './plans/planFormTypes'
+import type { LabelCliOptionsInput } from './plans/PlanLabelCliOptionsFields'
 import type { PlanVersionModalChanges } from './plans/PlanVersionModal'
 
 interface PlanResult {
@@ -61,6 +62,7 @@ export function PlanEditor({
   const [formError, setFormError] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
+  const [cliOptionsInput, setCliOptionsInput] = useState<LabelCliOptionsInput>(() => createEmptyCliOptionsInput())
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
   const [form, setForm] = useState<PlanFormState>(() => createInitialPlanForm())
@@ -145,12 +147,15 @@ export function PlanEditor({
   useEffect(() => {
     onDirtyChange(
       (mode === 'create' && !isSamePlanForm(form, initialCreateForm)) ||
-        (mode === 'label' && (labelInput.trim() !== '' || sourceUrlInput.trim() !== '')) ||
+        (mode === 'label' &&
+          (labelInput.trim() !== '' || sourceUrlInput.trim() !== '' || !isEmptyCliOptionsInput(cliOptionsInput))) ||
         (mode === 'label-edit' &&
           editingPlanLabel !== null &&
-          (labelInput.trim() !== editingPlanLabel.label || sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? ''))),
+          (labelInput.trim() !== editingPlanLabel.label ||
+            sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
+            !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))),
     )
-  }, [editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput])
+  }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput])
 
   useEffect(() => {
     return () => onDirtyChange(false)
@@ -272,6 +277,7 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setCliOptionsInput(createEmptyCliOptionsInput())
     onOpenScreen('label')
   }
 
@@ -280,13 +286,16 @@ export function PlanEditor({
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
     setSourceUrlInput(planLabel.source_url ?? '')
+    setCliOptionsInput(cliOptionsInputFromLabel(planLabel))
     onOpenScreen('label-edit')
   }
 
   const cancelLabelEdit = async () => {
     if (
       editingPlanLabel !== null &&
-      (labelInput.trim() !== editingPlanLabel.label || sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? ''))
+      (labelInput.trim() !== editingPlanLabel.label ||
+        sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
+        !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))
     ) {
       const confirmed = await confirm({
         title: '入力内容の破棄',
@@ -302,11 +311,12 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setCliOptionsInput(createEmptyCliOptionsInput())
     closePlanSubscreen()
   }
 
   const cancelLabelCreate = async () => {
-    if (labelInput.trim() !== '' || sourceUrlInput.trim() !== '') {
+    if (labelInput.trim() !== '' || sourceUrlInput.trim() !== '' || !isEmptyCliOptionsInput(cliOptionsInput)) {
       const confirmed = await confirm({
         title: '入力内容の破棄',
         message: 'データが破棄されますが、よろしいですか？',
@@ -320,6 +330,7 @@ export function PlanEditor({
     setFormError(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setCliOptionsInput(createEmptyCliOptionsInput())
     closePlanSubscreen()
   }
 
@@ -343,12 +354,13 @@ export function PlanEditor({
     }
 
     setSubmitting(true)
-    createPlanLabel(project.testing_id, { label, source_url: sourceUrl })
+    createPlanLabel(project.testing_id, { label, source_url: sourceUrl, ...toCliOptionsPayload(cliOptionsInput) })
       .then(() => {
         loadPlans()
         onChanged()
         setLabelInput('')
         setSourceUrlInput('')
+        setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
       .catch((err) => {
@@ -384,13 +396,19 @@ export function PlanEditor({
     }
 
     setSubmitting(true)
-    updateProjectLabel(project.testing_id, { old_label: editingPlanLabel.label, label, source_url: sourceUrl })
+    updateProjectLabel(project.testing_id, {
+      old_label: editingPlanLabel.label,
+      label,
+      source_url: sourceUrl,
+      ...toCliOptionsPayload(cliOptionsInput),
+    })
       .then(() => {
         loadPlans()
         onChanged()
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
+        setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
       .catch((err) => {
@@ -425,6 +443,7 @@ export function PlanEditor({
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
+        setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
       .catch((err) => {
@@ -566,17 +585,23 @@ export function PlanEditor({
   }
 
   if (mode === 'label-edit' && editingPlanLabel !== null) {
+    const labelEditUnchanged =
+      labelInput.trim() === editingPlanLabel.label &&
+      sourceUrlInput.trim() === (editingPlanLabel.source_url ?? '') &&
+      isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel))
     return (
       <PlanLabelEditScreen
         loading={loading}
         error={result?.error}
-        planLabel={editingPlanLabel}
         label={labelInput}
         sourceUrl={sourceUrlInput}
+        cliOptions={cliOptionsInput}
+        unchanged={labelEditUnchanged}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
         onSourceUrlChange={setSourceUrlInput}
+        onCliOptionsChange={setCliOptionsInput}
         onCancel={cancelLabelEdit}
         onSubmit={submitPlanLabelEdit}
         onDelete={handleDeletePlanLabel}
@@ -591,10 +616,12 @@ export function PlanEditor({
         error={result?.error}
         label={labelInput}
         sourceUrl={sourceUrlInput}
+        cliOptions={cliOptionsInput}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
         onSourceUrlChange={setSourceUrlInput}
+        onCliOptionsChange={setCliOptionsInput}
         onCancel={cancelLabelCreate}
         onSubmit={submitPlanLabel}
       />
@@ -653,6 +680,68 @@ export function PlanEditor({
   )
 }
 
+
+function createEmptyCliOptionsInput(): LabelCliOptionsInput {
+  return {
+    targetSheets: '',
+    ignoreSheets: '',
+    includeHiddenSheets: '',
+    targetEnvironments: '',
+    ignoreEnvironments: '',
+  }
+}
+
+function cliOptionsInputFromLabel(label: LabelEditTarget): LabelCliOptionsInput {
+  return {
+    targetSheets: formatListInput(label.target_sheets),
+    ignoreSheets: formatListInput(label.ignore_sheets),
+    includeHiddenSheets:
+      label.include_hidden_sheets === undefined || label.include_hidden_sheets === null
+        ? ''
+        : label.include_hidden_sheets
+          ? 'true'
+          : 'false',
+    targetEnvironments: formatListInput(label.target_environments),
+    ignoreEnvironments: formatListInput(label.ignore_environments),
+  }
+}
+
+function formatListInput(value: string[] | null | undefined): string {
+  return value?.join('\n') ?? ''
+}
+
+function parseListInput(value: string): string[] | null {
+  const items = value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return items.length > 0 ? items : null
+}
+
+function toCliOptionsPayload(value: LabelCliOptionsInput) {
+  return {
+    target_sheets: parseListInput(value.targetSheets),
+    ignore_sheets: parseListInput(value.ignoreSheets),
+    include_hidden_sheets:
+      value.includeHiddenSheets === '' ? null : value.includeHiddenSheets === 'true',
+    target_environments: parseListInput(value.targetEnvironments),
+    ignore_environments: parseListInput(value.ignoreEnvironments),
+  }
+}
+
+function isEmptyCliOptionsInput(value: LabelCliOptionsInput): boolean {
+  return isSameCliOptionsInput(value, createEmptyCliOptionsInput())
+}
+
+function isSameCliOptionsInput(left: LabelCliOptionsInput, right: LabelCliOptionsInput): boolean {
+  return (
+    left.targetSheets.trim() === right.targetSheets.trim() &&
+    left.ignoreSheets.trim() === right.ignoreSheets.trim() &&
+    left.includeHiddenSheets === right.includeHiddenSheets &&
+    left.targetEnvironments.trim() === right.targetEnvironments.trim() &&
+    left.ignoreEnvironments.trim() === right.ignoreEnvironments.trim()
+  )
+}
 
 function normalizeSourceUrl(value: string): string | null {
   const normalized = value.trim()

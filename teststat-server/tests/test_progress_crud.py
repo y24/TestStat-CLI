@@ -26,6 +26,7 @@ def make_payload(
     daily_date="2026-05-01",
     extra_daily=None,
     source_url=None,
+    cli_options=None,
 ):
     daily_rows = [
         {
@@ -42,43 +43,44 @@ def make_payload(
         }
     ]
     daily_rows.extend(extra_daily or [])
+    file_payload = {
+        "file_name": file_name,
+        "label": "TEST001",
+        "source_url": source_url,
+        "environment": "env-a",
+        "total_cases": 10,
+        "available_cases": available_cases,
+        "excluded_cases": 2,
+        "completed": 5,
+        "executed": 6,
+        "not_run": 2,
+        "completed_rate": 62.5,
+        "executed_rate": 75.0,
+        "start_date": "2026-05-01",
+        "latest_update": "2026-05-02",
+        "results": {
+            "Pass": pass_count,
+            "Fixed": 1,
+            "Fail": 1,
+            "Blocked": 0,
+            "Suspend": 0,
+            "N/A": 0,
+        },
+        "daily": daily_rows,
+        "by_person": [
+            {"date": daily_date, "person": "Alice", "count": 3},
+            {"date": daily_date, "person": "Bob", "count": 3},
+        ],
+    }
+    if cli_options:
+        file_payload.update(cli_options)
     return ProgressRequest.model_validate(
         {
             "testing_id": testing_id,
             "project_name": f"Project {testing_id}",
             "sender": "sender-a",
             "sent_at": "2026-05-31T10:00:00",
-            "files": [
-                {
-                    "file_name": file_name,
-                    "label": "TEST001",
-                    "source_url": source_url,
-                    "environment": "env-a",
-                    "total_cases": 10,
-                    "available_cases": available_cases,
-                    "excluded_cases": 2,
-                    "completed": 5,
-                    "executed": 6,
-                    "not_run": 2,
-                    "completed_rate": 62.5,
-                    "executed_rate": 75.0,
-                    "start_date": "2026-05-01",
-                    "latest_update": "2026-05-02",
-                    "results": {
-                        "Pass": pass_count,
-                        "Fixed": 1,
-                        "Fail": 1,
-                        "Blocked": 0,
-                        "Suspend": 0,
-                        "N/A": 0,
-                    },
-                    "daily": daily_rows,
-                    "by_person": [
-                        {"date": daily_date, "person": "Alice", "count": 3},
-                        {"date": daily_date, "person": "Bob", "count": 3},
-                    ],
-                }
-            ],
+            "files": [file_payload],
         }
     )
 
@@ -137,6 +139,57 @@ class ProgressCrudTests(unittest.TestCase):
 
         label = self.db.scalar(select(PlanLabel).where(PlanLabel.testing_id == 1001, PlanLabel.label == "TEST001"))
         self.assertEqual(label.source_url, "https://contoso.sharepoint.com/:x:/s/site/Eupdated")
+
+
+    def test_replace_progress_saves_cli_options_as_plan_label(self):
+        replace_progress(
+            self.db,
+            make_payload(
+                source_url="https://contoso.sharepoint.com/:x:/s/site/Eabc",
+                cli_options={
+                    "target_sheets": [" テスト項目 "],
+                    "ignore_sheets": ["Sheet1"],
+                    "include_hidden_sheets": False,
+                    "target_environments": ["環境a"],
+                    "ignore_environments": ["環境b"],
+                },
+            ),
+        )
+
+        label = self.db.scalar(select(PlanLabel).where(PlanLabel.testing_id == 1001, PlanLabel.label == "TEST001"))
+
+        self.assertIsNotNone(label)
+        self.assertEqual(label.source_url, "https://contoso.sharepoint.com/:x:/s/site/Eabc")
+        self.assertEqual(label.target_sheets, ["テスト項目"])
+        self.assertEqual(label.ignore_sheets, ["Sheet1"])
+        self.assertIs(label.include_hidden_sheets, False)
+        self.assertEqual(label.target_environments, ["環境a"])
+        self.assertEqual(label.ignore_environments, ["環境b"])
+
+    def test_replace_progress_preserves_plan_label_options_when_payload_omits_them(self):
+        self.db.add(
+            PlanLabel(
+                testing_id=1001,
+                label="TEST001",
+                source_url="https://contoso.sharepoint.com/:x:/s/site/Eold",
+                target_sheets=["テスト項目"],
+                ignore_sheets=["Sheet1"],
+                include_hidden_sheets=True,
+                target_environments=["環境a"],
+                ignore_environments=["環境b"],
+            )
+        )
+        self.db.commit()
+
+        replace_progress(self.db, make_payload(source_url="https://contoso.sharepoint.com/:x:/s/site/Eupdated"))
+
+        label = self.db.scalar(select(PlanLabel).where(PlanLabel.testing_id == 1001, PlanLabel.label == "TEST001"))
+        self.assertEqual(label.source_url, "https://contoso.sharepoint.com/:x:/s/site/Eupdated")
+        self.assertEqual(label.target_sheets, ["テスト項目"])
+        self.assertEqual(label.ignore_sheets, ["Sheet1"])
+        self.assertIs(label.include_hidden_sheets, True)
+        self.assertEqual(label.target_environments, ["環境a"])
+        self.assertEqual(label.ignore_environments, ["環境b"])
 
     def test_replace_progress_refreshes_only_matching_testing_id(self):
         replace_progress(self.db, make_payload(testing_id=1001, file_name="old.xlsx", pass_count=4))

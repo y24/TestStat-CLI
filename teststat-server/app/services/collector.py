@@ -24,10 +24,21 @@ _LAST_RESULT: CollectResult | None = None
 
 
 @dataclass(frozen=True)
+class CollectFile:
+    label: str
+    source_url: str
+    target_sheets: tuple[str, ...] | None = None
+    ignore_sheets: tuple[str, ...] | None = None
+    include_hidden_sheets: bool | None = None
+    target_environments: tuple[str, ...] | None = None
+    ignore_environments: tuple[str, ...] | None = None
+
+
+@dataclass(frozen=True)
 class CollectTarget:
     testing_id: int
     project_name: str
-    files: tuple[tuple[str, str], ...]
+    files: tuple[CollectFile, ...]
 
 
 def get_last_result() -> CollectResult | None:
@@ -144,7 +155,17 @@ def _finish(result: CollectResult, *, record: bool = True) -> CollectResult:
 
 def _load_targets(db: Session, testing_id: int | None = None, label: str | None = None) -> list[CollectTarget]:
     query = (
-        select(Project.testing_id, Project.name, PlanLabel.label, PlanLabel.source_url)
+        select(
+            Project.testing_id,
+            Project.name,
+            PlanLabel.label,
+            PlanLabel.source_url,
+            PlanLabel.target_sheets,
+            PlanLabel.ignore_sheets,
+            PlanLabel.include_hidden_sheets,
+            PlanLabel.target_environments,
+            PlanLabel.ignore_environments,
+        )
         .join(PlanLabel, PlanLabel.testing_id == Project.testing_id)
         .where(Project.archived.is_(False), PlanLabel.source_url.is_not(None), PlanLabel.source_url != "")
         .order_by(Project.testing_id, PlanLabel.label)
@@ -154,12 +175,32 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
     if label is not None:
         query = query.where(PlanLabel.label == label)
 
-    grouped: dict[int, tuple[str, list[tuple[str, str]]]] = {}
-    for row_testing_id, project_name, row_label, source_url in db.execute(query):
+    grouped: dict[int, tuple[str, list[CollectFile]]] = {}
+    for (
+        row_testing_id,
+        project_name,
+        row_label,
+        source_url,
+        target_sheets,
+        ignore_sheets,
+        include_hidden_sheets,
+        target_environments,
+        ignore_environments,
+    ) in db.execute(query):
         if not source_url:
             continue
         name, files = grouped.setdefault(row_testing_id, (project_name, []))
-        files.append((row_label, source_url))
+        files.append(
+            CollectFile(
+                label=row_label,
+                source_url=source_url,
+                target_sheets=_to_tuple_or_none(target_sheets),
+                ignore_sheets=_to_tuple_or_none(ignore_sheets),
+                include_hidden_sheets=include_hidden_sheets,
+                target_environments=_to_tuple_or_none(target_environments),
+                ignore_environments=_to_tuple_or_none(ignore_environments),
+            )
+        )
 
     return [
         CollectTarget(testing_id=tid, project_name=name, files=tuple(files))
@@ -174,14 +215,38 @@ def build_list_yaml(target: CollectTarget) -> str:
         f"  testing_id: {target.testing_id}",
         "  files:",
     ]
-    for label, source_url in target.files:
-        lines.append(f"    - label: {_yaml_scalar(label)}")
-        lines.append(f"      path: {_yaml_scalar(source_url)}")
+    for file in target.files:
+        lines.append(f"    - label: {_yaml_scalar(file.label)}")
+        lines.append(f"      path: {_yaml_scalar(file.source_url)}")
+        _append_yaml_string_list(lines, "target_sheets", file.target_sheets)
+        _append_yaml_string_list(lines, "ignore_sheets", file.ignore_sheets)
+        if file.include_hidden_sheets is not None:
+            lines.append(f"      include_hidden_sheets: {_yaml_bool(file.include_hidden_sheets)}")
+        _append_yaml_string_list(lines, "target_environments", file.target_environments)
+        _append_yaml_string_list(lines, "ignore_environments", file.ignore_environments)
     return "\n".join(lines) + "\n"
+
+
+def _append_yaml_string_list(lines: list[str], key: str, values: tuple[str, ...] | None) -> None:
+    if values is None:
+        return
+    lines.append(f"      {key}:")
+    for value in values:
+        lines.append(f"        - {_yaml_scalar(value)}")
+
+
+def _to_tuple_or_none(value: list[str] | tuple[str, ...] | None) -> tuple[str, ...] | None:
+    if not value:
+        return None
+    return tuple(str(item) for item in value if str(item).strip()) or None
 
 
 def _yaml_scalar(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
+
+
+def _yaml_bool(value: bool) -> str:
+    return "true" if value else "false"
 
 
 def _run_tstat(settings: Settings, yaml_path: Path) -> subprocess.CompletedProcess[str]:

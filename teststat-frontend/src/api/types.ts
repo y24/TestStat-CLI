@@ -161,10 +161,23 @@ export interface PlanLabelItem {
   testing_id: number
   label: string
   source_url: string | null
+  target_sheets: string[] | null
+  ignore_sheets: string[] | null
+  include_hidden_sheets: boolean | null
+  target_environments: string[] | null
+  ignore_environments: string[] | null
   created_at: string
 }
 
-export interface PlanLabelCreatePayload {
+export interface PlanLabelCliOptionsPayload {
+  target_sheets?: string[] | null
+  ignore_sheets?: string[] | null
+  include_hidden_sheets?: boolean | null
+  target_environments?: string[] | null
+  ignore_environments?: string[] | null
+}
+
+export interface PlanLabelCreatePayload extends PlanLabelCliOptionsPayload {
   label: string
   source_url?: string | null
 }
@@ -181,6 +194,11 @@ export interface LabelEditTarget {
   id?: number
   label: string
   source_url?: string | null
+  target_sheets?: string[] | null
+  ignore_sheets?: string[] | null
+  include_hidden_sheets?: boolean | null
+  target_environments?: string[] | null
+  ignore_environments?: string[] | null
 }
 
 export interface PlanItem {

@@ -14,6 +14,20 @@ RESULT_KEY_MAP = {
     "N/A": "N/A",
 }
 
+CLI_OPTION_KEYS = (
+    "target_sheets",
+    "ignore_sheets",
+    "include_hidden_sheets",
+    "target_environments",
+    "ignore_environments",
+)
+
+
+def _copy_cli_options(file_payload, result):
+    for key in CLI_OPTION_KEYS:
+        if key in result:
+            file_payload[key] = result[key]
+
 
 def _file_name(path):
     return os.path.basename(path.replace("\\", "/"))
@@ -90,6 +104,7 @@ def build_progress_payload(project_info, results, sender=None):
             }
             if result.get("source_url"):
                 file_payload["source_url"] = result["source_url"]
+            _copy_cli_options(file_payload, result)
             files.append(file_payload)
             continue
 
@@ -120,6 +135,7 @@ def build_progress_payload(project_info, results, sender=None):
         }
         if result.get("source_url"):
             file_payload["source_url"] = result["source_url"]
+        _copy_cli_options(file_payload, result)
         files.append(file_payload)
 
     return {

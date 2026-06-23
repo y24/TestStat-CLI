@@ -1,15 +1,19 @@
 import type { FormEvent } from 'react'
 import { ArrowLeft, Tag } from 'lucide-react'
+import { PlanLabelCliOptionsFields } from './PlanLabelCliOptionsFields'
+import type { LabelCliOptionsInput } from './PlanLabelCliOptionsFields'
 
 export function PlanLabelCreateScreen({
   loading,
   error,
   label,
   sourceUrl,
+  cliOptions,
   formError,
   submitting,
   onLabelChange,
   onSourceUrlChange,
+  onCliOptionsChange,
   onCancel,
   onSubmit,
 }: {
@@ -17,10 +21,12 @@ export function PlanLabelCreateScreen({
   error: string | null | undefined
   label: string
   sourceUrl: string
+  cliOptions: LabelCliOptionsInput
   formError: string | null
   submitting: boolean
   onLabelChange: (label: string) => void
   onSourceUrlChange: (sourceUrl: string) => void
+  onCliOptionsChange: (cliOptions: LabelCliOptionsInput) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
 }) {
@@ -64,7 +70,7 @@ export function PlanLabelCreateScreen({
             />
           </label>
           <label>
-            <span>SharePoint 共有 URL（任意）</span>
+            <span>SharePoint 共有 URL</span>
             <input
               type="url"
               value={sourceUrl}
@@ -74,6 +80,7 @@ export function PlanLabelCreateScreen({
               placeholder="https://contoso.sharepoint.com/:x:/s/..."
             />
           </label>
+          <PlanLabelCliOptionsFields value={cliOptions} disabled={submitting} onChange={onCliOptionsChange} />
           <div className="form-actions">
             <button className="primary-button" type="submit" disabled={submitting}>
               {submitting ? '登録中...' : '登録'}

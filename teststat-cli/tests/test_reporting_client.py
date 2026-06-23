@@ -28,7 +28,11 @@ class ReportingClientPayloadTests(unittest.TestCase):
                 r"C:\work\sample1.xlsx",
                 {
                     "label": "TEST001",
+                    "target_sheets": ["テスト項目"],
+                    "ignore_sheets": ["Sheet1"],
+                    "include_hidden_sheets": False,
                     "target_environments": ["env-a"],
+                    "ignore_environments": ["env-b"],
                     "stats": {
                         "all": 10,
                         "available": 8,
@@ -76,6 +80,11 @@ class ReportingClientPayloadTests(unittest.TestCase):
         self.assertEqual(file_payload["file_name"], "sample1.xlsx")
         self.assertEqual(file_payload["environment"], "env-a")
         self.assertEqual(file_payload["source_url"], "https://contoso.sharepoint.com/:x:/s/site/Eabc")
+        self.assertEqual(file_payload["target_sheets"], ["テスト項目"])
+        self.assertEqual(file_payload["ignore_sheets"], ["Sheet1"])
+        self.assertIs(file_payload["include_hidden_sheets"], False)
+        self.assertEqual(file_payload["target_environments"], ["env-a"])
+        self.assertEqual(file_payload["ignore_environments"], ["env-b"])
         self.assertEqual(file_payload["available_cases"], 8)
         self.assertEqual(file_payload["completed_rate"], 62.5)
         self.assertEqual(file_payload["executed_rate"], 75.0)
@@ -97,6 +106,8 @@ class ReportingClientPayloadTests(unittest.TestCase):
                 {
                     "label": "TEST999",
                     "source_url": "https://contoso.sharepoint.com/:x:/s/site/E999",
+                    "target_sheets": ["テスト項目"],
+                    "include_hidden_sheets": True,
                     "error": {"type": "sheet_not_found", "message": "sheet missing"},
                 },
             )
@@ -106,6 +117,8 @@ class ReportingClientPayloadTests(unittest.TestCase):
 
         self.assertEqual(payload["files"][0]["file_name"], "missing.xlsx")
         self.assertEqual(payload["files"][0]["source_url"], "https://contoso.sharepoint.com/:x:/s/site/E999")
+        self.assertEqual(payload["files"][0]["target_sheets"], ["テスト項目"])
+        self.assertIs(payload["files"][0]["include_hidden_sheets"], True)
         self.assertEqual(payload["files"][0]["available_cases"], 0)
         self.assertEqual(payload["files"][0]["error"], "sheet missing")
 

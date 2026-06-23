@@ -335,7 +335,7 @@ def main():
     
     # 設定ファイルの読み込みと検証
     try:
-        with open(args.config, encoding="utf-8") as f:
+        with open(args.config, encoding="utf-8-sig") as f:
             settings = json.load(f)
     except Exception as e:
         print(f"ERROR: 設定ファイルの読み込みに失敗しました: {args.config}\n詳細: {e}", file=sys.stderr)

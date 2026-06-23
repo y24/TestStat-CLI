@@ -241,6 +241,7 @@ export function buildPbChartOption(
     : undefined
 
   return {
+    backgroundColor: '#ffffff',
     animationDuration: 250,
     color: ['#8a94a6', '#2f6fed'],
     textStyle: {

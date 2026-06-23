@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.models.plan import PlanLabel
 from app.models.project import Project
 from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.schemas.progress import DailyProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
@@ -40,11 +41,32 @@ def _ensure_project_accepts_progress(db: Session, testing_id: int) -> None:
         )
 
 
+def _sync_source_urls(db: Session, payload: ProgressRequest) -> None:
+    source_urls_by_label: dict[str, str] = {}
+    for file in payload.files:
+        label = file.label.strip() if file.label else ""
+        if label and file.source_url and label not in source_urls_by_label:
+            source_urls_by_label[label] = file.source_url
+
+    for label, source_url in source_urls_by_label.items():
+        plan_label = db.scalar(
+            select(PlanLabel).where(
+                PlanLabel.testing_id == payload.testing_id,
+                PlanLabel.label == label,
+            )
+        )
+        if plan_label is None:
+            db.add(PlanLabel(testing_id=payload.testing_id, label=label, source_url=source_url))
+        else:
+            plan_label.source_url = source_url
+
+
 def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostResponse:
     _validate_replace_payload(payload)
     _ensure_project_accepts_progress(db, payload.testing_id)
 
     _get_or_create_testing(db, payload.testing_id, payload.project_name)
+    _sync_source_urls(db, payload)
 
     db.execute(delete(FileProgress).where(FileProgress.testing_id == payload.testing_id))
     db.execute(delete(DailyProgress).where(DailyProgress.testing_id == payload.testing_id))

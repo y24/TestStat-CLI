@@ -400,6 +400,8 @@ def main():
                             "overrides": {},
                             "subtask_id": file_info.get("subtask_id")
                         }
+                        if file_info.get("is_remote") or RemoteSource.is_remote_path(file_info["path"]):
+                            task["source_url"] = file_info["path"]
                         
                         # 個別設定の保持
                         if "target_sheets" in file_info:
@@ -490,10 +492,17 @@ def main():
                 result["target_environments"] = task["overrides"]["target_environments"]
             if _has_subtask_id(task.get("subtask_id")):
                 result["subtask_id"] = task["subtask_id"]
+            if task.get("source_url"):
+                result["source_url"] = task["source_url"]
             results.append((filepath, result))
                 
         except Exception as e:
-            results.append((filepath, {"error": {"type": "processing_error", "message": f"ファイル処理中にエラーが発生しました: {filepath}", "details": str(e)}}))
+            error_result = {"error": {"type": "processing_error", "message": f"ファイル処理中にエラーが発生しました: {filepath}", "details": str(e)}}
+            if task.get("label"):
+                error_result["label"] = task["label"]
+            if task.get("source_url"):
+                error_result["source_url"] = task["source_url"]
+            results.append((filepath, error_result))
             if args.verbose:
                 print(f"詳細エラー情報: {traceback.format_exc()}")
     

@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ResultCounts(BaseModel):
@@ -30,6 +30,7 @@ class PersonProgressIn(BaseModel):
 class FileProgressIn(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     label: str | None = Field(None, max_length=255)
+    source_url: str | None = Field(None, max_length=2048)
     environment: str | None = Field(None, max_length=255)
     total_cases: int = Field(..., ge=0)
     available_cases: int = Field(..., ge=0)
@@ -45,6 +46,18 @@ class FileProgressIn(BaseModel):
     daily: list[DailyProgressIn] = Field(default_factory=list)
     by_person: list[PersonProgressIn] = Field(default_factory=list)
     error: str | None = None
+
+    @field_validator("source_url")
+    @classmethod
+    def normalize_source_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if not (normalized.startswith("http://") or normalized.startswith("https://")):
+            raise ValueError("source_url must start with http:// or https://")
+        return normalized
 
 
 class ProgressRequest(BaseModel):

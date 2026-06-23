@@ -12,6 +12,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
 from app.crud.progress import get_daily_progress, get_file_progress, get_progress_summary, replace_progress  # noqa: E402
 from app.database import Base  # noqa: E402
+from app.models.plan import PlanLabel  # noqa: E402
 from app.models.project import Project  # noqa: E402
 from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot  # noqa: E402
 from app.schemas.progress import ProgressRequest  # noqa: E402
@@ -24,6 +25,7 @@ def make_payload(
     available_cases=8,
     daily_date="2026-05-01",
     extra_daily=None,
+    source_url=None,
 ):
     daily_rows = [
         {
@@ -50,6 +52,7 @@ def make_payload(
                 {
                     "file_name": file_name,
                     "label": "TEST001",
+                    "source_url": source_url,
                     "environment": "env-a",
                     "total_cases": 10,
                     "available_cases": available_cases,
@@ -111,6 +114,29 @@ class ProgressCrudTests(unittest.TestCase):
         daily = get_daily_progress(self.db, 1001)
         self.assertEqual(len(daily), 1)
         self.assertEqual(daily[0].pass_count, 4)
+
+    def test_replace_progress_saves_source_url_as_plan_label(self):
+        replace_progress(
+            self.db,
+            make_payload(source_url="https://contoso.sharepoint.com/:x:/s/site/Eabc"),
+        )
+
+        label = self.db.scalar(select(PlanLabel).where(PlanLabel.testing_id == 1001, PlanLabel.label == "TEST001"))
+
+        self.assertIsNotNone(label)
+        self.assertEqual(label.source_url, "https://contoso.sharepoint.com/:x:/s/site/Eabc")
+
+    def test_replace_progress_updates_existing_plan_label_source_url(self):
+        self.db.add(PlanLabel(testing_id=1001, label="TEST001", source_url=None))
+        self.db.commit()
+
+        replace_progress(
+            self.db,
+            make_payload(source_url="https://contoso.sharepoint.com/:x:/s/site/Eupdated"),
+        )
+
+        label = self.db.scalar(select(PlanLabel).where(PlanLabel.testing_id == 1001, PlanLabel.label == "TEST001"))
+        self.assertEqual(label.source_url, "https://contoso.sharepoint.com/:x:/s/site/Eupdated")
 
     def test_replace_progress_refreshes_only_matching_testing_id(self):
         replace_progress(self.db, make_payload(testing_id=1001, file_name="old.xlsx", pass_count=4))

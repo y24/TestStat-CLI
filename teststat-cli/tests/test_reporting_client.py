@@ -60,6 +60,7 @@ class ReportingClientPayloadTests(unittest.TestCase):
                         }
                     },
                     "by_name": {"2026-05-01": {"Alice": 3, "Bob": 2, "": 1}},
+                    "source_url": "https://contoso.sharepoint.com/:x:/s/site/Eabc",
                 },
             )
         ]
@@ -74,6 +75,7 @@ class ReportingClientPayloadTests(unittest.TestCase):
         file_payload = payload["files"][0]
         self.assertEqual(file_payload["file_name"], "sample1.xlsx")
         self.assertEqual(file_payload["environment"], "env-a")
+        self.assertEqual(file_payload["source_url"], "https://contoso.sharepoint.com/:x:/s/site/Eabc")
         self.assertEqual(file_payload["available_cases"], 8)
         self.assertEqual(file_payload["completed_rate"], 62.5)
         self.assertEqual(file_payload["executed_rate"], 75.0)
@@ -94,6 +96,7 @@ class ReportingClientPayloadTests(unittest.TestCase):
                 "missing.xlsx",
                 {
                     "label": "TEST999",
+                    "source_url": "https://contoso.sharepoint.com/:x:/s/site/E999",
                     "error": {"type": "sheet_not_found", "message": "sheet missing"},
                 },
             )
@@ -102,6 +105,7 @@ class ReportingClientPayloadTests(unittest.TestCase):
         payload = build_progress_payload(project_info, results)
 
         self.assertEqual(payload["files"][0]["file_name"], "missing.xlsx")
+        self.assertEqual(payload["files"][0]["source_url"], "https://contoso.sharepoint.com/:x:/s/site/E999")
         self.assertEqual(payload["files"][0]["available_cases"], 0)
         self.assertEqual(payload["files"][0]["error"], "sheet missing")
 

@@ -71,7 +71,7 @@ def build_progress_payload(project_info, results, sender=None):
         environment = ", ".join(environments) if environments else None
 
         if "error" in result:
-            files.append({
+            file_payload = {
                 "file_name": _file_name(filepath),
                 "label": label,
                 "environment": environment,
@@ -87,7 +87,10 @@ def build_progress_payload(project_info, results, sender=None):
                 "daily": [],
                 "by_person": [],
                 "error": _first_error_message(result["error"]),
-            })
+            }
+            if result.get("source_url"):
+                file_payload["source_url"] = result["source_url"]
+            files.append(file_payload)
             continue
 
         stats = result.get("stats", {})
@@ -97,7 +100,7 @@ def build_progress_payload(project_info, results, sender=None):
         completed = int(total.get("完了数", stats.get("completed", 0)) or 0)
         executed = int(total.get("消化数", stats.get("executed", 0)) or 0)
 
-        files.append({
+        file_payload = {
             "file_name": _file_name(filepath),
             "label": label,
             "environment": environment,
@@ -114,7 +117,10 @@ def build_progress_payload(project_info, results, sender=None):
             "results": _build_results(total),
             "daily": _build_daily_rows(result.get("daily", {})),
             "by_person": _build_person_rows(result.get("by_name", {})),
-        })
+        }
+        if result.get("source_url"):
+            file_payload["source_url"] = result["source_url"]
+        files.append(file_payload)
 
     return {
         "testing_id": project_info["testing_id"],

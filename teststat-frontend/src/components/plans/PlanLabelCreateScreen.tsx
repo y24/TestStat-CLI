@@ -74,7 +74,7 @@ export function PlanLabelCreateScreen({
             />
           </label>
           <label>
-            <span>SharePoint 共有 URL</span>
+            <span>SharePoint 共有 URL (path)</span>
             <input
               type="url"
               value={sourceUrl}
@@ -85,7 +85,7 @@ export function PlanLabelCreateScreen({
             />
           </label>
           <label>
-            <span>サブタスクID subtask_id</span>
+            <span>サブタスクID (subtask_id)</span>
             <input
               type="number"
               min={0}

@@ -22,7 +22,7 @@ export function PlanLabelCliOptionsFields({
       <legend>集計オプション</legend>
       <div className="form-grid">
         <label>
-          <span>対象シート target_sheets</span>
+          <span>対象シート (target_sheets)</span>
           <textarea
             value={value.targetSheets}
             disabled={disabled}
@@ -32,7 +32,7 @@ export function PlanLabelCliOptionsFields({
           />
         </label>
         <label>
-          <span>除外シート ignore_sheets</span>
+          <span>除外シート (ignore_sheets)</span>
           <textarea
             value={value.ignoreSheets}
             disabled={disabled}
@@ -42,7 +42,7 @@ export function PlanLabelCliOptionsFields({
           />
         </label>
         <label>
-          <span>非表示シート include_hidden_sheets</span>
+          <span>非表示シート (include_hidden_sheets)</span>
           <select
             value={value.includeHiddenSheets}
             disabled={disabled}
@@ -54,7 +54,7 @@ export function PlanLabelCliOptionsFields({
           </select>
         </label>
         <label>
-          <span>対象環境 target_environments</span>
+          <span>対象環境 (target_environments)</span>
           <textarea
             value={value.targetEnvironments}
             disabled={disabled}
@@ -64,7 +64,7 @@ export function PlanLabelCliOptionsFields({
           />
         </label>
         <label>
-          <span>除外環境 ignore_environments</span>
+          <span>除外環境 (ignore_environments)</span>
           <textarea
             value={value.ignoreEnvironments}
             disabled={disabled}

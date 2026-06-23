@@ -191,7 +191,7 @@ function ArchivedProjectList({
             .join(' ')}
           type="button"
           onClick={() => onSelect(project.testing_id)}
-          title={project.name}
+          title={`${project.name} (#${project.testing_id})`}
         >
           <LockIcon />
           <span className="archived-project-name">{project.name}</span>
@@ -285,7 +285,7 @@ function SortableProjectRow({
       >
         <GripVertical aria-hidden="true" />
       </span>
-      <button className="project-row-main" type="button" onClick={() => onSelect(project.testing_id)} title={project.name}>
+      <button className="project-row-main" type="button" onClick={() => onSelect(project.testing_id)} title={`${project.name} (#${project.testing_id})`}>
         <span className="project-name-row">
           {project.archived && <LockIcon />}
           <span className="project-name">{project.name}</span>

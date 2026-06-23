@@ -51,15 +51,12 @@ class PlanLabelUpdate(PlanLabelCreate):
 
 
 class ProjectLabelUpdate(PlanLabelCreate):
-    old_label: str = Field(..., min_length=1, max_length=255)
+    old_label: str = Field("", max_length=255)
 
     @field_validator("old_label")
     @classmethod
     def normalize_old_label(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("old_label は必須です")
-        return normalized
+        return value.strip()
 
 
 class PlanLabelItem(BaseModel):

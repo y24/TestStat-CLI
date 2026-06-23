@@ -115,6 +115,15 @@ def _project_label_exists(db: Session, testing_id: int, label: str) -> bool:
     return _label_exists(db, testing_id, label)
 
 
+def _apply_plan_label_payload(label: PlanLabel, payload: PlanLabelCreate) -> None:
+    label.source_url = payload.source_url
+    label.target_sheets = payload.target_sheets
+    label.ignore_sheets = payload.ignore_sheets
+    label.include_hidden_sheets = payload.include_hidden_sheets
+    label.target_environments = payload.target_environments
+    label.ignore_environments = payload.ignore_environments
+
+
 # ---------- public API ----------
 
 def list_plans(db: Session, testing_id: int) -> list[PlanItem]:
@@ -177,17 +186,23 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
 
 def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpdate) -> PlanLabelItem:
     _require_project(db, testing_id)
+    if not payload.old_label:
+        existing = db.scalar(
+            select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.label)
+        )
+        if existing is not None:
+            _apply_plan_label_payload(existing, payload)
+            db.commit()
+            db.refresh(existing)
+            return PlanLabelItem.model_validate(existing)
+        return create_plan_label(db, testing_id, PlanLabelCreate(**payload.model_dump(exclude={"old_label"})))
+
     if payload.old_label == payload.label:
         existing = db.scalar(
             select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.label)
         )
         if existing is not None:
-            existing.source_url = payload.source_url
-            existing.target_sheets = payload.target_sheets
-            existing.ignore_sheets = payload.ignore_sheets
-            existing.include_hidden_sheets = payload.include_hidden_sheets
-            existing.target_environments = payload.target_environments
-            existing.ignore_environments = payload.ignore_environments
+            _apply_plan_label_payload(existing, payload)
             db.commit()
             db.refresh(existing)
             return PlanLabelItem.model_validate(existing)
@@ -216,12 +231,7 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
         db.flush()
     else:
         label.label = payload.label
-        label.source_url = payload.source_url
-        label.target_sheets = payload.target_sheets
-        label.ignore_sheets = payload.ignore_sheets
-        label.include_hidden_sheets = payload.include_hidden_sheets
-        label.target_environments = payload.target_environments
-        label.ignore_environments = payload.ignore_environments
+        _apply_plan_label_payload(label, payload)
 
     for model in (Plan, FileProgress, DailyProgress, DailyPersonProgress, TestResultBugSnapshot):
         db.execute(

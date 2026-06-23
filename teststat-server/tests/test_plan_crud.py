@@ -138,6 +138,44 @@ class TestPlanCRUD(unittest.TestCase):
         self.assertEqual(self.db.scalar(select(BugSnapshotModel.label)), "RENAMED_LABEL")
         self.assertEqual([plan.label for plan in list_plans(self.db, 1001)], ["RENAMED_LABEL"])
 
+
+    def test_update_project_label_with_empty_old_label_creates_plan_label_metadata(self):
+        updated = update_project_label(
+            self.db,
+            1001,
+            ProjectLabelUpdate(
+                old_label="",
+                label="123556",
+                source_url="http://saitheaihgioagagdabha",
+                target_sheets=["ああああ"],
+                ignore_sheets=["いいい", "っっっy"],
+                include_hidden_sheets=None,
+                target_environments=["あああああああ"],
+                ignore_environments=["111111"],
+            ),
+        )
+
+        self.assertEqual(updated.label, "123556")
+        self.assertEqual(updated.source_url, "http://saitheaihgioagagdabha")
+        self.assertEqual(updated.target_sheets, ["ああああ"])
+        self.assertEqual(updated.ignore_sheets, ["いいい", "っっっy"])
+        self.assertIsNone(updated.include_hidden_sheets)
+        self.assertEqual(updated.target_environments, ["あああああああ"])
+        self.assertEqual(updated.ignore_environments, ["111111"])
+
+    def test_update_project_label_with_empty_old_label_updates_existing_metadata(self):
+        create_plan_label(self.db, 1001, PlanLabelCreate(label="123556", source_url="http://old.example"))
+
+        updated = update_project_label(
+            self.db,
+            1001,
+            ProjectLabelUpdate(old_label="", label="123556", source_url="http://new.example", target_sheets=["更新後"]),
+        )
+
+        self.assertEqual(updated.label, "123556")
+        self.assertEqual(updated.source_url, "http://new.example")
+        self.assertEqual(updated.target_sheets, ["更新後"])
+
     def test_delete_project_label_deletes_cli_actuals_and_plans(self):
         self._insert_actual_label("CLI_LABEL")
         create_plan(self.db, 1001, self._make_plan("CLI_LABEL"))

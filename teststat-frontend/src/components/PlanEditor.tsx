@@ -386,7 +386,8 @@ export function PlanEditor({
       setFormError('識別子を入力してください')
       return
     }
-    if (label !== editingPlanLabel.label && labels.includes(label)) {
+    const originalLabel = editingPlanLabel.label.trim()
+    if (originalLabel && label !== originalLabel && labels.includes(label)) {
       setFormError('同じ識別子がすでに存在します')
       return
     }
@@ -397,7 +398,7 @@ export function PlanEditor({
 
     setSubmitting(true)
     updateProjectLabel(project.testing_id, {
-      old_label: editingPlanLabel.label,
+      old_label: originalLabel || label,
       label,
       source_url: sourceUrl,
       ...toCliOptionsPayload(cliOptionsInput),

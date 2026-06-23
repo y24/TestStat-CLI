@@ -42,6 +42,7 @@ export type PlanEditorMode = 'list' | 'create' | 'label' | 'label-edit'
 export function PlanEditor({
   project,
   mode,
+  collectEnabled,
   onBack,
   onOpenScreen,
   onChanged,
@@ -50,6 +51,8 @@ export function PlanEditor({
   project: ProjectItem
   /** 表示モードは App の履歴スタックから渡る（ブラウザバックで一段ずつ戻れるようにするため）。 */
   mode: PlanEditorMode
+  /** COLLECT_ENABLED=false のときは画面からの情報更新（収集）操作を無効化する。 */
+  collectEnabled: boolean
   /** 一段戻る（サブ画面→一覧、一覧→概要）。未保存ガードは App 側で行う。 */
   onBack: () => void
   /** サブ画面（計画線作成・識別子）へ一段進む。 */
@@ -675,6 +678,7 @@ export function PlanEditor({
       planLabels={planLabels}
       holidays={holidayDates}
       submitting={submitting}
+      collectEnabled={collectEnabled}
       collectingLabel={collectingLabel}
       collectingAll={collectingAll}
       refreshableCount={refreshableLabels.length}

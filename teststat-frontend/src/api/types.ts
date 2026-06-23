@@ -62,6 +62,7 @@ export interface DailyProgressItem extends ResultCounts {
 export interface HealthResponse {
   status: string
   db: string
+  collect_enabled: boolean
 }
 
 export interface HolidayItem {

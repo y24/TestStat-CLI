@@ -18,6 +18,7 @@ export function PlanListScreen({
   planLabels,
   holidays,
   submitting,
+  collectEnabled,
   collectingLabel,
   collectingAll,
   refreshableCount,
@@ -49,6 +50,7 @@ export function PlanListScreen({
   planLabels: PlanLabelItem[]
   holidays: Set<string>
   submitting: boolean
+  collectEnabled: boolean
   collectingLabel: string | null
   collectingAll: boolean
   refreshableCount: number
@@ -103,7 +105,7 @@ export function PlanListScreen({
           </div>
         </div>
         <div className="header-actions">
-          {refreshableCount > 0 && (
+          {collectEnabled && refreshableCount > 0 && (
             <button
               className={`secondary-button icon-text-button${collectingAll ? ' is-refreshing' : ''}`}
               type="button"
@@ -141,6 +143,7 @@ export function PlanListScreen({
             planLabels={planLabels}
             holidays={holidays}
             submitting={submitting}
+            collectEnabled={collectEnabled}
             collectingLabel={collectingLabel}
             collectErrors={collectErrors}
             onCreate={onCreate}

@@ -60,6 +60,7 @@ export default function App() {
 function AppContent() {
   const confirm = useConfirmDialog()
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
+  const [collectEnabled, setCollectEnabled] = useState(true)
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedTestingId, setSelectedTestingId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
@@ -163,7 +164,10 @@ function AppContent() {
 
   useEffect(() => {
     fetchHealth()
-      .then(() => setApiStatus('ok'))
+      .then((health) => {
+        setApiStatus('ok')
+        setCollectEnabled(health.collect_enabled)
+      })
       .catch(() => setApiStatus('error'))
     // 共有リンク（/tstat/<id>）で開かれた場合は URL の id を初期選択に使う。
     // それ以外は直前選択（localStorage）。判定後、アドレスバーはベースパスへ正規化する。
@@ -405,6 +409,7 @@ function AppContent() {
               <PlanEditor
                 project={selectedProject}
                 mode={planMode}
+                collectEnabled={collectEnabled}
                 onBack={goBackOneLevel}
                 onOpenScreen={openPlanScreen}
                 onChanged={loadProjects}

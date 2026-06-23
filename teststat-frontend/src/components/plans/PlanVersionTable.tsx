@@ -12,6 +12,7 @@ export function PlanVersionTable({
   planLabels,
   holidays,
   submitting,
+  collectEnabled,
   collectingLabel,
   collectErrors,
   onCreate,
@@ -29,6 +30,7 @@ export function PlanVersionTable({
   planLabels: PlanLabelItem[]
   holidays: Set<string>
   submitting: boolean
+  collectEnabled: boolean
   collectingLabel: string | null
   collectErrors: Record<string, string>
   onCreate: (label: string | null) => void
@@ -103,26 +105,28 @@ export function PlanVersionTable({
                           >
                             <Pencil aria-hidden="true" />
                           </button>
-                          <button
-                            className={`icon-button compact${
-                              collectingLabel === label ? ' is-refreshing' : ''
-                            }`}
-                            type="button"
-                            disabled={
-                              submitting ||
-                              !registeredLabel.source_url ||
-                              collectingLabel !== null
-                            }
-                            onClick={() => label !== null && onRefreshLabel(label)}
-                            aria-label={`${registeredLabel.label}の情報を更新`}
-                            title={
-                              registeredLabel.source_url
-                                ? '情報を更新（URLのファイルを取得して集計）'
-                                : 'URLが未登録のため更新できません'
-                            }
-                          >
-                            <RefreshCw aria-hidden="true" />
-                          </button>
+                          {collectEnabled && (
+                            <button
+                              className={`icon-button compact${
+                                collectingLabel === label ? ' is-refreshing' : ''
+                              }`}
+                              type="button"
+                              disabled={
+                                submitting ||
+                                !registeredLabel.source_url ||
+                                collectingLabel !== null
+                              }
+                              onClick={() => label !== null && onRefreshLabel(label)}
+                              aria-label={`${registeredLabel.label}の情報を更新`}
+                              title={
+                                registeredLabel.source_url
+                                  ? '情報を更新（URLのファイルを取得して集計）'
+                                  : 'URLが未登録のため更新できません'
+                              }
+                            >
+                              <RefreshCw aria-hidden="true" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

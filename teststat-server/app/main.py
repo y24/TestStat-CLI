@@ -39,7 +39,7 @@ app.include_router(collect_router)
 
 
 @app.get("/health")
-def health(db: Session = Depends(get_db)) -> dict[str, str]:
+def health(db: Session = Depends(get_db)) -> dict[str, object]:
     db.execute(text("SELECT 1"))
-    return {"status": "ok", "db": "connected"}
+    return {"status": "ok", "db": "connected", "collect_enabled": settings.collect_enabled}
 

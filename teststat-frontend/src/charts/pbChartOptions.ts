@@ -96,7 +96,7 @@ export function buildPbChartOption(
   const bugLegendNames =
     chart.bug_count_source === 'test_result'
       ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
-      : { resolved: '完了不具合(累積)', suspended: '対応見送り(累積)', open: '未解消不具合' }
+      : { resolved: '解決済み', suspended: '対応見送り', open: '起票不具合' }
   const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
   const today = getTodayString()
   const showTodayLine = dates.includes(today)
@@ -152,7 +152,7 @@ export function buildPbChartOption(
 
   if (layers.dailyBars) {
     series.push({
-      name: '日別消化計画',
+      name: '計画/d',
       type: 'bar',
       data: chart.series.map((item) => item.planned_completed_daily),
       barGap: '-100%',
@@ -161,7 +161,7 @@ export function buildPbChartOption(
       z: 1,
     })
     series.push({
-      name: '日別消化実績',
+      name: '実績/d',
       type: 'bar',
       data: chart.series.map((item) => item.actual_completed_daily),
       barWidth: '30%',
@@ -190,7 +190,7 @@ export function buildPbChartOption(
 
   if (layers.plannedLine) {
     series.push({
-      name: '計画未実施',
+      name: '残項目(計画)',
       type: 'line',
       data: chart.series.map((item) => item.planned_remaining),
       connectNulls: false,
@@ -204,7 +204,7 @@ export function buildPbChartOption(
 
   if (layers.actualLine) {
     series.push({
-      name: '実績未実施',
+      name: '残項目(実績)',
       type: 'line',
       data: chart.series.map((item) => item.actual_remaining),
       connectNulls: false,
@@ -222,7 +222,7 @@ export function buildPbChartOption(
         .map((item) => item.name)
         .filter((name): name is string => typeof name === 'string')
         .map((name) => {
-          if (name === '計画未実施') {
+          if (name === '残項目(計画)') {
             return {
               name,
               icon: dashedLegendIcon,

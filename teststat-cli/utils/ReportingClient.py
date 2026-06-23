@@ -168,6 +168,31 @@ def _get_project_status(base_url, testing_id, timeout=10):
         return False, f"プロジェクト状態の確認に失敗しました: {e}"
 
 
+def fetch_project_list_yaml(base_url, testing_id, timeout=10, logger=None):
+    if not base_url:
+        return False, "reporting_api.base_url が設定されていません。"
+
+    url = f"{base_url.rstrip('/')}/v1/projects/{testing_id}/list-yaml"
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("Accept", "application/x-yaml, text/yaml, text/plain, */*")
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            body = response.read().decode("utf-8-sig")
+            if 200 <= response.status < 300:
+                if logger:
+                    logger.log(f"リストYAMLを取得しました: testing_id={testing_id}, bytes={len(body.encode('utf-8'))}")
+                return True, body
+            return False, f"リストYAMLの取得に失敗しました: ステータスコード {response.status}, レスポンス: {body}"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        return False, f"リストYAMLの取得に失敗しました: ステータスコード {e.code}, レスポンス: {body}"
+    except urllib.error.URLError as e:
+        return False, f"APIへの接続に失敗しました: {e}"
+    except Exception as e:
+        return False, f"リストYAMLの取得に失敗しました: {e}"
+
+
 def send_progress(base_url, payload, timeout=10, logger=None):
     if not base_url:
         return False, "reporting_api.base_url が設定されていません。"

@@ -303,6 +303,7 @@ def parse_args():
     parser.add_argument("-J", "--json-detailed", action="store_true", help="JSON形式で詳細出力")
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
+    parser.add_argument("-t", "--testing-id", type=int, help="testing_idを指定してサーバーからリストYAMLを取得し、集計・送信を実行")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     parser.add_argument("--detailed", action="store_true", help="複数ファイル処理時にファイル別の詳細結果も表示")
     parser.add_argument("--install-skills", action="store_true", help="AIエージェント用のスラッシュコマンドとスキルをカレントディレクトリへ配置して終了")
@@ -351,6 +352,43 @@ def main():
     project_info = None
     execution_warnings = []
     remote_mgr = None  # SharePoint等からの一時ダウンロード管理（必要時のみ生成）
+
+    if args.testing_id is not None:
+        if args.list or args.path:
+            print("ERROR: -t/--testing-id は path や -l/--list と同時に指定できません", file=sys.stderr)
+            sys.exit(1)
+
+        reporting_config = settings.get("reporting_api", {})
+        if not reporting_config.get("enabled", True):
+            print("ERROR: reporting_api が無効のため -t/--testing-id を実行できません", file=sys.stderr)
+            sys.exit(1)
+        if not reporting_config.get("base_url"):
+            print("ERROR: reporting_api.base_url が設定されていません", file=sys.stderr)
+            sys.exit(1)
+
+        from utils.ReportingClient import fetch_project_list_yaml
+
+        remote_mgr = RemoteSource.RemoteFileManager(settings.get("sharepoint", {}), verbose_logger)
+        if remote_mgr.cleanup_enabled:
+            atexit.register(remote_mgr.cleanup)
+
+        success, yaml_text = fetch_project_list_yaml(
+            reporting_config.get("base_url"),
+            args.testing_id,
+            logger=verbose_logger,
+        )
+        if not success:
+            print(f"ERROR: {yaml_text}", file=sys.stderr)
+            sys.exit(1)
+
+        yaml_path = os.path.join(remote_mgr.get_temp_dir(), f"teststat_{args.testing_id}_list.yaml")
+        try:
+            with open(yaml_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(yaml_text)
+        except OSError as e:
+            print(f"ERROR: リストYAMLの一時保存に失敗しました: {e}", file=sys.stderr)
+            sys.exit(1)
+        args.list = yaml_path
 
     if args.list:
         try:

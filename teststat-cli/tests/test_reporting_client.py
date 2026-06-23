@@ -2,7 +2,7 @@ import unittest
 import urllib.error
 from unittest.mock import patch
 
-from utils.ReportingClient import build_progress_payload, send_progress
+from utils.ReportingClient import build_progress_payload, fetch_project_list_yaml, send_progress
 
 
 class FakeResponse:
@@ -123,6 +123,32 @@ class ReportingClientPayloadTests(unittest.TestCase):
         self.assertEqual(payload["files"][0]["error"], "sheet missing")
 
 
+class ReportingClientListYamlTests(unittest.TestCase):
+    def test_fetch_project_list_yaml_gets_expected_endpoint(self):
+        requests = []
+
+        def fake_urlopen(req, timeout=10):
+            requests.append(req)
+            return FakeResponse(body='project_name: "Sample"\ntesting_id: 1001\nfiles: []\n')
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
+            success, yaml_text = fetch_project_list_yaml("http://localhost:18000/api", 1001)
+
+        self.assertTrue(success)
+        self.assertIn("testing_id: 1001", yaml_text)
+        self.assertEqual(requests[0].full_url, "http://localhost:18000/api/v1/projects/1001/list-yaml")
+        self.assertEqual(requests[0].get_method(), "GET")
+
+    def test_fetch_project_list_yaml_reports_http_error(self):
+        def fake_urlopen(req, timeout=10):
+            raise urllib.error.HTTPError(req.full_url, 404, "Not Found", hdrs=None, fp=None)
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen):
+            success, msg = fetch_project_list_yaml("http://localhost:18000/api", 9999)
+
+        self.assertFalse(success)
+        self.assertIn("ステータスコード 404", msg)
+
 class ReportingClientSendTests(unittest.TestCase):
     def test_send_progress_skips_archived_project(self):
         requests = []
@@ -175,3 +201,4 @@ class ReportingClientSendTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

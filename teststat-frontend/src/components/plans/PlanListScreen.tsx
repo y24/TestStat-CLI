@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft, ClipboardList, Download, Plus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Check, ClipboardList, Copy, Download, Plus, RefreshCw } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -20,6 +21,7 @@ export function PlanListScreen({
   collectingLabel,
   collectingAll,
   refreshableCount,
+  cliCommand,
   collectErrors,
   downloadingListYaml,
   listYamlError,
@@ -50,6 +52,7 @@ export function PlanListScreen({
   collectingLabel: string | null
   collectingAll: boolean
   refreshableCount: number
+  cliCommand: string
   collectErrors: Record<string, string>
   downloadingListYaml: boolean
   listYamlError: string | null
@@ -66,6 +69,15 @@ export function PlanListScreen({
   onSaveModal: (changes: PlanVersionModalChanges) => void
   onCloseModal: () => void
 }) {
+  const [copiedCommand, setCopiedCommand] = useState(false)
+
+  const copyCliCommand = () => {
+    navigator.clipboard.writeText(cliCommand).then(() => {
+      setCopiedCommand(true)
+      window.setTimeout(() => setCopiedCommand(false), 1600)
+    })
+  }
+
   const modalResetKey = `${modalLabel ?? 'unlabeled'}:${selectedModalPlans
     .map((plan) => `${plan.id}:${plan.is_active}`)
     .join(',')}`
@@ -137,15 +149,26 @@ export function PlanListScreen({
             onManage={onManage}
             formatDate={formatDate}
           />
-          <section className="plan-list-panel list-yaml-panel" aria-labelledby="list-yaml-title">
-            <div className="plan-panel-header">
+          <section className="plan-list-panel cli-run-panel" aria-labelledby="cli-run-title">
+            <div className="plan-panel-header cli-run-header">
               <div>
-                <div className="panel-title" id="list-yaml-title">CLIリストファイル</div>
+                <div className="panel-title" id="cli-run-title">CLI実行</div>
                 <div className="panel-subtitle">
-                  {refreshableCount > 0
-                    ? `${refreshableCount}件の識別子を含めて生成します。`
-                    : 'URL付き識別子がありません。'}
+                  以下のコマンドを実行して集計を実行します。TestStat-CLI, Azure CLIのインストールが必要です。
                 </div>
+              </div>
+            </div>
+            <div className="cli-command-row">
+              <input className="cli-command-input" type="text" value={cliCommand} readOnly aria-label="CLI実行コマンド" />
+              <button className="secondary-button icon-text-button" type="button" onClick={copyCliCommand}>
+                {copiedCommand ? <Check className="button-icon" aria-hidden="true" /> : <Copy className="button-icon" aria-hidden="true" />}
+                <span>{copiedCommand ? 'コピー済み' : 'コピー'}</span>
+              </button>
+            </div>
+            <div className="cli-yaml-row">
+              <div>
+                <div className="cli-yaml-title">リストファイルを取得</div>
+                <div className="panel-subtitle">設定ファイルとしてダウンロードします。</div>
               </div>
               <button
                 className="secondary-button icon-text-button"

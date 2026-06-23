@@ -678,6 +678,7 @@ export function PlanEditor({
       collectingLabel={collectingLabel}
       collectingAll={collectingAll}
       refreshableCount={refreshableLabels.length}
+      cliCommand={`tstat --testing-id ${project.testing_id}`}
       collectErrors={collectErrors}
       downloadingListYaml={downloadingListYaml}
       listYamlError={listYamlError}

@@ -1229,12 +1229,55 @@
   padding: 16px;
 }
 
-.list-yaml-panel {
+.cli-run-panel {
   margin-top: 14px;
 }
 
-.list-yaml-panel .plan-panel-header {
+.cli-run-header {
   align-items: center;
+}
+
+.cli-command-row,
+.cli-yaml-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cli-command-row {
+  margin-top: 4px;
+}
+
+.cli-command-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  border: 1px solid #cfd6df;
+  border-radius: 7px;
+  background: #f8fafb;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  padding: 0 12px;
+}
+
+.cli-command-input:focus {
+  outline: 2px solid rgba(42, 111, 151, 0.2);
+  border-color: #7aa7c7;
+}
+
+.cli-yaml-row {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cli-yaml-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px;
 }
 
 .list-yaml-error {
@@ -1262,6 +1305,20 @@
   color: var(--muted);
   font-size: 12px;
   margin-bottom: 12px;
+}
+
+@media (max-width: 720px) {
+  .cli-command-row,
+  .cli-yaml-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cli-command-row .secondary-button,
+  .cli-yaml-row .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .switch-row {

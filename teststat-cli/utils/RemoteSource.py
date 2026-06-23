@@ -463,6 +463,10 @@ class RemoteFileManager:
                 self.logger.log(f"一時ディレクトリを作成しました: {self._temp_dir}")
         return self._temp_dir
 
+    def get_temp_dir(self):
+        """この実行で使う一時ディレクトリを返す。"""
+        return self._ensure_temp_dir()
+
     def fetch(self, url, label=None, item_index=None, item_total=None, progress_stream=None):
         """共有 URL からファイルを取得し、ローカルの一時パスを返す。"""
         _log(logger=self.logger, message=f"SharePoint ファイル取得を開始します: url={url}")
@@ -534,3 +538,4 @@ class RemoteFileManager:
         if self.cleanup_enabled:
             self.cleanup()
         return False
+

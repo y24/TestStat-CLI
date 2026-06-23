@@ -49,8 +49,8 @@ export function PlanVersionTable({
     <div className="plan-list-panel">
       <div className="plan-panel-header">
         <div>
-          <div className="panel-title">テスト一覧</div>
-          <div className="panel-subtitle">識別子ごとに計画を管理します。</div>
+          <div className="panel-title">集計設定一覧</div>
+          <div className="panel-subtitle">集計単位ごとの計画を管理します。</div>
         </div>
       </div>
       {rows.length === 0 && (

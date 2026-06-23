@@ -50,7 +50,7 @@ export function PlanLabelCreateScreen({
           <div>
             <h1 className="title-with-icon">
               <Tag className="title-icon" aria-hidden="true" />
-              <span>識別子の追加</span>
+              <span>集計設定の追加</span>
             </h1>
           </div>
         </div>

@@ -54,7 +54,7 @@ export function PlanLabelEditScreen({
           <div>
             <h1 className="title-with-icon">
               <Tag className="title-icon" aria-hidden="true" />
-              <span>識別子の編集</span>
+              <span>集計設定の編集</span>
             </h1>
           </div>
         </div>

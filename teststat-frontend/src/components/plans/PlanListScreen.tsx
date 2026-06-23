@@ -124,7 +124,7 @@ export function PlanListScreen({
             onClick={onAddLabel}
           >
             <Plus className="button-icon" aria-hidden="true" />
-            <span>識別子を追加</span>
+            <span>集計設定を追加</span>
           </button>
         </div>
       </header>

@@ -285,7 +285,7 @@ function SortableProjectRow({
       >
         <GripVertical aria-hidden="true" />
       </span>
-      <button className="project-row-main" type="button" onClick={() => onSelect(project.testing_id)}>
+      <button className="project-row-main" type="button" onClick={() => onSelect(project.testing_id)} title={project.name}>
         <span className="project-name-row">
           {project.archived && <LockIcon />}
           <span className="project-name">{project.name}</span>

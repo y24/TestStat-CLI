@@ -186,6 +186,22 @@ export const deletePlan = (plan_id: number) =>
     method: 'DELETE',
   })
 
+export const downloadProjectListYaml = async (testing_id: number) => {
+  const res = await fetch(`${BASE}/api/v1/projects/${testing_id}/list-yaml`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `teststat_${testing_id}_list.yaml`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
 // 識別子の情報更新: SharePoint URL からファイルを取得して同期的に再集計
 export const collectLabel = (testing_id: number, label: string) =>
   request<CollectResult>(

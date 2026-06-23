@@ -61,6 +61,12 @@ def count_collect_targets(db: Session, testing_id: int | None = None) -> int:
     return int(db.scalar(query) or 0)
 
 
+def build_project_list_yaml(db: Session, testing_id: int) -> str | None:
+    targets = _load_targets(db, testing_id=testing_id)
+    if not targets:
+        return None
+    return build_list_yaml(targets[0])
+
 def collect_all(db: Session | None = None, *, settings: Settings | None = None) -> CollectResult:
     return _collect(db, settings=settings, testing_id=None)
 
@@ -210,29 +216,27 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
 
 def build_list_yaml(target: CollectTarget) -> str:
     lines = [
-        "project:",
-        f"  project_name: {_yaml_scalar(target.project_name)}",
-        f"  testing_id: {target.testing_id}",
-        "  files:",
+        f"project_name: {_yaml_scalar(target.project_name)}",
+        f"testing_id: {target.testing_id}",
+        "files:",
     ]
     for file in target.files:
-        lines.append(f"    - label: {_yaml_scalar(file.label)}")
-        lines.append(f"      path: {_yaml_scalar(file.source_url)}")
+        lines.append(f"- label: {_yaml_scalar(file.label)}")
+        lines.append(f"  path: {_yaml_scalar(file.source_url)}")
         _append_yaml_string_list(lines, "target_sheets", file.target_sheets)
         _append_yaml_string_list(lines, "ignore_sheets", file.ignore_sheets)
         if file.include_hidden_sheets is not None:
-            lines.append(f"      include_hidden_sheets: {_yaml_bool(file.include_hidden_sheets)}")
+            lines.append(f"  include_hidden_sheets: {_yaml_bool(file.include_hidden_sheets)}")
         _append_yaml_string_list(lines, "target_environments", file.target_environments)
         _append_yaml_string_list(lines, "ignore_environments", file.ignore_environments)
     return "\n".join(lines) + "\n"
 
-
 def _append_yaml_string_list(lines: list[str], key: str, values: tuple[str, ...] | None) -> None:
     if values is None:
         return
-    lines.append(f"      {key}:")
+    lines.append(f"  {key}:")
     for value in values:
-        lines.append(f"        - {_yaml_scalar(value)}")
+        lines.append(f"    - {_yaml_scalar(value)}")
 
 
 def _to_tuple_or_none(value: list[str] | tuple[str, ...] | None) -> tuple[str, ...] | None:
@@ -348,8 +352,3 @@ def _write_log(settings: Settings, target: CollectTarget, yaml_path: Path, compl
             f.write("--- stderr ---\n")
             f.write(completed.stderr)
             f.write("\n")
-
-
-
-
-

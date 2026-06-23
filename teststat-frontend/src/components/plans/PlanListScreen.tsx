@@ -3,7 +3,7 @@ import { formatDate } from '../../utils/date'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft, ClipboardList, Plus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Download, Plus, RefreshCw } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -21,6 +21,8 @@ export function PlanListScreen({
   collectingAll,
   refreshableCount,
   collectErrors,
+  downloadingListYaml,
+  listYamlError,
   modalLabel,
   selectedModalPlans,
   onBack,
@@ -28,6 +30,7 @@ export function PlanListScreen({
   onEditLabel,
   onRefreshLabel,
   onRefreshAll,
+  onDownloadListYaml,
   onCreate,
   onManage,
   onSaveModal,
@@ -48,6 +51,8 @@ export function PlanListScreen({
   collectingAll: boolean
   refreshableCount: number
   collectErrors: Record<string, string>
+  downloadingListYaml: boolean
+  listYamlError: string | null
   modalLabel: string | null | undefined
   selectedModalPlans: PlanItem[]
   onBack: () => void
@@ -55,6 +60,7 @@ export function PlanListScreen({
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
   onRefreshAll: () => void
+  onDownloadListYaml: () => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
   onSaveModal: (changes: PlanVersionModalChanges) => void
@@ -112,24 +118,56 @@ export function PlanListScreen({
       {loading && <div className="chart-state">計画を読み込み中...</div>}
       {!loading && error && <div className="form-error">計画を取得できませんでした: {error}</div>}
       {!loading && !error && (
-        <PlanVersionTable
-          labels={labels}
-          actualLabels={actualLabels}
-          availableCasesByLabel={availableCasesByLabel}
-          unlabeledAvailableCases={unlabeledAvailableCases}
-          hasUnlabeledData={hasUnlabeledData}
-          plans={plans}
-          planLabels={planLabels}
-          holidays={holidays}
-          submitting={submitting}
-          collectingLabel={collectingLabel}
-          collectErrors={collectErrors}
-          onCreate={onCreate}
-          onEditLabel={onEditLabel}
-          onRefreshLabel={onRefreshLabel}
-          onManage={onManage}
-          formatDate={formatDate}
-        />
+        <>
+          <PlanVersionTable
+            labels={labels}
+            actualLabels={actualLabels}
+            availableCasesByLabel={availableCasesByLabel}
+            unlabeledAvailableCases={unlabeledAvailableCases}
+            hasUnlabeledData={hasUnlabeledData}
+            plans={plans}
+            planLabels={planLabels}
+            holidays={holidays}
+            submitting={submitting}
+            collectingLabel={collectingLabel}
+            collectErrors={collectErrors}
+            onCreate={onCreate}
+            onEditLabel={onEditLabel}
+            onRefreshLabel={onRefreshLabel}
+            onManage={onManage}
+            formatDate={formatDate}
+          />
+          <section className="plan-list-panel list-yaml-panel" aria-labelledby="list-yaml-title">
+            <div className="plan-panel-header">
+              <div>
+                <div className="panel-title" id="list-yaml-title">CLIリストファイル</div>
+                <div className="panel-subtitle">
+                  {refreshableCount > 0
+                    ? `${refreshableCount}件の識別子を含めて生成します。`
+                    : 'URL付き識別子がありません。'}
+                </div>
+              </div>
+              <button
+                className="secondary-button icon-text-button"
+                type="button"
+                disabled={
+                  submitting ||
+                  collectingAll ||
+                  collectingLabel !== null ||
+                  downloadingListYaml ||
+                  refreshableCount === 0
+                }
+                onClick={onDownloadListYaml}
+              >
+                <Download className="button-icon" aria-hidden="true" />
+                <span>{downloadingListYaml ? '生成中...' : 'YAMLをダウンロード'}</span>
+              </button>
+            </div>
+            {listYamlError && (
+              <div className="form-error list-yaml-error">ダウンロードできませんでした: {listYamlError}</div>
+            )}
+          </section>
+        </>
       )}
       {modalLabel !== undefined && (
         <PlanVersionModal

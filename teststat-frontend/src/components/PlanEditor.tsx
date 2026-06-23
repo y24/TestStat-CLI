@@ -7,6 +7,7 @@ import {
   createPlanLabel,
   deletePlan,
   deleteProjectLabel,
+  downloadProjectListYaml,
   fetchHolidays,
   fetchPlanLabels,
   fetchPlans,
@@ -71,6 +72,8 @@ export function PlanEditor({
   const [collectingLabel, setCollectingLabel] = useState<string | null>(null)
   const [collectingAll, setCollectingAll] = useState(false)
   const [collectErrors, setCollectErrors] = useState<Record<string, string>>({})
+  const [downloadingListYaml, setDownloadingListYaml] = useState(false)
+  const [listYamlError, setListYamlError] = useState<string | null>(null)
 
   const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
 
@@ -272,6 +275,16 @@ export function PlanEditor({
     }
   }
 
+  const handleDownloadListYaml = () => {
+    if (downloadingListYaml) {
+      return
+    }
+    setListYamlError(null)
+    setDownloadingListYaml(true)
+    downloadProjectListYaml(project.testing_id)
+      .catch((err) => setListYamlError(getErrorMessage(err)))
+      .finally(() => setDownloadingListYaml(false))
+  }
   const openLabelCreateScreen = () => {
     setFormError(null)
     setEditingPlanLabel(null)
@@ -666,6 +679,8 @@ export function PlanEditor({
       collectingAll={collectingAll}
       refreshableCount={refreshableLabels.length}
       collectErrors={collectErrors}
+      downloadingListYaml={downloadingListYaml}
+      listYamlError={listYamlError}
       modalLabel={modalLabel}
       selectedModalPlans={selectedModalPlans}
       onBack={onBack}
@@ -673,6 +688,7 @@ export function PlanEditor({
       onEditLabel={openLabelEditScreen}
       onRefreshLabel={handleRefreshLabel}
       onRefreshAll={handleRefreshAll}
+      onDownloadListYaml={handleDownloadListYaml}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}
       onSaveModal={handleSaveModalChanges}
@@ -856,4 +872,3 @@ function formatDailyCount(value: number) {
 function isNotFoundError(err: unknown) {
   return getErrorMessage(err).includes('404 Not Found')
 }
-

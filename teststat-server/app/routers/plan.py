@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query, status
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.crud.pb_chart import get_pb_chart
@@ -18,6 +20,7 @@ from app.crud.plan import (
 from app.database import get_db
 from app.schemas.pb_chart import PbChartResponse
 from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelUpdate, ProjectLabelUpdate
+from app.services.collector import build_project_list_yaml
 
 router = APIRouter(prefix="/api/v1", tags=["plans"])
 
@@ -31,6 +34,18 @@ def read_plans(testing_id: int, db: Session = Depends(get_db)) -> list[PlanItem]
 def read_plan_labels(testing_id: int, db: Session = Depends(get_db)) -> list[PlanLabelItem]:
     return list_plan_labels(db, testing_id)
 
+
+@router.get("/projects/{testing_id}/list-yaml")
+def download_project_list_yaml(testing_id: int, db: Session = Depends(get_db)) -> Response:
+    yaml_text = build_project_list_yaml(db, testing_id)
+    if yaml_text is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="downloadable list yaml not found")
+    filename = f"teststat_{testing_id}_list.yaml"
+    return Response(
+        content=yaml_text,
+        media_type="application/x-yaml; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
 
 @router.post(
     "/projects/{testing_id}/plan-labels",

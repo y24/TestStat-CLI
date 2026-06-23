@@ -56,17 +56,18 @@ class TestCollector(unittest.TestCase):
                 ),
             )
         )
+        self.assertNotIn('project:', yaml_text)
         self.assertIn('project_name: "Project A"', yaml_text)
         self.assertIn("testing_id: 3001", yaml_text)
         self.assertIn('label: "LABEL1"', yaml_text)
         self.assertIn('path: "https://contoso.sharepoint.com/:x:/s/a?x=1"', yaml_text)
         self.assertIn('target_sheets:', yaml_text)
-        self.assertIn('        - "テスト項目"', yaml_text)
+        self.assertIn('    - "テスト項目"', yaml_text)
         self.assertIn('ignore_sheets:', yaml_text)
-        self.assertIn('        - "Sheet1"', yaml_text)
+        self.assertIn('    - "Sheet1"', yaml_text)
         self.assertIn('include_hidden_sheets: false', yaml_text)
         self.assertIn('target_environments:', yaml_text)
-        self.assertIn('        - "環境a"', yaml_text)
+        self.assertIn('    - "環境a"', yaml_text)
 
     def test_load_targets_excludes_empty_and_archived(self):
         create_plan_label(self.db, 3001, PlanLabelCreate(label="A", source_url="https://example.com/a.xlsx"))

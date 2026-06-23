@@ -1229,6 +1229,18 @@
   padding: 16px;
 }
 
+.list-yaml-panel {
+  margin-top: 14px;
+}
+
+.list-yaml-panel .plan-panel-header {
+  align-items: center;
+}
+
+.list-yaml-error {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
 .plan-panel-header,
 .create-target,
 .plan-preview-header,
@@ -2265,4 +2277,3 @@
     flex: 1;
   }
 }
-

@@ -547,6 +547,8 @@ def main():
                 error_result["label"] = task["label"]
             if task.get("source_url"):
                 error_result["source_url"] = task["source_url"]
+            if _has_subtask_id(task.get("subtask_id")):
+                error_result["subtask_id"] = task["subtask_id"]
             for option_key, option_value in task.get("overrides", {}).items():
                 error_result[option_key] = option_value
             results.append((filepath, error_result))

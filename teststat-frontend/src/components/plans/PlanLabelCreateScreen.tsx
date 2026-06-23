@@ -8,11 +8,13 @@ export function PlanLabelCreateScreen({
   error,
   label,
   sourceUrl,
+  subtaskId,
   cliOptions,
   formError,
   submitting,
   onLabelChange,
   onSourceUrlChange,
+  onSubtaskIdChange,
   onCliOptionsChange,
   onCancel,
   onSubmit,
@@ -21,11 +23,13 @@ export function PlanLabelCreateScreen({
   error: string | null | undefined
   label: string
   sourceUrl: string
+  subtaskId: string
   cliOptions: LabelCliOptionsInput
   formError: string | null
   submitting: boolean
   onLabelChange: (label: string) => void
   onSourceUrlChange: (sourceUrl: string) => void
+  onSubtaskIdChange: (subtaskId: string) => void
   onCliOptionsChange: (cliOptions: LabelCliOptionsInput) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
@@ -78,6 +82,18 @@ export function PlanLabelCreateScreen({
               onChange={(event) => onSourceUrlChange(event.target.value)}
               maxLength={2048}
               placeholder="https://contoso.sharepoint.com/:x:/s/..."
+            />
+          </label>
+          <label>
+            <span>サブタスクID subtask_id</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={subtaskId}
+              disabled={submitting}
+              onChange={(event) => onSubtaskIdChange(event.target.value)}
+              placeholder="WBS連携で更新対象にするサブタスクID"
             />
           </label>
           <PlanLabelCliOptionsFields value={cliOptions} disabled={submitting} onChange={onCliOptionsChange} />

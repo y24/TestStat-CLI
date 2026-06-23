@@ -35,6 +35,7 @@ class PlanLabel(Base):
     testing_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(2048))
+    subtask_id: Mapped[int | None] = mapped_column(Integer)
     target_sheets: Mapped[list[str] | None] = mapped_column(JSON)
     ignore_sheets: Mapped[list[str] | None] = mapped_column(JSON)
     include_hidden_sheets: Mapped[bool | None] = mapped_column(Boolean)

@@ -12,6 +12,7 @@ from app.schemas.progress import DailyProgressItem, ProgressPostResponse, Progre
 
 
 PLAN_LABEL_OPTION_FIELDS = (
+    "subtask_id",
     "target_sheets",
     "ignore_sheets",
     "include_hidden_sheets",

@@ -162,6 +162,7 @@ export interface PlanLabelItem {
   testing_id: number
   label: string
   source_url: string | null
+  subtask_id: number | null
   target_sheets: string[] | null
   ignore_sheets: string[] | null
   include_hidden_sheets: boolean | null
@@ -181,20 +182,23 @@ export interface PlanLabelCliOptionsPayload {
 export interface PlanLabelCreatePayload extends PlanLabelCliOptionsPayload {
   label: string
   source_url?: string | null
+  subtask_id?: number | null
 }
 
 export type PlanLabelUpdatePayload = PlanLabelCreatePayload
 
-export interface ProjectLabelUpdatePayload {
+export interface ProjectLabelUpdatePayload extends PlanLabelCliOptionsPayload {
   old_label: string
   label: string
   source_url?: string | null
+  subtask_id?: number | null
 }
 
 export interface LabelEditTarget {
   id?: number
   label: string
   source_url?: string | null
+  subtask_id?: number | null
   target_sheets?: string[] | null
   ignore_sheets?: string[] | null
   include_hidden_sheets?: boolean | null

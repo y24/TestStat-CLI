@@ -27,6 +27,8 @@ def _copy_cli_options(file_payload, result):
     for key in CLI_OPTION_KEYS:
         if key in result:
             file_payload[key] = result[key]
+    if result.get("subtask_id") is not None:
+        file_payload["subtask_id"] = result["subtask_id"]
 
 
 def _file_name(path):

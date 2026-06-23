@@ -31,6 +31,7 @@ class FileProgressIn(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     label: str | None = Field(None, max_length=255)
     source_url: str | None = Field(None, max_length=2048)
+    subtask_id: int | None = Field(None, ge=0)
     target_sheets: list[str] | None = None
     ignore_sheets: list[str] | None = None
     include_hidden_sheets: bool | None = None

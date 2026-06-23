@@ -117,6 +117,7 @@ def _project_label_exists(db: Session, testing_id: int, label: str) -> bool:
 
 def _apply_plan_label_payload(label: PlanLabel, payload: PlanLabelCreate) -> None:
     label.source_url = payload.source_url
+    label.subtask_id = payload.subtask_id
     label.target_sheets = payload.target_sheets
     label.ignore_sheets = payload.ignore_sheets
     label.include_hidden_sheets = payload.include_hidden_sheets
@@ -172,6 +173,7 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
         testing_id=testing_id,
         label=payload.label,
         source_url=payload.source_url,
+        subtask_id=payload.subtask_id,
         target_sheets=payload.target_sheets,
         ignore_sheets=payload.ignore_sheets,
         include_hidden_sheets=payload.include_hidden_sheets,
@@ -221,6 +223,7 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
             testing_id=testing_id,
             label=payload.label,
             source_url=payload.source_url,
+            subtask_id=payload.subtask_id,
             target_sheets=payload.target_sheets,
             ignore_sheets=payload.ignore_sheets,
             include_hidden_sheets=payload.include_hidden_sheets,
@@ -249,7 +252,7 @@ def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> P
     return update_project_label(
         db,
         label.testing_id,
-        ProjectLabelUpdate(old_label=label.label, label=payload.label, source_url=payload.source_url),
+        ProjectLabelUpdate(old_label=label.label, **payload.model_dump()),
     )
 
 

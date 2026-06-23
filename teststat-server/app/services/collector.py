@@ -27,6 +27,7 @@ _LAST_RESULT: CollectResult | None = None
 class CollectFile:
     label: str
     source_url: str
+    subtask_id: int | None = None
     target_sheets: tuple[str, ...] | None = None
     ignore_sheets: tuple[str, ...] | None = None
     include_hidden_sheets: bool | None = None
@@ -166,6 +167,7 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
             Project.name,
             PlanLabel.label,
             PlanLabel.source_url,
+            PlanLabel.subtask_id,
             PlanLabel.target_sheets,
             PlanLabel.ignore_sheets,
             PlanLabel.include_hidden_sheets,
@@ -187,6 +189,7 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
         project_name,
         row_label,
         source_url,
+        subtask_id,
         target_sheets,
         ignore_sheets,
         include_hidden_sheets,
@@ -200,6 +203,7 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
             CollectFile(
                 label=row_label,
                 source_url=source_url,
+                subtask_id=subtask_id,
                 target_sheets=_to_tuple_or_none(target_sheets),
                 ignore_sheets=_to_tuple_or_none(ignore_sheets),
                 include_hidden_sheets=include_hidden_sheets,
@@ -223,6 +227,8 @@ def build_list_yaml(target: CollectTarget) -> str:
     for file in target.files:
         lines.append(f"- label: {_yaml_scalar(file.label)}")
         lines.append(f"  path: {_yaml_scalar(file.source_url)}")
+        if file.subtask_id is not None:
+            lines.append(f"  subtask_id: {file.subtask_id}")
         _append_yaml_string_list(lines, "target_sheets", file.target_sheets)
         _append_yaml_string_list(lines, "ignore_sheets", file.ignore_sheets)
         if file.include_hidden_sheets is not None:

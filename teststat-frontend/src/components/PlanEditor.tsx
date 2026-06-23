@@ -66,6 +66,7 @@ export function PlanEditor({
   const [formError, setFormError] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
+  const [subtaskIdInput, setSubtaskIdInput] = useState('')
   const [cliOptionsInput, setCliOptionsInput] = useState<LabelCliOptionsInput>(() => createEmptyCliOptionsInput())
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
@@ -154,14 +155,18 @@ export function PlanEditor({
     onDirtyChange(
       (mode === 'create' && !isSamePlanForm(form, initialCreateForm)) ||
         (mode === 'label' &&
-          (labelInput.trim() !== '' || sourceUrlInput.trim() !== '' || !isEmptyCliOptionsInput(cliOptionsInput))) ||
+          (labelInput.trim() !== '' ||
+            sourceUrlInput.trim() !== '' ||
+            subtaskIdInput.trim() !== '' ||
+            !isEmptyCliOptionsInput(cliOptionsInput))) ||
         (mode === 'label-edit' &&
           editingPlanLabel !== null &&
           (labelInput.trim() !== editingPlanLabel.label ||
             sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
+            subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
             !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))),
     )
-  }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput])
+  }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput, subtaskIdInput])
 
   useEffect(() => {
     return () => onDirtyChange(false)
@@ -293,6 +298,7 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setSubtaskIdInput('')
     setCliOptionsInput(createEmptyCliOptionsInput())
     onOpenScreen('label')
   }
@@ -302,6 +308,7 @@ export function PlanEditor({
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
     setSourceUrlInput(planLabel.source_url ?? '')
+    setSubtaskIdInput(subtaskIdInputFromLabel(planLabel))
     setCliOptionsInput(cliOptionsInputFromLabel(planLabel))
     onOpenScreen('label-edit')
   }
@@ -311,6 +318,7 @@ export function PlanEditor({
       editingPlanLabel !== null &&
       (labelInput.trim() !== editingPlanLabel.label ||
         sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
+        subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
         !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))
     ) {
       const confirmed = await confirm({
@@ -327,12 +335,18 @@ export function PlanEditor({
     setEditingPlanLabel(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setSubtaskIdInput('')
     setCliOptionsInput(createEmptyCliOptionsInput())
     closePlanSubscreen()
   }
 
   const cancelLabelCreate = async () => {
-    if (labelInput.trim() !== '' || sourceUrlInput.trim() !== '' || !isEmptyCliOptionsInput(cliOptionsInput)) {
+    if (
+      labelInput.trim() !== '' ||
+      sourceUrlInput.trim() !== '' ||
+      subtaskIdInput.trim() !== '' ||
+      !isEmptyCliOptionsInput(cliOptionsInput)
+    ) {
       const confirmed = await confirm({
         title: '入力内容の破棄',
         message: 'データが破棄されますが、よろしいですか？',
@@ -346,6 +360,7 @@ export function PlanEditor({
     setFormError(null)
     setLabelInput('')
     setSourceUrlInput('')
+    setSubtaskIdInput('')
     setCliOptionsInput(createEmptyCliOptionsInput())
     closePlanSubscreen()
   }
@@ -368,14 +383,24 @@ export function PlanEditor({
       setFormError('SharePoint 共有 URL は http:// または https:// で始まる URL を入力してください')
       return
     }
+    if (!isValidOptionalSubtaskId(subtaskIdInput)) {
+      setFormError('サブタスクID は 0 以上の整数で入力してください')
+      return
+    }
 
     setSubmitting(true)
-    createPlanLabel(project.testing_id, { label, source_url: sourceUrl, ...toCliOptionsPayload(cliOptionsInput) })
+    createPlanLabel(project.testing_id, {
+      label,
+      source_url: sourceUrl,
+      subtask_id: parseSubtaskId(subtaskIdInput),
+      ...toCliOptionsPayload(cliOptionsInput),
+    })
       .then(() => {
         loadPlans()
         onChanged()
         setLabelInput('')
         setSourceUrlInput('')
+        setSubtaskIdInput('')
         setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
@@ -411,12 +436,17 @@ export function PlanEditor({
       setFormError('SharePoint 共有 URL は http:// または https:// で始まる URL を入力してください')
       return
     }
+    if (!isValidOptionalSubtaskId(subtaskIdInput)) {
+      setFormError('サブタスクID は 0 以上の整数で入力してください')
+      return
+    }
 
     setSubmitting(true)
     updateProjectLabel(project.testing_id, {
       old_label: originalLabel || label,
       label,
       source_url: sourceUrl,
+      subtask_id: parseSubtaskId(subtaskIdInput),
       ...toCliOptionsPayload(cliOptionsInput),
     })
       .then(() => {
@@ -425,6 +455,7 @@ export function PlanEditor({
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
+        setSubtaskIdInput('')
         setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
@@ -460,6 +491,7 @@ export function PlanEditor({
         setEditingPlanLabel(null)
         setLabelInput('')
         setSourceUrlInput('')
+        setSubtaskIdInput('')
         setCliOptionsInput(createEmptyCliOptionsInput())
         closePlanSubscreen()
       })
@@ -605,6 +637,7 @@ export function PlanEditor({
     const labelEditUnchanged =
       labelInput.trim() === editingPlanLabel.label &&
       sourceUrlInput.trim() === (editingPlanLabel.source_url ?? '') &&
+      subtaskIdInput.trim() === subtaskIdInputFromLabel(editingPlanLabel) &&
       isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel))
     return (
       <PlanLabelEditScreen
@@ -612,12 +645,14 @@ export function PlanEditor({
         error={result?.error}
         label={labelInput}
         sourceUrl={sourceUrlInput}
+        subtaskId={subtaskIdInput}
         cliOptions={cliOptionsInput}
         unchanged={labelEditUnchanged}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
         onSourceUrlChange={setSourceUrlInput}
+        onSubtaskIdChange={setSubtaskIdInput}
         onCliOptionsChange={setCliOptionsInput}
         onCancel={cancelLabelEdit}
         onSubmit={submitPlanLabelEdit}
@@ -633,11 +668,13 @@ export function PlanEditor({
         error={result?.error}
         label={labelInput}
         sourceUrl={sourceUrlInput}
+        subtaskId={subtaskIdInput}
         cliOptions={cliOptionsInput}
         formError={formError}
         submitting={submitting}
         onLabelChange={setLabelInput}
         onSourceUrlChange={setSourceUrlInput}
+        onSubtaskIdChange={setSubtaskIdInput}
         onCliOptionsChange={setCliOptionsInput}
         onCancel={cancelLabelCreate}
         onSubmit={submitPlanLabel}
@@ -768,6 +805,28 @@ function isSameCliOptionsInput(left: LabelCliOptionsInput, right: LabelCliOption
 function normalizeSourceUrl(value: string): string | null {
   const normalized = value.trim()
   return normalized === '' ? null : normalized
+}
+
+function subtaskIdInputFromLabel(label: LabelEditTarget): string {
+  return label.subtask_id === undefined || label.subtask_id === null ? '' : String(label.subtask_id)
+}
+
+function parseSubtaskId(value: string): number | null {
+  const normalized = value.trim()
+  if (normalized === '') {
+    return null
+  }
+  const parsed = Number(normalized)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
+function isValidOptionalSubtaskId(value: string): boolean {
+  const normalized = value.trim()
+  if (normalized === '') {
+    return true
+  }
+  const parsed = Number(normalized)
+  return Number.isInteger(parsed) && parsed >= 0
 }
 
 function isValidOptionalUrl(value: string | null): boolean {

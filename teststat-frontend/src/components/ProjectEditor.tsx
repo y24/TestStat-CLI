@@ -289,22 +289,6 @@ export function ProjectEditor({
           </label>
         </div>
         <label>
-          <span>不具合件数ソース</span>
-          <select
-            value={form.bug_count_source}
-            disabled={submitting}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bug_count_source: event.target.value as ProjectFormState['bug_count_source'],
-              })
-            }
-          >
-            <option value="azure_devops">Azure DevOps - Testing IDの子Bugチケットのステータスを参照</option>
-            <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照</option>
-          </select>
-        </label>
-        <label>
           <span>PB図の表示範囲</span>
           <select
             value={form.pb_chart_range_source}
@@ -318,6 +302,22 @@ export function ProjectEditor({
           >
             <option value="plan_actual">計画線・実績線の範囲</option>
             <option value="project_period">テスト期間の開始日・終了日</option>
+          </select>
+        </label>
+        <label>
+          <span>不具合件数ソース</span>
+          <select
+            value={form.bug_count_source}
+            disabled={submitting}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                bug_count_source: event.target.value as ProjectFormState['bug_count_source'],
+              })
+            }
+          >
+            <option value="azure_devops">Azure DevOps - Testing IDの子Bugチケットのステータスを参照</option>
+            <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照</option>
           </select>
         </label>
 

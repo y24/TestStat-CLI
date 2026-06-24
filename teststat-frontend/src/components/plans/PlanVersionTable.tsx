@@ -65,9 +65,6 @@ export function PlanVersionTable({
           </button>
         </div>
       </div>
-      {rows.length === 0 && (
-        <div className="muted-block">送信されたデータがまだありません。</div>
-      )}
       {rows.length > 0 && (
         <div className="plan-table-wrap">
           <table className="plan-table">

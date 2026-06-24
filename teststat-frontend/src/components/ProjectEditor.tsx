@@ -157,7 +157,7 @@ export function ProjectEditor({
   }
 
   const handleArchiveToggle = () => {
-    if (!project || !onProjectUpdated) {
+    if (!project) {
       return
     }
     setSubmitting(true)
@@ -166,7 +166,7 @@ export function ProjectEditor({
     updateProject(project.testing_id, {
       archived: !project.archived,
     })
-      .then(onProjectUpdated)
+      .then(onSaved)
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
   }

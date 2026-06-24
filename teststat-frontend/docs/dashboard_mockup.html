@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TestStat ダッシュボード モック</title>
+<!-- 設計イメージ用の静的モック。
+     ・サイドバー「ダッシュボード」メニュー（ロゴ下・プロジェクト作成ボタン上）
+     ・/tstat/ をデフォルトでダッシュボード表示
+     ・アーカイブ済み以外の全プロジェクトを一覧（Testing ID / 名称 / ステータス / 予定期間 /
+       完了率(対全体) / 完了率(対計画)）
+     ・行クリックで /tstat/<testing id> の個別 PB 図ページへ遷移
+     色・フォントは現状フロント (src/index.css, src/App.css) のトークンを踏襲。 -->
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --border: #e3e6ea;
+    --text: #1f2933;
+    --muted: #7b8794;
+    --accent: #274c77;
+    --accent-hover: #1d3f66;
+    --accent-border: #9bb4d1;
+    --accent-soft: #eaf2fb;
+    --sidebar-w: 260px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100vh;
+    overflow: hidden;
+  }
+  button { cursor: pointer; font-family: inherit; font-size: 13px; }
+
+  .app-layout { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+
+  /* ===== サイドバー ===== */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header { padding: 18px 16px 14px; border-bottom: 1px solid var(--border); }
+  .app-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .project-nav { display: flex; flex: 1; min-height: 0; flex-direction: column; padding: 12px; overflow: auto; }
+
+  /* ★ 新規追加: ダッシュボードメニュー */
+  .dashboard-nav-button {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-weight: 650;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  .dashboard-nav-button:hover { background: #f1f4f8; }
+  .dashboard-nav-button.selected { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+  .dashboard-nav-icon { width: 17px; height: 17px; flex: 0 0 17px; }
+
+  .nav-actions { display: grid; grid-template-columns: 1fr 34px; gap: 8px; margin-bottom: 12px; }
+  .nav-create-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .nav-create-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+
+  .project-list { display: flex; flex-direction: column; gap: 4px; }
+  .project-row {
+    width: 100%;
+    min-height: 58px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px 0 5px;
+  }
+  .project-row:hover { background: #f1f4f8; }
+  .project-drag-handle { width: 22px; flex: 0 0 22px; color: #8a96a3; display: inline-flex; align-items: center; justify-content: center; }
+  .project-drag-handle svg { width: 15px; height: 15px; }
+  .project-row-main {
+    min-width: 0; flex: 1; min-height: 56px; border: 0; background: transparent; color: inherit;
+    display: flex; flex-direction: column; justify-content: center; padding: 9px 2px 9px 4px; text-align: left;
+  }
+  .project-name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .project-meta { margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+  .archived-group { margin-top: 14px; }
+  .archived-group summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 6px; }
+
+  .sidebar-footer { margin-top: auto; padding-top: 12px; }
+  .settings-button {
+    width: 100%; min-height: 38px; border: 1px solid #cfd6df; border-radius: 6px; background: #f8fafb;
+    color: #3e4c59; font-weight: 650; padding: 8px 10px; display: inline-flex; align-items: center; gap: 8px; text-align: left;
+  }
+  .settings-button-icon { width: 17px; height: 17px; flex: 0 0 17px; color: #687789; }
+
+  .primary-button {
+    border: 1px solid var(--accent); border-radius: 6px; min-height: 34px; padding: 7px 12px; font-weight: 650;
+    background: var(--accent); color: #fff; box-shadow: 0 1px 0 rgb(39 76 119 / 18%);
+  }
+  .primary-button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .icon-button {
+    border: 1px solid #cfd6df; border-radius: 6px; min-height: 34px; padding: 0; background: #f8fafb; color: #52606d;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .icon-button:hover { border-color: #aeb9c6; background: #eef2f6; color: #1f2933; }
+  .icon-button svg { width: 16px; height: 16px; }
+
+  /* ===== メイン: ダッシュボード ===== */
+  .main-area { flex: 1; display: flex; flex-direction: column; overflow: auto; background: var(--bg); }
+  .content-shell { width: 100%; max-width: 1120px; margin: 0 auto; padding: 28px 32px 42px; }
+
+  .content-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 22px; }
+  .title-with-icon { display: inline-flex; align-items: center; gap: 9px; }
+  .title-icon { width: 24px; height: 24px; flex: 0 0 24px; color: var(--accent); }
+  .content-header h1 { margin: 2px 0 4px; font-size: 26px; line-height: 1.2; }
+  .header-meta { color: var(--muted); font-size: 12px; }
+
+  /* テーブル */
+  .table-card { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .dashboard-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dashboard-table th, .dashboard-table td {
+    border-bottom: 1px solid #d7dde7; padding: 12px 14px; text-align: left; vertical-align: middle; white-space: nowrap;
+  }
+  .dashboard-table thead th { background: #f6f8fb; color: var(--muted); font-size: 12px; font-weight: 700; }
+  .dashboard-table th.num, .dashboard-table td.num { text-align: right; }
+  .dashboard-table tbody tr { cursor: pointer; transition: background 0.12s ease; }
+  .dashboard-table tbody tr:hover { background: var(--accent-soft); }
+  .dashboard-table tbody tr:last-child td { border-bottom: 0; }
+
+  .testing-id { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--muted); font-size: 12px; }
+  .proj-name { font-weight: 650; color: var(--text); }
+  .proj-name .chevron { color: var(--muted); margin-left: 6px; opacity: 0; transition: opacity 0.12s; }
+  .dashboard-table tbody tr:hover .proj-name .chevron { opacity: 1; }
+
+  .period { color: #3e4c59; }
+  .period.empty { color: var(--muted); }
+
+  /* ステータスピル（既存 .project-status 流用） */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; min-height: 26px; padding: 3px 10px;
+    border-radius: 999px; border: 1px solid transparent; font-size: 12px; font-weight: 700;
+  }
+  .pill.active { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+  .pill.completed { color: #0f6b4d; background: #eaf7f1; border-color: #bfe7d4; }
+  .pill.not-started { color: #4b5563; background: #f3f4f6; border-color: #d1d5db; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 999px; background: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+  }
+  /* 完了率セル（数値 + 横バー） */
+  .rate-cell { min-width: 132px; }
+  .rate-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .rate-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rate-value.empty { color: var(--muted); font-weight: 500; }
+  .rate-bar { margin-top: 5px; height: 6px; border-radius: 999px; background: #eceff3; overflow: hidden; }
+  .rate-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .rate-bar > span.warn { background: #c98300; }
+  .rate-bar > span.danger { background: #c62f3f; }
+  .rate-bar > span.done { background: #0f6b4d; }
+
+  .crumb-note {
+    margin-top: 16px; font-size: 11px; color: var(--muted);
+    border-top: 1px dashed #d7dde7; padding-top: 12px;
+  }
+  .crumb-note code { background: #eef2f6; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+
+  @media (max-width: 760px) {
+    .content-shell { padding: 22px 18px 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ===== サイドバー ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="app-title">TestStat Studio</h1>
+    </div>
+    <div class="project-nav">
+
+      <!-- ★ ロゴ下・プロジェクト作成ボタン上 に追加するダッシュボードメニュー -->
+      <button class="dashboard-nav-button selected" type="button" title="ダッシュボード">
+        <svg class="dashboard-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/>
+          <rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+        </svg>
+        <span>ダッシュボード</span>
+      </button>
+
+      <div class="nav-actions">
+        <button class="primary-button nav-create-button" type="button">
+          <svg class="nav-create-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>プロジェクト作成</span>
+        </button>
+        <button class="icon-button" type="button" title="再読込">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+      </div>
+
+      <div class="project-list">
+        <!-- 既存のプロジェクト一覧（ダッシュボード選択中はどれも未選択） -->
+        <div class="project-row">
+          <span class="project-drag-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+          <button class="project-row-main" type="button"><span class="project-name">決済基盤リプレース</span><span class="project-meta">進行中 / 72.5%</span></button>
+        </div>
+        <div class="project-row">
+          <span class="project-drag-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+          <button class="project-row-main" type="button"><span class="project-name">会員ポータル UI 刷新</span><span class="project-meta">進行中 / 41.0%</span></button>
+        </div>
+        <div class="project-row">
+          <span class="project-drag-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+          <button class="project-row-main" type="button"><span class="project-name">在庫管理 API v2</span><span class="project-meta">完了 / 100.0%</span></button>
+        </div>
+        <div class="project-row">
+          <span class="project-drag-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+          <button class="project-row-main" type="button"><span class="project-name">社内ワークフロー基盤</span><span class="project-meta">未開始 / -</span></button>
+        </div>
+      </div>
+
+      <details class="archived-group">
+        <summary>アーカイブ済み (2)</summary>
+      </details>
+
+      <div class="sidebar-footer">
+        <button class="settings-button" type="button">
+          <svg class="settings-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          設定
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== メイン: ダッシュボード ===== -->
+  <main class="main-area">
+    <div class="content-shell">
+      <header class="content-header">
+        <div>
+          <div class="title-with-icon">
+            <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/>
+              <rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+            </svg>
+            <h1>ダッシュボード</h1>
+          </div>
+          <div class="header-meta">進行中のプロジェクト状況を俯瞰します（アーカイブ済みを除く）</div>
+        </div>
+      </header>
+
+      <!-- 一覧テーブル -->
+      <div class="table-card">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th style="width:96px;">Testing ID</th>
+              <th>プロジェクト名</th>
+              <th style="width:120px;">ステータス</th>
+              <th style="width:210px;">予定期間</th>
+              <th class="num">完了率（対全体）</th>
+              <th class="num">完了率（対計画）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 進行中（計画あり） -->
+            <tr title="クリックで /tstat/1001 へ">
+              <td class="testing-id">#1001</td>
+              <td><span class="proj-name">決済基盤リプレース<span class="chevron">›</span></span></td>
+              <td><span class="pill active"><span class="status-dot"></span>進行中</span></td>
+              <td class="period">2026/06/01 ~ 2026/07/31</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">72.5%</span></div>
+                  <div class="rate-bar"><span style="width:72.5%"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">95.1%</span></div>
+                  <div class="rate-bar"><span style="width:95.1%"></span></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- 進行中（計画遅れ気味） -->
+            <tr title="クリックで /tstat/1002 へ">
+              <td class="testing-id">#1002</td>
+              <td><span class="proj-name">会員ポータル UI 刷新<span class="chevron">›</span></span></td>
+              <td><span class="pill active"><span class="status-dot"></span>進行中</span></td>
+              <td class="period">2026/06/15 ~ 2026/08/20</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">41.0%</span></div>
+                  <div class="rate-bar"><span class="warn" style="width:41%"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value empty">-</span></div>
+                  <div class="rate-bar"><span style="width:0"></span></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- 完了 -->
+            <tr title="クリックで /tstat/1003 へ">
+              <td class="testing-id">#1003</td>
+              <td><span class="proj-name">在庫管理 API v2<span class="chevron">›</span></span></td>
+              <td><span class="pill completed"><span class="status-dot"></span>完了</span></td>
+              <td class="period">2026/04/01 ~ 2026/05/20</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">100.0%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:100%"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">100.0%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:100%"></span></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- 未開始（実績なし・予定期間未設定） -->
+            <tr title="クリックで /tstat/1004 へ">
+              <td class="testing-id">#1004</td>
+              <td><span class="proj-name">社内ワークフロー基盤<span class="chevron">›</span></span></td>
+              <td><span class="pill not-started"><span class="status-dot"></span>未開始</span></td>
+              <td class="period empty">-</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value empty">0.0%</span></div>
+                  <div class="rate-bar"><span style="width:0"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value empty">-</span></div>
+                  <div class="rate-bar"><span style="width:0"></span></div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="crumb-note">
+        ルーティング: <code>/tstat/</code> = このダッシュボード（デフォルト）／
+        行クリックで <code>/tstat/&lt;testing id&gt;</code> の個別 PB 図ページへ遷移。
+        ※静的モックのため遷移・並び替えは動作しません。
+      </p>
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

@@ -74,6 +74,7 @@ export function ProjectEditor({
   const autoFilledNameRef = useRef<string | null>(project?.name ?? null)
   const testingIdValue = Number(form.testing_id)
   const testingIdValid = Number.isInteger(testingIdValue) && testingIdValue > 0
+  const isArchivedReadOnly = mode === 'edit' && Boolean(project?.archived)
   const deleteDisabledReason = project?.archived ? 'アーカイブ済みのプロジェクトは削除できません。' : null
 
   useEffect(() => {
@@ -129,6 +130,10 @@ export function ProjectEditor({
     event.preventDefault()
     setFormError(null)
     setFormNotice(null)
+    if (isArchivedReadOnly) {
+      setFormError('アーカイブ済みプロジェクトは閲覧のみ可能です。編集する場合はアーカイブを解除してください。')
+      return
+    }
 
     const testingId = Number(form.testing_id)
     if (!Number.isInteger(testingId) || testingId <= 0) {
@@ -198,6 +203,10 @@ export function ProjectEditor({
     if (!project) {
       return
     }
+    if (project.archived) {
+      setFormError('アーカイブ済みプロジェクトは閲覧のみ可能です。編集する場合はアーカイブを解除してください。')
+      return
+    }
     const confirmed = await confirm({
       title: '不具合数データの削除',
       message: `Testing ID ${project.testing_id} の取得済み不具合数データを削除します。プロジェクト、計画、実績データは削除されません。`,
@@ -259,7 +268,7 @@ export function ProjectEditor({
               type="number"
               min="1"
               value={form.testing_id}
-              disabled={mode === 'edit' || submitting}
+              disabled={mode === 'edit' || submitting || isArchivedReadOnly}
               onChange={(event) => {
                 autoFilledNameRef.current = null
                 setForm({ ...form, testing_id: event.target.value })
@@ -270,7 +279,7 @@ export function ProjectEditor({
               type="button"
               className="secondary-button"
               onClick={handleAzureFetch}
-              disabled={submitting || adoLoading || !testingIdValid}
+              disabled={submitting || adoLoading || !testingIdValid || isArchivedReadOnly}
             >
               {adoLoading ? '取得中...' : 'AzureDevOpsから情報取得'}
             </button>
@@ -282,7 +291,7 @@ export function ProjectEditor({
             type="text"
             maxLength={255}
             value={form.name}
-            disabled={submitting}
+            disabled={submitting || isArchivedReadOnly}
             onChange={(event) => {
               const nextName = event.target.value
               if (nextName !== autoFilledNameRef.current) {
@@ -299,7 +308,7 @@ export function ProjectEditor({
             <input
               type="date"
               value={form.planned_start_date}
-              disabled={submitting}
+              disabled={submitting || isArchivedReadOnly}
               onChange={(event) => setForm({ ...form, planned_start_date: event.target.value })}
             />
           </label>
@@ -308,7 +317,7 @@ export function ProjectEditor({
             <input
               type="date"
               value={form.planned_end_date}
-              disabled={submitting}
+              disabled={submitting || isArchivedReadOnly}
               onChange={(event) => setForm({ ...form, planned_end_date: event.target.value })}
             />
           </label>
@@ -317,7 +326,7 @@ export function ProjectEditor({
           <span>PB図の表示範囲</span>
           <select
             value={form.pb_chart_range_source}
-            disabled={submitting}
+            disabled={submitting || isArchivedReadOnly}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -333,7 +342,7 @@ export function ProjectEditor({
           <span>不具合件数ソース</span>
           <select
             value={form.bug_count_source}
-            disabled={submitting}
+            disabled={submitting || isArchivedReadOnly}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -354,7 +363,7 @@ export function ProjectEditor({
                 type="number"
                 min="1"
                 value={form.bug_parent_work_item_id}
-                disabled={submitting}
+                disabled={submitting || isArchivedReadOnly}
                 placeholder="未設定の場合はTesting ID"
                 onChange={(event) => setForm({ ...form, bug_parent_work_item_id: event.target.value })}
               />
@@ -365,7 +374,7 @@ export function ProjectEditor({
                 type="text"
                 maxLength={255}
                 value={form.bug_work_item_type}
-                disabled={submitting}
+                disabled={submitting || isArchivedReadOnly}
                 placeholder=""
                 onChange={(event) => setForm({ ...form, bug_work_item_type: event.target.value })}
               />
@@ -376,7 +385,7 @@ export function ProjectEditor({
                 type="text"
                 maxLength={255}
                 value={form.bug_tag}
-                disabled={submitting}
+                disabled={submitting || isArchivedReadOnly}
                 placeholder=""
                 onChange={(event) => setForm({ ...form, bug_tag: event.target.value })}
               />
@@ -385,7 +394,7 @@ export function ProjectEditor({
         )}
 
         <div className="form-actions">
-          <button className="primary-button" type="submit" disabled={submitting || adoLoading}>
+          <button className="primary-button" type="submit" disabled={submitting || adoLoading || isArchivedReadOnly}>
             {submitting ? '保存中...' : '保存'}
           </button>
           <button className="secondary-button" type="button" onClick={onCancel} disabled={submitting || adoLoading}>
@@ -406,7 +415,7 @@ export function ProjectEditor({
                 className="danger-button"
                 type="button"
                 onClick={handleDeleteBugData}
-                disabled={submitting}
+                disabled={submitting || isArchivedReadOnly}
               >
                 不具合数データ削除
               </button>

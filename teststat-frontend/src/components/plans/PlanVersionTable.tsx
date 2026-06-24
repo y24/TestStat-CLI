@@ -29,6 +29,7 @@ export function PlanVersionTable({
   holidays,
   submitting,
   collectEnabled,
+  readOnly,
   collectingLabel,
   collectErrors,
   onCreate,
@@ -49,6 +50,7 @@ export function PlanVersionTable({
   holidays: Set<string>
   submitting: boolean
   collectEnabled: boolean
+  readOnly: boolean
   collectingLabel: string | null
   collectErrors: Record<string, string>
   onCreate: (label: string | null) => void
@@ -75,7 +77,7 @@ export function PlanVersionTable({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id || submitting) {
+    if (!over || active.id === over.id || submitting || readOnly) {
       return
     }
     const sourceIndex = labels.findIndex((label) => label === active.id)
@@ -96,7 +98,7 @@ export function PlanVersionTable({
           <button
             className="primary-button icon-text-button"
             type="button"
-            disabled={submitting}
+            disabled={submitting || readOnly}
             onClick={onAddLabel}
             style={{ marginBottom: '12px' }}
           >
@@ -157,6 +159,7 @@ export function PlanVersionTable({
                         dailyCases={dailyCases}
                         isPlanOnly={isPlanOnly}
                         collectEnabled={collectEnabled}
+                        readOnly={readOnly}
                         submitting={submitting}
                         collectingLabel={collectingLabel}
                         collectErrors={collectErrors}
@@ -169,7 +172,7 @@ export function PlanVersionTable({
                     )
                     if (label !== null) {
                       return (
-                        <SortablePlanVersionRow key={label} label={label} active={Boolean(activePlan)} isDisabled={isDisabled}>
+                        <SortablePlanVersionRow key={label} label={label} active={Boolean(activePlan)} isDisabled={isDisabled} readOnly={readOnly}>
                           {row}
                         </SortablePlanVersionRow>
                       )
@@ -199,14 +202,17 @@ function SortablePlanVersionRow({
   active,
   isDisabled,
   children,
+  readOnly,
 }: {
   label: string
   active: boolean
   isDisabled: boolean
   children: ReactNode
+  readOnly: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: label,
+    disabled: readOnly,
   })
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -223,8 +229,8 @@ function SortablePlanVersionRow({
         <span
           className="plan-label-drag-handle"
           title="ドラッグして並び替え"
-          {...attributes}
-          {...listeners}
+          {...(readOnly ? {} : attributes)}
+          {...(readOnly ? {} : listeners)}
         >
           <GripVertical aria-hidden="true" />
         </span>
@@ -246,6 +252,7 @@ function PlanVersionRowContent({
   dailyCases,
   isPlanOnly,
   collectEnabled,
+  readOnly,
   submitting,
   collectingLabel,
   collectErrors,
@@ -266,6 +273,7 @@ function PlanVersionRowContent({
   dailyCases: string
   isPlanOnly: boolean
   collectEnabled: boolean
+  readOnly: boolean
   submitting: boolean
   collectingLabel: string | null
   collectErrors: Record<string, string>
@@ -283,7 +291,7 @@ function PlanVersionRowContent({
             <button
               className="icon-button compact"
               type="button"
-              disabled={submitting}
+              disabled={submitting || readOnly}
               onClick={() => onEditLabel(labelTarget)}
               aria-label={`${labelTarget.label}を編集`}
               title="識別子を編集"
@@ -298,6 +306,7 @@ function PlanVersionRowContent({
                 type="button"
                 disabled={
                   submitting ||
+                  readOnly ||
                   isDisabled ||
                   !registeredLabel?.source_url ||
                   collectingLabel !== null
@@ -382,7 +391,7 @@ function PlanVersionRowContent({
           <button
             className="primary-button compact icon-text-button"
             type="button"
-            disabled={submitting || isDisabled}
+            disabled={submitting || readOnly || isDisabled}
             onClick={() => onCreate(label)}
           >
             <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />
@@ -392,7 +401,7 @@ function PlanVersionRowContent({
             <button
               className="secondary-button compact"
               type="button"
-              disabled={submitting}
+              disabled={submitting || readOnly}
               onClick={() => onManage(label)}
             >
               版の変更/削除

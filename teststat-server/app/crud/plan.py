@@ -27,6 +27,20 @@ def _require_project(db: Session, testing_id: int) -> Project:
     return p
 
 
+def _ensure_project_writable(project: Project) -> None:
+    if project.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="archived project is read-only",
+        )
+
+
+def _require_writable_project(db: Session, testing_id: int) -> Project:
+    project = _require_project(db, testing_id)
+    _ensure_project_writable(project)
+    return project
+
+
 def _require_plan(db: Session, plan_id: int) -> Plan:
     p = db.scalar(select(Plan).where(Plan.id == plan_id))
     if p is None:
@@ -168,7 +182,7 @@ def list_plan_labels(db: Session, testing_id: int) -> list[PlanLabelItem]:
 
 
 def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) -> PlanLabelItem:
-    _require_project(db, testing_id)
+    _require_writable_project(db, testing_id)
     existing = db.scalar(
         select(PlanLabel).where(
             PlanLabel.testing_id == testing_id,
@@ -198,7 +212,7 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
 
 
 def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpdate) -> PlanLabelItem:
-    _require_project(db, testing_id)
+    _require_writable_project(db, testing_id)
     if not payload.old_label:
         existing = db.scalar(
             select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label == payload.label)
@@ -270,7 +284,7 @@ def update_plan_label(db: Session, label_id: int, payload: PlanLabelUpdate) -> P
 
 
 def delete_project_label(db: Session, testing_id: int, label: str) -> None:
-    _require_project(db, testing_id)
+    _require_writable_project(db, testing_id)
     if not _project_label_exists(db, testing_id, label):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="label not found")
 
@@ -289,7 +303,7 @@ def delete_plan_label(db: Session, label_id: int) -> None:
 
 
 def update_plan_label_order(db: Session, testing_id: int, payload: PlanLabelOrderUpdate) -> list[PlanLabelItem]:
-    _require_project(db, testing_id)
+    _require_writable_project(db, testing_id)
     if payload.labels is not None:
         unique_labels = list(dict.fromkeys(payload.labels))
         existing_labels = list(
@@ -354,7 +368,7 @@ def get_plan_detail(db: Session, plan_id: int) -> PlanDetail:
 
 
 def create_plan(db: Session, testing_id: int, payload: PlanCreate) -> PlanDetail:
-    _require_project(db, testing_id)
+    _require_writable_project(db, testing_id)
     _validate_daily(payload)
 
     max_version = db.scalar(
@@ -392,6 +406,7 @@ def create_plan(db: Session, testing_id: int, payload: PlanCreate) -> PlanDetail
 
 def activate_plan(db: Session, plan_id: int) -> PlanItem:
     plan = _require_plan(db, plan_id)
+    _require_writable_project(db, plan.testing_id)
     _deactivate_label(db, plan.testing_id, plan.label)
     plan.is_active = True
     db.commit()
@@ -400,6 +415,7 @@ def activate_plan(db: Session, plan_id: int) -> PlanItem:
 
 def delete_plan(db: Session, plan_id: int) -> None:
     plan = _require_plan(db, plan_id)
+    _require_writable_project(db, plan.testing_id)
     db.delete(plan)
     db.commit()
 

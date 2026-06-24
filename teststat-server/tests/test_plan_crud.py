@@ -25,7 +25,7 @@ from app.crud.plan import (  # noqa: E402
     update_plan_label_order,
     update_project_label,
 )
-from app.crud.project import create_project  # noqa: E402
+from app.crud.project import create_project, update_project  # noqa: E402
 from app.models.progress import (  # noqa: E402
     DailyPersonProgress,
     DailyProgress,
@@ -35,7 +35,7 @@ from app.models.progress import (  # noqa: E402
 )
 from app.database import Base  # noqa: E402
 from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelOrderUpdate, PlanLabelUpdate, ProjectLabelUpdate  # noqa: E402
-from app.schemas.project import ProjectCreate  # noqa: E402
+from app.schemas.project import ProjectCreate, ProjectUpdate  # noqa: E402
 
 
 def make_session():
@@ -266,6 +266,43 @@ class TestPlanCRUD(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
         self.assertEqual(ctx.exception.status_code, 409)
+
+    def test_archived_project_rejects_plan_label_mutations(self):
+        from fastapi import HTTPException
+
+        label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        update_project(self.db, 1001, ProjectUpdate(archived=True))
+
+        operations = [
+            lambda: create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002")),
+            lambda: update_project_label(self.db, 1001, ProjectLabelUpdate(old_label="TEST001", label="RENAMED")),
+            lambda: update_plan_label(self.db, label.id, PlanLabelUpdate(label="TEST001", is_disabled=True)),
+            lambda: update_plan_label_order(self.db, 1001, PlanLabelOrderUpdate(label_ids=[label.id])),
+            lambda: delete_project_label(self.db, 1001, "TEST001"),
+        ]
+
+        for operation in operations:
+            with self.assertRaises(HTTPException) as ctx:
+                operation()
+            self.assertEqual(ctx.exception.status_code, 409)
+
+    def test_archived_project_rejects_plan_mutations(self):
+        from fastapi import HTTPException
+
+        first = create_plan(self.db, 1001, self._make_plan(activate=True))
+        second = create_plan(self.db, 1001, self._make_plan(activate=False))
+        update_project(self.db, 1001, ProjectUpdate(archived=True))
+
+        operations = [
+            lambda: create_plan(self.db, 1001, self._make_plan("TEST002")),
+            lambda: activate_plan(self.db, second.id),
+            lambda: delete_plan(self.db, first.id),
+        ]
+
+        for operation in operations:
+            with self.assertRaises(HTTPException) as ctx:
+                operation()
+            self.assertEqual(ctx.exception.status_code, 409)
 
 
     def test_create_and_list(self):

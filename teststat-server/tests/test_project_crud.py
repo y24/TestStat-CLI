@@ -188,6 +188,21 @@ class TestProjectCRUD(unittest.TestCase):
         updated = update_project(self.db, 3002, ProjectUpdate(archived=True))
         self.assertTrue(updated.archived)
 
+    def test_archived_project_rejects_info_update_but_allows_unarchive(self):
+        from fastapi import HTTPException
+
+        create_project(self.db, ProjectCreate(testing_id=3008, name="アーカイブ対象"))
+        update_project(self.db, 3008, ProjectUpdate(archived=True))
+
+        with self.assertRaises(HTTPException) as ctx:
+            update_project(self.db, 3008, ProjectUpdate(name="更新不可"))
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertEqual(get_project(self.db, 3008).name, "アーカイブ対象")
+
+        unarchived = update_project(self.db, 3008, ProjectUpdate(archived=False))
+        self.assertFalse(unarchived.archived)
+
     def test_delete(self):
         create_project(self.db, ProjectCreate(testing_id=4001, name="削除対象"))
         delete_project(self.db, 4001)

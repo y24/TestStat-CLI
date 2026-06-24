@@ -43,6 +43,17 @@ def _validate_project_planned_date_range(project: Project) -> None:
         )
 
 
+def _ensure_archived_project_update_allowed(project: Project, payload: ProjectUpdate) -> None:
+    if not project.archived:
+        return
+    if payload.model_fields_set == {"archived"} and payload.archived is False:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="archived project is read-only",
+    )
+
+
 def _active_plan_count(db: Session, testing_id: int) -> int:
     return db.scalar(
         select(func.count()).select_from(Plan)
@@ -330,6 +341,7 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
     project = db.scalar(select(Project).where(Project.testing_id == testing_id))
     if project is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="project not found")
+    _ensure_archived_project_update_allowed(project, payload)
     if payload.name is not None:
         project.name = payload.name
     if payload.ticket_ref is not None:

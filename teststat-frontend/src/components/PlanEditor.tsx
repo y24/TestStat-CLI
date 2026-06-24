@@ -80,6 +80,8 @@ export function PlanEditor({
   const [downloadingListYaml, setDownloadingListYaml] = useState(false)
   const [listYamlError, setListYamlError] = useState<string | null>(null)
   const [labelOrderOverride, setLabelOrderOverride] = useState<string[] | null>(null)
+  const readOnly = project.archived
+  const readOnlyMessage = 'アーカイブ済みプロジェクトは閲覧のみ可能です。編集する場合はアーカイブを解除してください。'
 
   const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
 
@@ -230,6 +232,10 @@ export function PlanEditor({
     onBack()
   }
   const handleRefreshLabel = (label: string) => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (collectingLabel !== null) {
       return
     }
@@ -263,6 +269,10 @@ export function PlanEditor({
   }
 
   const handleRefreshAll = async () => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (collectingLabel !== null || collectingAll) {
       return
     }
@@ -298,6 +308,10 @@ export function PlanEditor({
   }
 
   const handleReorderLabels = (orderedLabels: string[]) => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (submitting) {
       return
     }
@@ -327,6 +341,10 @@ export function PlanEditor({
       .finally(() => setDownloadingListYaml(false))
   }
   const openLabelCreateScreen = () => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     setFormError(null)
     setEditingPlanLabel(null)
     setLabelInput('')
@@ -337,6 +355,10 @@ export function PlanEditor({
   }
 
   const openLabelEditScreen = (planLabel: LabelEditTarget) => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     setFormError(null)
     setEditingPlanLabel(planLabel)
     setLabelInput(planLabel.label)
@@ -401,6 +423,10 @@ export function PlanEditor({
   const submitPlanLabel = async (event: FormEvent) => {
     event.preventDefault()
     setFormError(null)
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
 
     const label = labelInput.trim()
     const sourceUrl = normalizeSourceUrl(sourceUrlInput)
@@ -449,10 +475,14 @@ export function PlanEditor({
 
   const submitPlanLabelEdit = async (event: FormEvent) => {
     event.preventDefault()
+    setFormError(null)
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (editingPlanLabel === null) {
       return
     }
-    setFormError(null)
 
     const label = labelInput.trim()
     const sourceUrl = normalizeSourceUrl(sourceUrlInput)
@@ -504,6 +534,10 @@ export function PlanEditor({
   }
 
   const handleTogglePlanLabelDisabled = () => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (editingPlanLabel === null) {
       return
     }
@@ -542,6 +576,10 @@ export function PlanEditor({
   }
 
   const handleDeletePlanLabel = async () => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     if (editingPlanLabel === null) {
       return
     }
@@ -578,6 +616,10 @@ export function PlanEditor({
   }
 
   const openCreateScreen = (label: string | null) => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     const actualDateRange = getActualDateRange(label, daily, files)
     const projectDateRange =
       project.planned_start_date && project.planned_end_date
@@ -632,6 +674,10 @@ export function PlanEditor({
   const submitPlan = async (event: FormEvent) => {
     event.preventDefault()
     setFormError(null)
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
 
     const plannedTotal = Number(form.planned_total_cases)
     if (!Number.isInteger(plannedTotal) || plannedTotal <= 0) {
@@ -686,6 +732,10 @@ export function PlanEditor({
   }
 
   const handleSaveModalChanges = (changes: PlanVersionModalChanges) => {
+    if (readOnly) {
+      setFormError(readOnlyMessage)
+      return
+    }
     const targetPlans = plans.filter((plan) => changes.deletedPlanIds.includes(plan.id))
     const activePlanChanged = changes.activePlanId !== selectedModalPlans.find((plan) => plan.is_active)?.id
     const activePlanDeleted = targetPlans.some((plan) => plan.id === changes.activePlanId)
@@ -790,6 +840,7 @@ export function PlanEditor({
       holidays={holidayDates}
       submitting={submitting}
       collectEnabled={collectEnabled}
+      readOnly={readOnly}
       collectingLabel={collectingLabel}
       collectingAll={collectingAll}
       refreshableCount={refreshableLabels.length}

@@ -35,7 +35,6 @@ export function ProjectEditor({
   project,
   onCancel,
   onSaved,
-  onProjectUpdated,
   onDeleted,
   onDirtyChange,
 }: {
@@ -43,7 +42,6 @@ export function ProjectEditor({
   project: ProjectItem | null
   onCancel: () => void
   onSaved: (project: ProjectItem) => void
-  onProjectUpdated?: (project: ProjectItem) => void
   onDeleted?: (testingId: number) => void
   onDirtyChange: (dirty: boolean) => void
 }) {

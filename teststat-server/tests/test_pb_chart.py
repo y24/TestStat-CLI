@@ -12,10 +12,10 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401
 from app.crud.pb_chart import get_pb_chart  # noqa: E402
-from app.crud.plan import create_plan  # noqa: E402
+from app.crud.plan import create_plan, create_plan_label  # noqa: E402
 from app.crud.project import create_project  # noqa: E402
 from app.database import Base  # noqa: E402
-from app.schemas.plan import PlanCreate, PlanDailyIn  # noqa: E402
+from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate  # noqa: E402
 from app.schemas.project import ProjectCreate  # noqa: E402
 
 
@@ -188,6 +188,31 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(s0.planned_remaining, 120)         # 150 - 30
         self.assertEqual(s0.actual_completed_daily, 15)     # 10 + 5
         self.assertEqual(s0.actual_remaining, 135)          # 150 - 15
+
+
+    def test_disabled_label_excluded_from_all_and_label_chart(self):
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
+        self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
+        create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002", is_disabled=True))
+        _insert_file_progress(self.db, 1001, "TEST001", available=100)
+        _insert_file_progress(self.db, 1001, "TEST002", available=50)
+        _insert_actuals(self.db, 1001, [
+            ("TEST001", date(2026, 5, 1), 10),
+            ("TEST002", date(2026, 5, 1), 5),
+        ])
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertEqual(result.planned_total_cases, 100)
+        self.assertEqual(result.available_cases, 100)
+        self.assertEqual(result.series[0].planned_completed_daily, 20)
+        self.assertEqual(result.series[0].actual_completed_daily, 10)
+
+        disabled_result = get_pb_chart(self.db, 1001, label="TEST002")
+        self.assertIsNone(disabled_result.range)
+        self.assertEqual(disabled_result.series, [])
+        self.assertIsNone(disabled_result.planned_total_cases)
+        self.assertEqual(disabled_result.available_cases, 0)
 
     # ---- 過去計画 ----
 

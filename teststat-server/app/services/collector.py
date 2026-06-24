@@ -55,7 +55,12 @@ def count_collect_targets(db: Session, testing_id: int | None = None) -> int:
     query = (
         select(func.count(func.distinct(PlanLabel.testing_id)))
         .join(Project, Project.testing_id == PlanLabel.testing_id)
-        .where(Project.archived.is_(False), PlanLabel.source_url.is_not(None), PlanLabel.source_url != "")
+        .where(
+            Project.archived.is_(False),
+            PlanLabel.is_disabled.is_(False),
+            PlanLabel.source_url.is_not(None),
+            PlanLabel.source_url != "",
+        )
     )
     if testing_id is not None:
         query = query.where(PlanLabel.testing_id == testing_id)
@@ -175,7 +180,12 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
             PlanLabel.ignore_environments,
         )
         .join(PlanLabel, PlanLabel.testing_id == Project.testing_id)
-        .where(Project.archived.is_(False), PlanLabel.source_url.is_not(None), PlanLabel.source_url != "")
+        .where(
+            Project.archived.is_(False),
+            PlanLabel.is_disabled.is_(False),
+            PlanLabel.source_url.is_not(None),
+            PlanLabel.source_url != "",
+        )
         .order_by(Project.testing_id, PlanLabel.label)
     )
     if testing_id is not None:

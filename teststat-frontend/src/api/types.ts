@@ -161,6 +161,7 @@ export interface PlanLabelItem {
   id: number
   testing_id: number
   label: string
+  is_disabled: boolean
   source_url: string | null
   subtask_id: number | null
   target_sheets: string[] | null
@@ -181,6 +182,7 @@ export interface PlanLabelCliOptionsPayload {
 
 export interface PlanLabelCreatePayload extends PlanLabelCliOptionsPayload {
   label: string
+  is_disabled?: boolean
   source_url?: string | null
   subtask_id?: number | null
 }
@@ -190,6 +192,7 @@ export type PlanLabelUpdatePayload = PlanLabelCreatePayload
 export interface ProjectLabelUpdatePayload extends PlanLabelCliOptionsPayload {
   old_label: string
   label: string
+  is_disabled?: boolean
   source_url?: string | null
   subtask_id?: number | null
 }
@@ -197,6 +200,7 @@ export interface ProjectLabelUpdatePayload extends PlanLabelCliOptionsPayload {
 export interface LabelEditTarget {
   id?: number
   label: string
+  is_disabled?: boolean
   source_url?: string | null
   subtask_id?: number | null
   target_sheets?: string[] | null

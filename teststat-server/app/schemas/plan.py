@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 class PlanLabelCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=255)
+    is_disabled: bool = False
     source_url: str | None = Field(None, max_length=2048)
     subtask_id: int | None = Field(None, ge=0)
     target_sheets: list[str] | None = None
@@ -64,6 +65,7 @@ class PlanLabelItem(BaseModel):
     id: int
     testing_id: int
     label: str
+    is_disabled: bool
     source_url: str | None
     subtask_id: int | None
     target_sheets: list[str] | None

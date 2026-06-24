@@ -1465,6 +1465,42 @@
   background: #f5f8ff;
 }
 
+.disabled-label-row {
+  color: #697586;
+  background: #f7f8fa;
+}
+
+.disabled-label-row.active-plan-row {
+  background: #f2f5f9;
+}
+
+.plan-label-cell-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.plan-label-cell-title strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.disabled-label-note {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 20px;
+  border: 1px solid #cfd6df;
+  border-radius: 999px;
+  background: #eef2f6;
+  color: #52606d;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+  padding: 2px 7px;
+}
+
 .plan-total-mismatch {
   display: inline-flex;
   align-items: center;
@@ -1526,7 +1562,7 @@
 .plan-excel-link {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
+  flex: 0 0 auto;
   color: #217346;
   vertical-align: middle;
   border-radius: 3px;

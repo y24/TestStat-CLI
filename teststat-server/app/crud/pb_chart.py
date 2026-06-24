@@ -10,7 +10,7 @@ from app.crud.bug import (
     get_bug_chart_metadata,
     get_bug_cumulative,
 )
-from app.models.plan import Plan, PlanDaily
+from app.models.plan import Plan, PlanDaily, PlanLabel
 from app.models.progress import DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.models.project import Project
 from app.schemas.pb_chart import (
@@ -28,6 +28,29 @@ def _label_filter(label: str | None):
     return Plan.label.is_(None) if label is None else Plan.label == label
 
 
+def _get_disabled_labels(db: Session, testing_id: int) -> set[str]:
+    return set(
+        db.scalars(
+            select(PlanLabel.label).where(
+                PlanLabel.testing_id == testing_id,
+                PlanLabel.is_disabled.is_(True),
+            )
+        )
+    )
+
+
+def _label_is_disabled(db: Session, testing_id: int, label: str | None) -> bool:
+    if label is None:
+        return False
+    return db.scalar(
+        select(PlanLabel.id).where(
+            PlanLabel.testing_id == testing_id,
+            PlanLabel.label == label,
+            PlanLabel.is_disabled.is_(True),
+        )
+    ) is not None
+
+
 def _date_range(start: date, end: date) -> list[date]:
     result = []
     d = start
@@ -40,11 +63,17 @@ def _date_range(start: date, end: date) -> list[date]:
 # ---------- データ取得 ----------
 
 def _get_active_plans(db: Session, testing_id: int, label: str | None) -> list[Plan]:
-    """有効な計画を取得。label=None の場合は全 label の有効計画を返す。"""
+    """有効な計画を取得。label=None の場合は無効 label を除いた全 label の有効計画を返す。"""
+    if _label_is_disabled(db, testing_id, label):
+        return []
     q = select(Plan).where(Plan.testing_id == testing_id, Plan.is_active.is_(True))
     if label is not None:
         q = q.where(Plan.label == label)
-    return list(db.scalars(q))
+    plans = list(db.scalars(q))
+    if label is None:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        plans = [plan for plan in plans if plan.label not in disabled_labels]
+    return plans
 
 
 def _get_plan_daily_map(db: Session, plan_ids: list[int]) -> dict[date, int]:
@@ -61,11 +90,17 @@ def _get_plan_daily_map(db: Session, plan_ids: list[int]) -> dict[date, int]:
 
 def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> dict[date, int]:
     """日付ごとの実績消化数合計 {date: sum(executed)}"""
+    if _label_is_disabled(db, testing_id, label):
+        return {}
     q = select(DailyProgress.date, func.sum(DailyProgress.executed)).where(
         DailyProgress.testing_id == testing_id
     )
     if label is not None:
         q = q.where(DailyProgress.label == label)
+    else:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        if disabled_labels:
+            q = q.where((DailyProgress.label.is_(None)) | (DailyProgress.label.not_in(disabled_labels)))
     rows = db.execute(q.group_by(DailyProgress.date)).all()
     return {r[0]: r[1] for r in rows}
 
@@ -77,6 +112,8 @@ def _get_test_result_bug_daily_map(
 
     label 指定時はそのテスト種別のみ。label=None（全て）は全 label を日付ごとに合算する。
     """
+    if _label_is_disabled(db, testing_id, label):
+        return {}
     q = select(
         TestResultBugSnapshot.snapshot_date,
         func.sum(TestResultBugSnapshot.detected_count),
@@ -85,6 +122,10 @@ def _get_test_result_bug_daily_map(
     ).where(TestResultBugSnapshot.testing_id == testing_id)
     if label is not None:
         q = q.where(TestResultBugSnapshot.label == label)
+    else:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        if disabled_labels:
+            q = q.where((TestResultBugSnapshot.label.is_(None)) | (TestResultBugSnapshot.label.not_in(disabled_labels)))
     rows = db.execute(
         q.group_by(TestResultBugSnapshot.snapshot_date).order_by(TestResultBugSnapshot.snapshot_date)
     ).all()
@@ -92,22 +133,31 @@ def _get_test_result_bug_daily_map(
 
 
 def _get_test_result_bug_metadata(db: Session, testing_id: int) -> tuple[bool, datetime | None]:
-    count, updated_at = db.execute(
-        select(
-            func.count(TestResultBugSnapshot.id),
-            func.max(TestResultBugSnapshot.sent_at),
-        ).where(TestResultBugSnapshot.testing_id == testing_id)
-    ).one()
+    q = select(
+        func.count(TestResultBugSnapshot.id),
+        func.max(TestResultBugSnapshot.sent_at),
+    ).where(TestResultBugSnapshot.testing_id == testing_id)
+    disabled_labels = _get_disabled_labels(db, testing_id)
+    if disabled_labels:
+        q = q.where((TestResultBugSnapshot.label.is_(None)) | (TestResultBugSnapshot.label.not_in(disabled_labels)))
+    count, updated_at = db.execute(q).one()
     return (count or 0) > 0, updated_at
 
 
 def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, datetime | None]:
     """実績の対象件数合計と更新日時。実績なし=0。"""
+    if _label_is_disabled(db, testing_id, label):
+        updated_at = db.scalar(select(Testing.updated_at).where(Testing.testing_id == testing_id))
+        return 0, updated_at
     available_query = select(func.coalesce(func.sum(FileProgress.available_cases), 0)).where(
         FileProgress.testing_id == testing_id
     )
     if label is not None:
         available_query = available_query.where(FileProgress.label == label)
+    else:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        if disabled_labels:
+            available_query = available_query.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
 
     available_cases, updated_at = db.execute(
         select(
@@ -247,10 +297,15 @@ def _compute_past_plans(
     label: str | None,
 ) -> list[PastPlanSeries]:
     """is_active=False の計画バージョンを系列化。"""
+    if _label_is_disabled(db, testing_id, label):
+        return []
     q = select(Plan).where(Plan.testing_id == testing_id, Plan.is_active.is_(False))
     if label is not None:
         q = q.where(Plan.label == label)
     past_plans = list(db.scalars(q.order_by(Plan.label.nullsfirst(), Plan.version.desc())))
+    if label is None:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        past_plans = [plan for plan in past_plans if plan.label not in disabled_labels]
     if not past_plans:
         return []
 

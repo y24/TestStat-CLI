@@ -13,6 +13,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import {
   fetchPbChart,
   fetchOpenBugs,
+  fetchPlanLabels,
   fetchPlans,
   fetchProgressDaily,
   fetchProgressFiles,
@@ -27,6 +28,7 @@ import type {
   PbChartSettings,
   PbChartResponse,
   PlanItem,
+  PlanLabelItem,
   ProjectItem,
 } from '../api/types'
 import { buildPbChartOption } from '../charts/pbChartOptions'
@@ -59,6 +61,7 @@ interface ChartResult {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
   plans: PlanItem[]
+  planLabels: PlanLabelItem[]
   openBugs: OpenBugItem[]
   error: string | null
 }
@@ -143,9 +146,10 @@ export function PbChartPanel({
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
       fetchPlans(project.testing_id).catch(() => [] as PlanItem[]),
+      fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[]),
       fetchOpenBugs(project.testing_id).catch(() => [] as OpenBugItem[]),
     ])
-      .then(([data, files, daily, plans, openBugs]) => {
+      .then(([data, files, daily, plans, planLabels, openBugs]) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
@@ -155,6 +159,7 @@ export function PbChartPanel({
             files,
             daily,
             plans,
+            planLabels,
             openBugs,
             error: null,
           })
@@ -170,6 +175,7 @@ export function PbChartPanel({
             files: [],
             daily: [],
             plans: [],
+            planLabels: [],
             openBugs: [],
             error: getErrorMessage(err),
           })
@@ -194,12 +200,17 @@ export function PbChartPanel({
   const files = isCurrentResult ? result.files : []
   const daily = isCurrentResult ? result.daily : []
   const plans = isCurrentResult ? result.plans : []
+  const planLabels = isCurrentResult ? result.planLabels : []
+  const disabledLabels = new Set(planLabels.filter((item) => item.is_disabled).map((item) => item.label))
+  const visibleFiles = files.filter((file) => !file.label || !disabledLabels.has(file.label))
+  const visibleDaily = daily.filter((item) => !item.label || !disabledLabels.has(item.label))
+  const visiblePlans = plans.filter((plan) => !plan.label || !disabledLabels.has(plan.label))
   const openBugs = isCurrentResult ? result.openBugs : []
   const labels = Array.from(
     new Set(
       [
-        ...files.map((file) => file.label),
-        ...plans.map((plan) => plan.label),
+        ...visibleFiles.map((file) => file.label),
+        ...visiblePlans.map((plan) => plan.label),
       ].filter((item): item is string => Boolean(item)),
     ),
   ).sort((a, b) => a.localeCompare(b))
@@ -209,7 +220,7 @@ export function PbChartPanel({
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
   const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
   // Blocked件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
-  const blockedCount = daily.reduce((sum, item) => sum + item.Blocked, 0)
+  const blockedCount = visibleDaily.reduce((sum, item) => sum + item.Blocked, 0)
   // 未解決チケットは「未解決チケット一覧」と同じ母数（見送りを除く未解決バグ）。
   const bugDataFetched = usesTestResultBugs || Boolean(chart?.has_bugs)
   const openTicketCount = openBugs.filter((bug) => !bug.is_suspended).length
@@ -305,8 +316,8 @@ export function PbChartPanel({
       )}
       {!loading && !error && (
         <ProgressBreakdown
-          files={files}
-          daily={daily}
+          files={visibleFiles}
+          daily={visibleDaily}
           selectedLabel={label}
           openBugs={bugsAllowed ? openBugs : []}
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}

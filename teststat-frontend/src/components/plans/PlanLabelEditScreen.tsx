@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import { ArrowLeft, Tag, Trash2 } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Tag, Trash2 } from 'lucide-react'
 import { PlanLabelCliOptionsFields } from './PlanLabelCliOptionsFields'
 import type { LabelCliOptionsInput } from './PlanLabelCliOptionsFields'
 
@@ -10,6 +10,7 @@ export function PlanLabelEditScreen({
   sourceUrl,
   subtaskId,
   cliOptions,
+  isDisabled,
   unchanged,
   formError,
   submitting,
@@ -17,6 +18,7 @@ export function PlanLabelEditScreen({
   onSourceUrlChange,
   onSubtaskIdChange,
   onCliOptionsChange,
+  onToggleDisabled,
   onCancel,
   onSubmit,
   onDelete,
@@ -27,6 +29,7 @@ export function PlanLabelEditScreen({
   sourceUrl: string
   subtaskId: string
   cliOptions: LabelCliOptionsInput
+  isDisabled: boolean
   unchanged: boolean
   formError: string | null
   submitting: boolean
@@ -34,6 +37,7 @@ export function PlanLabelEditScreen({
   onSourceUrlChange: (sourceUrl: string) => void
   onSubtaskIdChange: (subtaskId: string) => void
   onCliOptionsChange: (cliOptions: LabelCliOptionsInput) => void
+  onToggleDisabled: () => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
   onDelete: () => void
@@ -109,6 +113,19 @@ export function PlanLabelEditScreen({
               キャンセル
             </button>
             <div className="form-actions-right">
+              <button
+                className="secondary-button icon-text-button"
+                type="button"
+                disabled={submitting}
+                onClick={onToggleDisabled}
+              >
+                {isDisabled ? (
+                  <Eye className="button-icon" aria-hidden="true" />
+                ) : (
+                  <EyeOff className="button-icon" aria-hidden="true" />
+                )}
+                <span>{isDisabled ? '有効化' : '無効化'}</span>
+              </button>
               <button className="danger-button icon-text-button" type="button" disabled={submitting} onClick={onDelete}>
                 <Trash2 className="button-icon" aria-hidden="true" />
                 <span>削除</span>

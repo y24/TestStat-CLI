@@ -88,15 +88,18 @@ class TestPlanCRUD(unittest.TestCase):
     def test_create_and_list_plan_labels(self):
         created = create_plan_label(self.db, 1001, PlanLabelCreate(label="  TEST001  "))
         self.assertEqual(created.label, "TEST001")
+        self.assertFalse(created.is_disabled)
 
         labels = list_plan_labels(self.db, 1001)
         self.assertEqual([label.label for label in labels], ["TEST001"])
+        self.assertFalse(labels[0].is_disabled)
 
 
 
     def _insert_actual_label(self, label="CLI_LABEL"):
-        self.db.add(TestingModel(testing_id=1001, project_name="テストP"))
-        self.db.commit()
+        if self.db.scalar(select(TestingModel).where(TestingModel.testing_id == 1001)) is None:
+            self.db.add(TestingModel(testing_id=1001, project_name="テストP"))
+            self.db.commit()
         self.db.add_all([
             FileProgress(
                 testing_id=1001, file_name="cli.xlsx", label=label, environment=None,
@@ -187,6 +190,15 @@ class TestPlanCRUD(unittest.TestCase):
         self.assertIsNone(self.db.scalar(select(DailyPersonProgress)))
         self.assertIsNone(self.db.scalar(select(BugSnapshotModel)))
         self.assertEqual(list_plans(self.db, 1001), [])
+
+
+    def test_update_plan_label_disabled_flag(self):
+        label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+
+        updated = update_plan_label(self.db, label.id, PlanLabelUpdate(label="TEST001", is_disabled=True))
+
+        self.assertTrue(updated.is_disabled)
+        self.assertTrue(list_plan_labels(self.db, 1001)[0].is_disabled)
 
     def test_update_plan_label_renames_related_plans(self):
         label = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
@@ -337,6 +349,21 @@ class TestPlanCRUD(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 404)
 
     # ---- active_plan_count が project に反映される ----
+
+
+    def test_project_summary_excludes_disabled_label(self):
+        from app.crud.project import get_project
+
+        create_plan(self.db, 1001, self._make_plan("TEST001", total=100, activate=True))
+        create_plan(self.db, 1001, self._make_plan("TEST002", total=50, activate=True))
+        create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002", is_disabled=True))
+        self._insert_actual_label("TEST001")
+        self._insert_actual_label("TEST002")
+
+        project = get_project(self.db, 1001)
+
+        self.assertEqual(project.active_plan_count, 1)
+        self.assertEqual(project.actual_available_cases, 10)
 
     def test_project_active_plan_count(self):
         from app.crud.project import get_project

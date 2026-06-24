@@ -389,7 +389,6 @@ function AppContent() {
                   void runAfterDiscardConfirmation(goToOverview)
                 }}
                 onSaved={handleProjectSaved}
-                onProjectUpdated={handleProjectUpdated}
                 onDeleted={handleDeleted}
                 onDirtyChange={setUnsaved}
               />

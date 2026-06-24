@@ -188,7 +188,7 @@ export function PlanEditor({
     ]),
   ).sort((a, b) => a.localeCompare(b))
   const refreshableLabels = planLabels
-    .filter((item) => Boolean(item.source_url && item.source_url.trim()))
+    .filter((item) => !item.is_disabled && Boolean(item.source_url && item.source_url.trim()))
     .map((item) => item.label)
   const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
     if (file.label) {
@@ -445,9 +445,48 @@ export function PlanEditor({
     updateProjectLabel(project.testing_id, {
       old_label: originalLabel || label,
       label,
+      is_disabled: Boolean(editingPlanLabel.is_disabled),
       source_url: sourceUrl,
       subtask_id: parseSubtaskId(subtaskIdInput),
       ...toCliOptionsPayload(cliOptionsInput),
+    })
+      .then(() => {
+        loadPlans()
+        onChanged()
+        setEditingPlanLabel(null)
+        setLabelInput('')
+        setSourceUrlInput('')
+        setSubtaskIdInput('')
+        setCliOptionsInput(createEmptyCliOptionsInput())
+        closePlanSubscreen()
+      })
+      .catch((err) => {
+        if (isNotFoundError(err)) {
+          setFormError('識別子編集APIが見つかりません。バックエンドを最新化して再起動してください。')
+          return
+        }
+        setFormError(getErrorMessage(err))
+      })
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleTogglePlanLabelDisabled = () => {
+    if (editingPlanLabel === null) {
+      return
+    }
+    setSubmitting(true)
+    setFormError(null)
+    updateProjectLabel(project.testing_id, {
+      old_label: editingPlanLabel.label,
+      label: editingPlanLabel.label,
+      is_disabled: !Boolean(editingPlanLabel.is_disabled),
+      source_url: editingPlanLabel.source_url ?? null,
+      subtask_id: editingPlanLabel.subtask_id ?? null,
+      target_sheets: editingPlanLabel.target_sheets ?? null,
+      ignore_sheets: editingPlanLabel.ignore_sheets ?? null,
+      include_hidden_sheets: editingPlanLabel.include_hidden_sheets ?? null,
+      target_environments: editingPlanLabel.target_environments ?? null,
+      ignore_environments: editingPlanLabel.ignore_environments ?? null,
     })
       .then(() => {
         loadPlans()
@@ -647,6 +686,7 @@ export function PlanEditor({
         sourceUrl={sourceUrlInput}
         subtaskId={subtaskIdInput}
         cliOptions={cliOptionsInput}
+        isDisabled={Boolean(editingPlanLabel.is_disabled)}
         unchanged={labelEditUnchanged}
         formError={formError}
         submitting={submitting}
@@ -654,6 +694,7 @@ export function PlanEditor({
         onSourceUrlChange={setSourceUrlInput}
         onSubtaskIdChange={setSubtaskIdInput}
         onCliOptionsChange={setCliOptionsInput}
+        onToggleDisabled={handleTogglePlanLabelDisabled}
         onCancel={cancelLabelEdit}
         onSubmit={submitPlanLabelEdit}
         onDelete={handleDeletePlanLabel}

@@ -77,7 +77,8 @@ export function PlanVersionTable({
                   label === null ? plan.label === null : plan.label === label,
                 )
                 const activePlan = versions.find((plan) => plan.is_active) ?? versions[0] ?? null
-                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label, source_url: null }
+                const registeredLabel = label === null ? null : registeredLabelMap.get(label) ?? { label, is_disabled: false, source_url: null }
+                const isDisabled = Boolean(registeredLabel?.is_disabled)
                 const actualAvailableCases =
                   label === null ? unlabeledAvailableCases : availableCasesByLabel[label]
                 const displayedTotalCases =
@@ -91,7 +92,10 @@ export function PlanVersionTable({
                     ? formatDailyCount(activePlan.planned_total_cases / businessDays)
                     : '-'
                 return (
-                  <tr key={label ?? '__overall'} className={activePlan ? 'active-plan-row' : ''}>
+                  <tr
+                    key={label ?? '__overall'}
+                    className={`${activePlan ? 'active-plan-row' : ''}${isDisabled ? ' disabled-label-row' : ''}`}
+                  >
                     <td className="plan-table-icon-column">
                       {registeredLabel && (
                         <div className="plan-row-actions">
@@ -113,15 +117,18 @@ export function PlanVersionTable({
                               type="button"
                               disabled={
                                 submitting ||
+                                isDisabled ||
                                 !registeredLabel.source_url ||
                                 collectingLabel !== null
                               }
                               onClick={() => label !== null && onRefreshLabel(label)}
                               aria-label={`${registeredLabel.label}の情報を更新`}
                               title={
-                                registeredLabel.source_url
-                                  ? '情報を更新（URLのファイルを取得して集計）'
-                                  : 'URLが未登録のため更新できません'
+                                isDisabled
+                                  ? '無効な集計設定は更新対象外です'
+                                  : registeredLabel.source_url
+                                    ? '情報を更新（URLのファイルを取得して集計）'
+                                    : 'URLが未登録のため更新できません'
                               }
                             >
                               <RefreshCw aria-hidden="true" />
@@ -131,19 +138,24 @@ export function PlanVersionTable({
                       )}
                     </td>
                     <td>
-                      <strong>{displayPlanLabel(label)}</strong>
-                      {registeredLabel?.source_url && (
-                        <a
-                          href={registeredLabel.source_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="plan-excel-link"
-                          title="SharePointのExcelを開く"
-                          aria-label={`${registeredLabel.label} のExcelファイルを開く`}
-                        >
-                          <FileSpreadsheet aria-hidden="true" />
-                        </a>
-                      )}
+                      <div className="plan-label-cell-title">
+                        <strong>{displayPlanLabel(label)}</strong>
+                        {registeredLabel?.source_url && (
+                          <a
+                            href={registeredLabel.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="plan-excel-link"
+                            title="SharePointのExcelを開く"
+                            aria-label={`${registeredLabel.label} のExcelファイルを開く`}
+                          >
+                            <FileSpreadsheet aria-hidden="true" />
+                          </a>
+                        )}
+                        {isDisabled && (
+                          <span className="disabled-label-note">無効</span>
+                        )}
+                      </div>
                       {isPlanOnly && (
                         <span className="row-note plan-only-note">
                           <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
@@ -189,7 +201,7 @@ export function PlanVersionTable({
                         <button
                           className="primary-button compact icon-text-button"
                           type="button"
-                          disabled={submitting}
+                          disabled={submitting || isDisabled}
                           onClick={() => onCreate(label)}
                         >
                           <ChartLine className="button-icon" aria-hidden="true" strokeWidth={2.2} />

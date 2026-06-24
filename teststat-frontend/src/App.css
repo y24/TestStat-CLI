@@ -2495,6 +2495,80 @@
   flex: 0 0 17px;
 }
 
+/* ===== ダッシュボード（フィルタ・タブ） ===== */
+.dashboard-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  width: 260px;
+  height: 36px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0 10px;
+}
+
+.dashboard-filter:focus-within {
+  border-color: #7aa7c7;
+  box-shadow: 0 0 0 3px rgb(39 76 119 / 12%);
+}
+
+.dashboard-filter-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: #738090;
+  stroke-width: 2.1;
+}
+
+.dashboard-filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.dashboard-filter input::placeholder {
+  color: #96a1ad;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.dashboard-tab {
+  border: 0;
+  background: transparent;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.dashboard-tab:hover {
+  color: var(--text);
+}
+
+.dashboard-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.dashboard-tab-count {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
 /* ===== ダッシュボード（一覧テーブル） ===== */
 .dashboard-table-card {
   border: 1px solid var(--border);
@@ -2587,6 +2661,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* アーカイブ済み行のロックアイコン。 */
+.dashboard-proj-lock {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  margin-right: 6px;
+  color: #8a96a3;
+  stroke-width: 2.1;
+}
+
+/* フィルタ結果が空のときの行（クリック不可・ホバー無し）。 */
+.dashboard-table tbody tr.dashboard-empty-row {
+  cursor: default;
+}
+
+.dashboard-table tbody tr.dashboard-empty-row:hover {
+  background: transparent;
+}
+
+.dashboard-empty-row td {
+  color: var(--muted);
+  text-align: center;
+  padding: 22px;
 }
 
 .dashboard-chevron {

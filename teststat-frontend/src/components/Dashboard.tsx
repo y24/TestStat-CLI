@@ -1,9 +1,12 @@
-import { LayoutDashboard, ChevronRight } from 'lucide-react'
+import { ChevronRight, LayoutDashboard, LockKeyhole, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import type { ProjectItem } from '../api/types'
 import { formatDate } from '../utils/date'
 
-// マネージャー層向けの俯瞰ビュー。アーカイブ済み以外の案件を 1 表で確認する。
+// マネージャー層向けの俯瞰ビュー。プロジェクトを 1 表で確認する。
 // データは App が保持する projects（GET /api/v1/projects）をそのまま利用し、専用 API は持たない。
+
+type DashboardTab = 'active' | 'archived'
 
 function getProjectStatus(project: ProjectItem): { label: string; className: string } {
   if (!project.has_actuals) {
@@ -50,6 +53,45 @@ function RateCell({
   )
 }
 
+function ProjectRow({
+  project,
+  archived,
+  onOpenProject,
+}: {
+  project: ProjectItem
+  archived: boolean
+  onOpenProject: (testingId: number) => void
+}) {
+  const status = getProjectStatus(project)
+  const plannedPeriod = formatPlannedPeriod(project)
+  const completed = project.actual_all_completed
+  return (
+    <tr onClick={() => onOpenProject(project.testing_id)} title={`${project.name} (#${project.testing_id})`}>
+      <td className="dashboard-testing-id">{project.testing_id}</td>
+      <td className="dashboard-name-cell">
+        <span className="dashboard-proj-name">
+          {archived && <LockKeyhole className="dashboard-proj-lock" aria-hidden="true" />}
+          <span className="dashboard-proj-name-text">{project.name}</span>
+          <ChevronRight className="dashboard-chevron" aria-hidden="true" />
+        </span>
+      </td>
+      <td>
+        <span className={`pill ${status.className}`}>
+          <span className="status-dot" aria-hidden="true" />
+          {status.label}
+        </span>
+      </td>
+      <td className={`dashboard-period${plannedPeriod ? '' : ' empty'}`}>{plannedPeriod ?? '-'}</td>
+      <td className="num">
+        <RateCell value={project.actual_completed_rate} done={completed} />
+      </td>
+      <td className="num">
+        <RateCell value={project.actual_vs_plan_rate} done={completed} />
+      </td>
+    </tr>
+  )
+}
+
 export function Dashboard({
   projects,
   onOpenProject,
@@ -59,9 +101,30 @@ export function Dashboard({
   onOpenProject: (testingId: number) => void
   onCreate: () => void
 }) {
-  const activeProjects = projects.filter((project) => !project.archived)
+  const [tab, setTab] = useState<DashboardTab>('active')
+  const [query, setQuery] = useState('')
 
-  if (activeProjects.length === 0) {
+  // アクティブは App 側のソート（display_order）を踏襲。アーカイブは更新日時の新しい順。
+  const activeProjects = useMemo(() => projects.filter((project) => !project.archived), [projects])
+  const archivedProjects = useMemo(
+    () =>
+      projects
+        .filter((project) => project.archived)
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [projects],
+  )
+
+  const tabProjects = tab === 'archived' ? archivedProjects : activeProjects
+  const trimmedQuery = query.trim().toLocaleLowerCase()
+  const filteredProjects = useMemo(() => {
+    if (!trimmedQuery) {
+      return tabProjects
+    }
+    return tabProjects.filter((project) => project.name.toLocaleLowerCase().includes(trimmedQuery))
+  }, [tabProjects, trimmedQuery])
+
+  // プロジェクトが 1 件も無いときは作成を促す。
+  if (projects.length === 0) {
     return (
       <div className="empty-state">
         <h1>プロジェクトがありません</h1>
@@ -73,6 +136,12 @@ export function Dashboard({
     )
   }
 
+  const emptyMessage = trimmedQuery
+    ? '一致するプロジェクトはありません'
+    : tab === 'archived'
+      ? 'アーカイブ済みプロジェクトはありません'
+      : 'プロジェクトがありません'
+
   return (
     <div className="content-shell dashboard">
       <header className="content-header">
@@ -82,7 +151,38 @@ export function Dashboard({
             <h1>プロジェクト一覧</h1>
           </div>
         </div>
+        <label className="dashboard-filter" title="プロジェクト名でフィルタ">
+          <Search className="dashboard-filter-icon" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="プロジェクト名"
+            aria-label="プロジェクト名でフィルタ"
+          />
+        </label>
       </header>
+
+      <div className="dashboard-tabs" role="tablist">
+        <button
+          className={`dashboard-tab${tab === 'active' ? ' active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'active'}
+          onClick={() => setTab('active')}
+        >
+          アクティブ <span className="dashboard-tab-count">{activeProjects.length}</span>
+        </button>
+        <button
+          className={`dashboard-tab${tab === 'archived' ? ' active' : ''}`}
+          type="button"
+          role="tab"
+          aria-selected={tab === 'archived'}
+          onClick={() => setTab('archived')}
+        >
+          アーカイブ済み <span className="dashboard-tab-count">{archivedProjects.length}</span>
+        </button>
+      </div>
 
       <div className="dashboard-table-card">
         <table className="dashboard-table">
@@ -97,41 +197,20 @@ export function Dashboard({
             </tr>
           </thead>
           <tbody>
-            {activeProjects.map((project) => {
-              const status = getProjectStatus(project)
-              const plannedPeriod = formatPlannedPeriod(project)
-              const completed = project.actual_all_completed
-              return (
-                <tr
+            {filteredProjects.length === 0 ? (
+              <tr className="dashboard-empty-row">
+                <td colSpan={6}>{emptyMessage}</td>
+              </tr>
+            ) : (
+              filteredProjects.map((project) => (
+                <ProjectRow
                   key={project.testing_id}
-                  onClick={() => onOpenProject(project.testing_id)}
-                  title={`${project.name} (#${project.testing_id})`}
-                >
-                  <td className="dashboard-testing-id">{project.testing_id}</td>
-                  <td className="dashboard-name-cell">
-                    <span className="dashboard-proj-name">
-                      <span className="dashboard-proj-name-text">{project.name}</span>
-                      <ChevronRight className="dashboard-chevron" aria-hidden="true" />
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`pill ${status.className}`}>
-                      <span className="status-dot" aria-hidden="true" />
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className={`dashboard-period${plannedPeriod ? '' : ' empty'}`}>
-                    {plannedPeriod ?? '-'}
-                  </td>
-                  <td className="num">
-                    <RateCell value={project.actual_completed_rate} done={completed} />
-                  </td>
-                  <td className="num">
-                    <RateCell value={project.actual_vs_plan_rate} done={completed} />
-                  </td>
-                </tr>
-              )
-            })}
+                  project={project}
+                  archived={tab === 'archived'}
+                  onOpenProject={onOpenProject}
+                />
+              ))
+            )}
           </tbody>
         </table>
       </div>

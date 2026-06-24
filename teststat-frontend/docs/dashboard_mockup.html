@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TestStat ダッシュボード モック</title>
-<!-- 設計イメージ用の静的モック。
-     ・サイドバー「ダッシュボード」メニュー（ロゴ下・プロジェクト作成ボタン上）
-     ・/tstat/ をデフォルトでダッシュボード表示
-     ・アーカイブ済み以外の全プロジェクトを一覧（Testing ID / 名称 / ステータス / 予定期間 /
+<title>TestStat プロジェクト一覧 モック</title>
+<!-- 設計イメージ用のモック（タブ・フィルタはデモ用に簡易 JS で動作）。
+     ・サイドバー「プロジェクト一覧」メニュー（ロゴ下・プロジェクト作成ボタン上）
+     ・/tstat/ をデフォルトでプロジェクト一覧表示
+     ・各プロジェクトを一覧（Testing ID / 名称 / ステータス / 予定期間 /
        完了率(対全体) / 完了率(対計画)）
+     ・右上にプロジェクト名フィルタ入力
+     ・「アクティブ」/「アーカイブ済み」タブで一覧を切替
      ・行クリックで /tstat/<testing id> の個別 PB 図ページへ遷移
      色・フォントは現状フロント (src/index.css, src/App.css) のトークンを踏襲。 -->
 <style>
@@ -141,6 +143,32 @@
   .content-header h1 { margin: 2px 0 4px; font-size: 26px; line-height: 1.2; }
   .header-meta { color: var(--muted); font-size: 12px; }
 
+  /* フィルタ入力（ヘッダー右上） */
+  .filter-box {
+    display: flex; align-items: center; gap: 7px; width: 260px; height: 36px; flex: 0 0 auto;
+    border: 1px solid #cfd6df; border-radius: 6px; background: #fff; padding: 0 10px;
+  }
+  .filter-box:focus-within { border-color: #7aa7c7; box-shadow: 0 0 0 3px rgba(39, 76, 119, 0.12); }
+  .filter-box svg { width: 15px; height: 15px; flex: 0 0 15px; color: #738090; }
+  .filter-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+  .filter-box input::placeholder { color: #96a1ad; }
+
+  /* アクティブ / アーカイブ済み タブ */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab {
+    border: 0; background: transparent; padding: 9px 14px; font-size: 13px; font-weight: 650;
+    color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-count { font-weight: 600; opacity: 0.8; }
+
+  /* アーカイブ行のロックアイコン */
+  .proj-lock { width: 14px; height: 14px; flex: 0 0 14px; color: #8a96a3; margin-right: 6px; vertical-align: -2px; }
+
+  .is-hidden { display: none !important; }
+  .empty-row td { color: var(--muted); text-align: center; padding: 22px; }
+
   /* テーブル */
   .table-card { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
   .dashboard-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -205,13 +233,13 @@
     </div>
     <div class="project-nav">
 
-      <!-- ★ ロゴ下・プロジェクト作成ボタン上 に追加するダッシュボードメニュー -->
-      <button class="dashboard-nav-button selected" type="button" title="ダッシュボード">
+      <!-- ★ ロゴ下・プロジェクト作成ボタン上 に追加するプロジェクト一覧メニュー -->
+      <button class="dashboard-nav-button selected" type="button" title="プロジェクト一覧">
         <svg class="dashboard-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/>
           <rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
         </svg>
-        <span>ダッシュボード</span>
+        <span>プロジェクト一覧</span>
       </button>
 
       <div class="nav-actions">
@@ -257,7 +285,7 @@
     </div>
   </aside>
 
-  <!-- ===== メイン: ダッシュボード ===== -->
+  <!-- ===== メイン: プロジェクト一覧 ===== -->
   <main class="main-area">
     <div class="content-shell">
       <header class="content-header">
@@ -267,14 +295,25 @@
               <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/>
               <rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
             </svg>
-            <h1>ダッシュボード</h1>
+            <h1>プロジェクト一覧</h1>
           </div>
-          <div class="header-meta">進行中のプロジェクト状況を俯瞰します（アーカイブ済みを除く）</div>
+          <div class="header-meta">プロジェクトの状況を俯瞰します</div>
         </div>
+        <!-- ★ 右上: プロジェクト名フィルタ -->
+        <label class="filter-box" title="プロジェクト名でフィルタ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="filter-input" type="search" placeholder="プロジェクト名でフィルタ" aria-label="プロジェクト名でフィルタ" />
+        </label>
       </header>
 
-      <!-- 一覧テーブル -->
-      <div class="table-card">
+      <!-- ★ アクティブ / アーカイブ済み タブ -->
+      <div class="tabs">
+        <button class="tab active" type="button" data-target="tab-active">アクティブ <span class="tab-count">4</span></button>
+        <button class="tab" type="button" data-target="tab-archived">アーカイブ済み <span class="tab-count">2</span></button>
+      </div>
+
+      <!-- アクティブ一覧 -->
+      <div class="table-card" id="tab-active">
         <table class="dashboard-table">
           <thead>
             <tr>
@@ -288,7 +327,7 @@
           </thead>
           <tbody>
             <!-- 進行中（計画あり） -->
-            <tr title="クリックで /tstat/1001 へ">
+            <tr data-name="決済基盤リプレース" title="クリックで /tstat/1001 へ">
               <td class="testing-id">#1001</td>
               <td><span class="proj-name">決済基盤リプレース<span class="chevron">›</span></span></td>
               <td><span class="pill active"><span class="status-dot"></span>進行中</span></td>
@@ -308,7 +347,7 @@
             </tr>
 
             <!-- 進行中（計画遅れ気味） -->
-            <tr title="クリックで /tstat/1002 へ">
+            <tr data-name="会員ポータル UI 刷新" title="クリックで /tstat/1002 へ">
               <td class="testing-id">#1002</td>
               <td><span class="proj-name">会員ポータル UI 刷新<span class="chevron">›</span></span></td>
               <td><span class="pill active"><span class="status-dot"></span>進行中</span></td>
@@ -328,7 +367,7 @@
             </tr>
 
             <!-- 完了 -->
-            <tr title="クリックで /tstat/1003 へ">
+            <tr data-name="在庫管理 API v2" title="クリックで /tstat/1003 へ">
               <td class="testing-id">#1003</td>
               <td><span class="proj-name">在庫管理 API v2<span class="chevron">›</span></span></td>
               <td><span class="pill completed"><span class="status-dot"></span>完了</span></td>
@@ -348,7 +387,7 @@
             </tr>
 
             <!-- 未開始（実績なし・予定期間未設定） -->
-            <tr title="クリックで /tstat/1004 へ">
+            <tr data-name="社内ワークフロー基盤" title="クリックで /tstat/1004 へ">
               <td class="testing-id">#1004</td>
               <td><span class="proj-name">社内ワークフロー基盤<span class="chevron">›</span></span></td>
               <td><span class="pill not-started"><span class="status-dot"></span>未開始</span></td>
@@ -366,18 +405,127 @@
                 </div>
               </td>
             </tr>
+
+            <tr class="empty-row is-hidden"><td colspan="6">一致するプロジェクトはありません</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- アーカイブ済み一覧 -->
+      <div class="table-card is-hidden" id="tab-archived">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th style="width:96px;">Testing ID</th>
+              <th>プロジェクト名</th>
+              <th style="width:120px;">ステータス</th>
+              <th style="width:210px;">予定期間</th>
+              <th class="num">完了率（対全体）</th>
+              <th class="num">完了率（対計画）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-name="旧基幹システム移行" title="クリックで /tstat/0920 へ">
+              <td class="testing-id">#0920</td>
+              <td>
+                <span class="proj-name">
+                  <svg class="proj-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  旧基幹システム移行<span class="chevron">›</span>
+                </span>
+              </td>
+              <td><span class="pill completed"><span class="status-dot"></span>完了</span></td>
+              <td class="period">2025/01/10 ~ 2025/03/31</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">100.0%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:100%"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">100.0%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:100%"></span></div>
+                </div>
+              </td>
+            </tr>
+
+            <tr data-name="PoC レコメンド検証" title="クリックで /tstat/0871 へ">
+              <td class="testing-id">#0871</td>
+              <td>
+                <span class="proj-name">
+                  <svg class="proj-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  PoC レコメンド検証<span class="chevron">›</span>
+                </span>
+              </td>
+              <td><span class="pill completed"><span class="status-dot"></span>完了</span></td>
+              <td class="period">2024/11/01 ~ 2024/12/20</td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">100.0%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:100%"></span></div>
+                </div>
+              </td>
+              <td class="num">
+                <div class="rate-cell">
+                  <div class="rate-top"><span></span><span class="rate-value">98.5%</span></div>
+                  <div class="rate-bar"><span class="done" style="width:98.5%"></span></div>
+                </div>
+              </td>
+            </tr>
+
+            <tr class="empty-row is-hidden"><td colspan="6">一致するプロジェクトはありません</td></tr>
           </tbody>
         </table>
       </div>
 
       <p class="crumb-note">
-        ルーティング: <code>/tstat/</code> = このダッシュボード（デフォルト）／
+        ルーティング: <code>/tstat/</code> = このプロジェクト一覧（デフォルト）／
         行クリックで <code>/tstat/&lt;testing id&gt;</code> の個別 PB 図ページへ遷移。
-        ※静的モックのため遷移・並び替えは動作しません。
+        ※モックのため行クリックでの遷移は動作しません（タブ切替・フィルタはデモ用に動作します）。
       </p>
     </div>
   </main>
 
 </div>
+
+<script>
+  // モック用: タブ切替とプロジェクト名フィルタの最小実装。
+  (function () {
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    const panels = Array.from(document.querySelectorAll('.table-card'));
+    const filterInput = document.getElementById('filter-input');
+
+    function visiblePanel() {
+      return panels.find((panel) => !panel.classList.contains('is-hidden'));
+    }
+
+    function applyFilter() {
+      const query = filterInput.value.trim().toLowerCase();
+      const panel = visiblePanel();
+      if (!panel) return;
+      let matched = 0;
+      panel.querySelectorAll('tbody tr[data-name]').forEach((row) => {
+        const hit = row.getAttribute('data-name').toLowerCase().includes(query);
+        row.classList.toggle('is-hidden', !hit);
+        if (hit) matched += 1;
+      });
+      const emptyRow = panel.querySelector('.empty-row');
+      if (emptyRow) emptyRow.classList.toggle('is-hidden', matched !== 0);
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        panels.forEach((panel) => {
+          panel.classList.toggle('is-hidden', panel.id !== tab.dataset.target);
+        });
+        applyFilter();
+      });
+    });
+
+    filterInput.addEventListener('input', applyFilter);
+  })();
+</script>
 </body>
 </html>

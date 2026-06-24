@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
+import { copyTextToClipboard } from '../../utils/shareLink'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
@@ -74,9 +75,11 @@ export function PlanListScreen({
   const [copiedCommand, setCopiedCommand] = useState(false)
 
   const copyCliCommand = () => {
-    navigator.clipboard.writeText(cliCommand).then(() => {
-      setCopiedCommand(true)
-      window.setTimeout(() => setCopiedCommand(false), 1600)
+    copyTextToClipboard(cliCommand).then((ok) => {
+      if (ok) {
+        setCopiedCommand(true)
+        window.setTimeout(() => setCopiedCommand(false), 1600)
+      }
     })
   }
 

@@ -27,10 +27,18 @@ def _bug_fetch_args(project):
     }
 
 
+def _ensure_not_archived(project) -> None:
+    if project.archived:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="archived project is read-only",
+        )
+
+
 @router.post("/projects/{testing_id}/bugs/sync", response_model=BugSyncResponse)
 def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse:
-    # プロジェクト存在確認（無ければ 404）。
     project = get_project(db, testing_id)
+    _ensure_not_archived(project)
     fetch_args = _bug_fetch_args(project)
 
     try:
@@ -72,8 +80,8 @@ def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse
 
 @router.delete("/projects/{testing_id}/bugs", status_code=status.HTTP_204_NO_CONTENT)
 def delete_bugs(testing_id: int, db: Session = Depends(get_db)) -> None:
-    # プロジェクト存在確認（無ければ 404）。
-    get_project(db, testing_id)
+    project = get_project(db, testing_id)
+    _ensure_not_archived(project)
     try:
         delete_bug_count_data(db, testing_id)
     except Exception:

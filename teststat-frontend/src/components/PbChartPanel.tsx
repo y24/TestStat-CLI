@@ -278,7 +278,7 @@ export function PbChartPanel({
             type="button"
             className="bug-sync-button"
             onClick={handleSyncBugs}
-            disabled={bugSync.loading || !bugsAllowed}
+            disabled={bugSync.loading || !bugsAllowed || project.archived}
           >
             <Bug className="bug-sync-icon" aria-hidden="true" />
             {bugSync.loading ? '取得中...' : '不具合数を取得'}

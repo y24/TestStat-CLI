@@ -170,6 +170,25 @@ def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tup
     return available_cases or 0, updated_at
 
 
+def _get_actual_labels(db: Session, testing_id: int, label: str | None) -> set[str | None]:
+    """実績データが存在する label の集合。FileProgress がない計画 label の判定に使う。"""
+    if _label_is_disabled(db, testing_id, label):
+        return set()
+    q = select(FileProgress.label).where(FileProgress.testing_id == testing_id).distinct()
+    if label is not None:
+        q = q.where(FileProgress.label == label)
+    else:
+        disabled_labels = _get_disabled_labels(db, testing_id)
+        if disabled_labels:
+            q = q.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
+    return set(db.scalars(q))
+
+
+def _compute_plan_only_available_cases(plans: list[Plan], actual_labels: set[str | None]) -> int:
+    """実績データがまだない計画の件数を、未実施扱いで実績母数へ補完する。"""
+    return sum(plan.planned_total_cases for plan in plans if plan.label not in actual_labels)
+
+
 # ---------- 系列計算 ----------
 
 def _compute_plan_series(
@@ -425,9 +444,10 @@ def get_pb_chart(
 
     # 実績
     actual_daily_map = _get_actual_daily_map(db, testing_id, label)
-    available_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
-    has_actuals = bool(actual_daily_map) and available_cases > 0
-    actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
+    actual_available_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
+    actual_labels = _get_actual_labels(db, testing_id, label)
+    plan_only_available_cases = _compute_plan_only_available_cases(active_plans, actual_labels)
+    available_cases = actual_available_cases + plan_only_available_cases
 
     # 不具合
     # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
@@ -495,6 +515,10 @@ def get_pb_chart(
         )
 
     date_list = _date_range(range_from, range_to)
+    actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
+    if not actual_daily_map and plan_only_available_cases > 0:
+        actual_remaining_sparse = {d: available_cases for d in date_list}
+
     bug_cumulative = None
     if bugs_visible:
         if bug_count_source == "test_result":

@@ -96,7 +96,7 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label="TEST001")
 
         self.assertEqual(result.planned_total_cases, 100)
-        self.assertEqual(result.available_cases, 0)
+        self.assertEqual(result.available_cases, 100)
         self.assertIsNotNone(result.range)
         self.assertEqual(len(result.series), 5)
 
@@ -104,11 +104,12 @@ class TestPbChart(unittest.TestCase):
         s0 = result.series[0]
         self.assertEqual(s0.planned_remaining, 80)
         self.assertEqual(s0.planned_completed_daily, 20)
-        self.assertIsNone(s0.actual_remaining)
+        self.assertEqual(s0.actual_remaining, 100)
         self.assertIsNone(s0.actual_completed_daily)
 
-        # 最終日: remaining = 0
+        # 最終日: planned remaining = 0, actual remaining = 100 because no actual data exists yet
         self.assertEqual(result.series[-1].planned_remaining, 0)
+        self.assertEqual(result.series[-1].actual_remaining, 100)
 
     # ---- 実績のみ（計画なし） ----
 
@@ -188,6 +189,21 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(s0.planned_remaining, 120)         # 150 - 30
         self.assertEqual(s0.actual_completed_daily, 15)     # 10 + 5
         self.assertEqual(s0.actual_remaining, 135)          # 150 - 15
+
+    def test_all_labels_counts_plan_only_label_as_not_run(self):
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
+        self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100)
+        _insert_actuals(self.db, 1001, [
+            ("TEST001", date(2026, 5, 1), 10),
+        ])
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertEqual(result.planned_total_cases, 150)
+        self.assertEqual(result.available_cases, 150)       # TEST001 actual + TEST002 plan-only
+        self.assertEqual(result.series[0].actual_completed_daily, 10)
+        self.assertEqual(result.series[0].actual_remaining, 140)
 
 
     def test_disabled_label_excluded_from_all_and_label_chart(self):

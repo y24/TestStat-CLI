@@ -18,6 +18,9 @@ interface ProjectFormState {
   planned_start_date: string
   planned_end_date: string
   bug_count_source: 'azure_devops' | 'test_result'
+  bug_parent_work_item_id: string
+  bug_work_item_type: string
+  bug_tag: string
   pb_chart_range_source: 'plan_actual' | 'project_period'
 }
 
@@ -27,6 +30,9 @@ const emptyForm: ProjectFormState = {
   planned_start_date: '',
   planned_end_date: '',
   bug_count_source: 'azure_devops',
+  bug_parent_work_item_id: '',
+  bug_work_item_type: '',
+  bug_tag: '',
   pb_chart_range_source: 'plan_actual',
 }
 
@@ -54,6 +60,9 @@ export function ProjectEditor({
           planned_start_date: project.planned_start_date ?? '',
           planned_end_date: project.planned_end_date ?? '',
           bug_count_source: project.bug_count_source,
+          bug_parent_work_item_id: project.bug_parent_work_item_id ? String(project.bug_parent_work_item_id) : '',
+          bug_work_item_type: project.bug_work_item_type ?? '',
+          bug_tag: project.bug_tag ?? '',
           pb_chart_range_source: project.pb_chart_range_source,
         }
       : emptyForm,
@@ -75,12 +84,18 @@ export function ProjectEditor({
           Boolean(form.planned_start_date) ||
           Boolean(form.planned_end_date) ||
           form.bug_count_source !== 'azure_devops' ||
+          Boolean(form.bug_parent_work_item_id.trim()) ||
+          Boolean(form.bug_work_item_type.trim()) ||
+          Boolean(form.bug_tag.trim()) ||
           form.pb_chart_range_source !== 'plan_actual'
         : project !== null &&
           (form.name !== project.name ||
             form.planned_start_date !== (project.planned_start_date ?? '') ||
             form.planned_end_date !== (project.planned_end_date ?? '') ||
             form.bug_count_source !== project.bug_count_source ||
+            form.bug_parent_work_item_id !== (project.bug_parent_work_item_id ? String(project.bug_parent_work_item_id) : '') ||
+            form.bug_work_item_type !== (project.bug_work_item_type ?? '') ||
+            form.bug_tag !== (project.bug_tag ?? '') ||
             form.pb_chart_range_source !== project.pb_chart_range_source)
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
@@ -128,12 +143,22 @@ export function ProjectEditor({
       setFormError('テスト期間の開始予定日と終了予定日を正しい順序で入力してください')
       return
     }
+    const bugParentWorkItemId = form.bug_parent_work_item_id.trim()
+      ? Number(form.bug_parent_work_item_id)
+      : null
+    if (bugParentWorkItemId !== null && (!Number.isInteger(bugParentWorkItemId) || bugParentWorkItemId <= 0)) {
+      setFormError('親となるチケットのWork Item IDは正の整数で入力してください')
+      return
+    }
 
     setSubmitting(true)
     const plannedDates = {
       planned_start_date: form.planned_start_date || null,
       planned_end_date: form.planned_end_date || null,
       bug_count_source: form.bug_count_source,
+      bug_parent_work_item_id: bugParentWorkItemId,
+      bug_work_item_type: form.bug_work_item_type.trim() || null,
+      bug_tag: form.bug_tag.trim() || null,
       pb_chart_range_source: form.pb_chart_range_source,
     }
     const request =
@@ -316,10 +341,48 @@ export function ProjectEditor({
               })
             }
           >
-            <option value="azure_devops">Azure DevOps - Testing IDの子Bugチケットのステータスを参照</option>
-            <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照</option>
+            <option value="azure_devops">Azure DevOps</option>
+            <option value="test_result">テスト仕様書 - テスト実施結果ステータスを参照する</option>
           </select>
         </label>
+        {form.bug_count_source === 'azure_devops' && (
+          <fieldset className="ado-bug-settings">
+            <legend>不具合チケット抽出条件</legend>
+            <label>
+              <span>親チケットのWork Item ID</span>
+              <input
+                type="number"
+                min="1"
+                value={form.bug_parent_work_item_id}
+                disabled={submitting}
+                placeholder="未設定の場合はTesting ID"
+                onChange={(event) => setForm({ ...form, bug_parent_work_item_id: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>Work Item Type</span>
+              <input
+                type="text"
+                maxLength={255}
+                value={form.bug_work_item_type}
+                disabled={submitting}
+                placeholder=""
+                onChange={(event) => setForm({ ...form, bug_work_item_type: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>Tag</span>
+              <input
+                type="text"
+                maxLength={255}
+                value={form.bug_tag}
+                disabled={submitting}
+                placeholder=""
+                onChange={(event) => setForm({ ...form, bug_tag: event.target.value })}
+              />
+            </label>
+          </fieldset>
+        )}
 
         <div className="form-actions">
           <button className="primary-button" type="submit" disabled={submitting || adoLoading}>

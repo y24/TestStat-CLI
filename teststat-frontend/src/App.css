@@ -1153,6 +1153,24 @@
   font-weight: 750;
 }
 
+.ado-bug-settings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #d7dde7;
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.ado-bug-settings legend {
+  padding: 0 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .label-cli-options textarea {
   min-height: 76px;
 }

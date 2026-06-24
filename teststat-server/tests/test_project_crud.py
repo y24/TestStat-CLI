@@ -108,6 +108,31 @@ class TestProjectCRUD(unittest.TestCase):
 
         self.assertEqual(updated.bug_count_source, "azure_devops")
 
+    def test_create_and_update_azure_bug_settings(self):
+        created = create_project(
+            self.db,
+            ProjectCreate(
+                testing_id=3007,
+                name="ADO不具合設定P",
+                bug_parent_work_item_id=2002,
+                bug_work_item_type="不具合",
+                bug_tag="Release-A",
+            ),
+        )
+        self.assertEqual(created.bug_parent_work_item_id, 2002)
+        self.assertEqual(created.bug_work_item_type, "不具合")
+        self.assertEqual(created.bug_tag, "Release-A")
+
+        updated = update_project(
+            self.db,
+            3007,
+            ProjectUpdate(bug_parent_work_item_id=None, bug_work_item_type="", bug_tag=None),
+        )
+
+        self.assertIsNone(updated.bug_parent_work_item_id)
+        self.assertIsNone(updated.bug_work_item_type)
+        self.assertIsNone(updated.bug_tag)
+
     def test_create_and_update_pb_chart_range_source(self):
         created = create_project(
             self.db,
@@ -379,6 +404,28 @@ class TestProjectRouter(unittest.TestCase):
         reread = self.client.get("/api/v1/projects/9002")
         self.assertEqual(reread.status_code, 200)
         self.assertEqual(reread.json()["pb_chart_range_source"], "project_period")
+    def test_patch_azure_bug_settings_persists_and_is_returned(self):
+        res = self.client.post("/api/v1/projects", json={"testing_id": 9003, "name": "P"})
+        self.assertEqual(res.status_code, 201)
+        self.assertIsNone(res.json()["bug_parent_work_item_id"])
+
+        patch = self.client.patch(
+            "/api/v1/projects/9003",
+            json={
+                "bug_parent_work_item_id": 2002,
+                "bug_work_item_type": "不具合",
+                "bug_tag": "Release-A",
+            },
+        )
+
+        self.assertEqual(patch.status_code, 200)
+        self.assertEqual(patch.json()["bug_parent_work_item_id"], 2002)
+        self.assertEqual(patch.json()["bug_work_item_type"], "不具合")
+        self.assertEqual(patch.json()["bug_tag"], "Release-A")
+        reread = self.client.get("/api/v1/projects/9003")
+        self.assertEqual(reread.status_code, 200)
+        self.assertEqual(reread.json()["bug_tag"], "Release-A")
+
     def test_patch_bug_count_source_persists_and_is_returned(self):
         res = self.client.post("/api/v1/projects", json={"testing_id": 9001, "name": "P"})
         self.assertEqual(res.status_code, 201)

@@ -226,7 +226,13 @@ def _parse_date(value: object) -> date | None:
 _WORKITEMS_BATCH = 200
 
 
-def fetch_child_bugs(work_item_id: int, settings: Settings | None = None) -> list[BugWorkItem]:
+def fetch_child_bugs(
+    work_item_id: int,
+    settings: Settings | None = None,
+    *,
+    bug_work_item_type: str | None = None,
+    bug_tag: str | None = None,
+) -> list[BugWorkItem]:
     """Work Item の子チケットのうち Bug を取得する。
 
     IGNORE 対象 State は除外する。Suspend（見送り）対象 State は除外せず、State を保持して返す
@@ -235,7 +241,12 @@ def fetch_child_bugs(work_item_id: int, settings: Settings | None = None) -> lis
     settings = settings or get_settings()
     if settings.azure_devops_use_mock:
         return _mock_child_bugs(work_item_id, settings)
-    return _fetch_child_bugs_remote(work_item_id, settings)
+    return _fetch_child_bugs_remote(
+        work_item_id,
+        settings,
+        bug_work_item_type=bug_work_item_type,
+        bug_tag=bug_tag,
+    )
 
 
 def _configured_bug_fields(settings: Settings) -> list[str]:
@@ -253,16 +264,36 @@ def _configured_bug_fields(settings: Settings) -> list[str]:
     return result
 
 
-def _wiql_child_bug_query(work_item_id: int, settings: Settings) -> str:
-    bug_wit = settings.azure_devops_bug_wit.replace("'", "''")
-    return (
+def _wiql_escape(value: str) -> str:
+    return value.replace("'", "''")
+
+
+def _wiql_child_bug_query(
+    work_item_id: int,
+    settings: Settings,
+    *,
+    bug_work_item_type: str | None = None,
+    bug_tag: str | None = None,
+) -> str:
+    bug_wit = _wiql_escape((bug_work_item_type or settings.azure_devops_bug_wit).strip())
+    query = (
         "SELECT [System.Id] FROM WorkItems "
         f"WHERE [System.Parent] = {work_item_id} "
         f"AND [System.WorkItemType] = '{bug_wit}'"
     )
+    tag = (bug_tag or "").strip()
+    if tag:
+        query += f" AND [System.Tags] Contains '{_wiql_escape(tag)}'"
+    return query
 
 
-def _fetch_child_bugs_remote(work_item_id: int, settings: Settings) -> list[BugWorkItem]:
+def _fetch_child_bugs_remote(
+    work_item_id: int,
+    settings: Settings,
+    *,
+    bug_work_item_type: str | None = None,
+    bug_tag: str | None = None,
+) -> list[BugWorkItem]:
     params = {"api-version": settings.azure_devops_api_version}
 
     # ① WIQL で子 Bug の ID 一覧を取得（fields と $expand の併用不可制約を回避）。
@@ -271,7 +302,14 @@ def _fetch_child_bugs_remote(work_item_id: int, settings: Settings) -> list[BugW
         params,
         settings,
         method="POST",
-        json={"query": _wiql_child_bug_query(work_item_id, settings)},
+        json={
+            "query": _wiql_child_bug_query(
+                work_item_id,
+                settings,
+                bug_work_item_type=bug_work_item_type,
+                bug_tag=bug_tag,
+            )
+        },
     )
     ids = [item["id"] for item in wiql_response.json().get("workItems", []) if "id" in item]
     if not ids:

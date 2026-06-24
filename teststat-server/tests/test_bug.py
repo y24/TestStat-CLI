@@ -153,6 +153,23 @@ class TestRemoteMode(unittest.TestCase):
         self.assertEqual(captured["requests"][0][0], "POST")
         self.assertTrue(captured["requests"][0][1].endswith("/wiql?api-version=7.1"))
 
+    def test_project_specific_work_item_type_and_tag_are_used_in_wiql(self):
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/wiql"):
+                captured["body"] = request.read().decode("utf-8")
+                return httpx.Response(200, json={"workItems": []})
+            return httpx.Response(200, json={"value": []})
+
+        self._install_transport(handler)
+        bugs = ado.fetch_child_bugs(2002, make_settings(), bug_work_item_type="不具合", bug_tag="Release-A")
+
+        self.assertEqual(bugs, [])
+        self.assertIn("[System.Parent] = 2002", captured["body"])
+        self.assertIn("[System.WorkItemType] = '不具合'", captured["body"])
+        self.assertIn("[System.Tags] Contains 'Release-A'", captured["body"])
+
     def test_bug_date_fields_fallback_in_order(self):
         captured = {}
 
@@ -368,7 +385,7 @@ class TestRouter(unittest.TestCase):
         bug_mod.fetch_child_bugs = fn
 
     def test_success(self):
-        self._patch_fetch(lambda wid: [
+        self._patch_fetch(lambda wid, *args, **kwargs: [
             BugWorkItem(9001, "a", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
             BugWorkItem(9007, "c", "Suspend", date(2026, 5, 7), date(2026, 5, 11)),
         ])
@@ -379,12 +396,42 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(body["resolved_count"], 1)
         self.assertEqual(body["suspended_count"], 1)
 
+    def test_sync_uses_project_specific_azure_bug_settings(self):
+        from app.crud.project import update_project
+        from app.schemas.project import ProjectUpdate
+
+        update_project(
+            self.db,
+            1001,
+            ProjectUpdate(
+                bug_parent_work_item_id=2002,
+                bug_work_item_type="不具合",
+                bug_tag="Release-A",
+            ),
+        )
+        captured = {}
+
+        def fake_fetch(wid, settings=None, **kwargs):
+            captured["wid"] = wid
+            captured.update(kwargs)
+            return [BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None)]
+
+        self._patch_fetch(fake_fetch)
+        res = self.client.post("/api/v1/projects/1001/bugs/sync")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(captured, {
+            "wid": 2002,
+            "bug_work_item_type": "不具合",
+            "bug_tag": "Release-A",
+        })
+
     def test_unknown_project_404(self):
-        self._patch_fetch(lambda wid: [])
+        self._patch_fetch(lambda wid, *args, **kwargs: [])
         self.assertEqual(self.client.post("/api/v1/projects/9999/bugs/sync").status_code, 404)
 
     def test_delete_bug_count_data(self):
-        self._patch_fetch(lambda wid: [
+        self._patch_fetch(lambda wid, *args, **kwargs: [
             BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
         ])
         self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 200)
@@ -397,14 +444,14 @@ class TestRouter(unittest.TestCase):
         self.assertEqual(self.client.delete("/api/v1/projects/9999/bugs").status_code, 404)
 
     def test_not_configured_503(self):
-        def raise_nc(wid):
+        def raise_nc(wid, *args, **kwargs):
             raise ado.AzureDevOpsNotConfigured()
 
         self._patch_fetch(raise_nc)
         self.assertEqual(self.client.post("/api/v1/projects/1001/bugs/sync").status_code, 503)
 
     def test_parent_not_found_404(self):
-        def raise_nf(wid):
+        def raise_nf(wid, *args, **kwargs):
             raise ado.WorkItemNotFound()
 
         self._patch_fetch(raise_nf)
@@ -412,7 +459,7 @@ class TestRouter(unittest.TestCase):
 
     def test_list_open_bugs(self):
         self._patch_fetch(
-            lambda wid: [
+            lambda wid, *args, **kwargs: [
                 BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
                 BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
                 BugWorkItem(9003, "suspend", "Suspend", date(2026, 5, 4), None),
@@ -454,7 +501,7 @@ class TestRouter(unittest.TestCase):
 
         update_project(self.db, 1001, ProjectUpdate(bug_count_source="test_result"))
         self._patch_fetch(
-            lambda wid, settings=None: [
+            lambda wid, settings=None, **kwargs: [
                 BugWorkItem(9001, "done", "Closed", date(2026, 5, 2), date(2026, 5, 6)),
                 BugWorkItem(9002, "open", "Active", date(2026, 5, 3), None),
                 BugWorkItem(9003, "suspend", "Suspend", date(2026, 5, 4), None),

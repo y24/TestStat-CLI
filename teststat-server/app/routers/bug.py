@@ -19,13 +19,26 @@ from app.services.azure_devops import (
 router = APIRouter(prefix="/api/v1", tags=["bugs"])
 
 
+def _bug_fetch_args(project):
+    return {
+        "work_item_id": project.bug_parent_work_item_id or project.testing_id,
+        "bug_work_item_type": project.bug_work_item_type,
+        "bug_tag": project.bug_tag,
+    }
+
+
 @router.post("/projects/{testing_id}/bugs/sync", response_model=BugSyncResponse)
 def sync_bugs(testing_id: int, db: Session = Depends(get_db)) -> BugSyncResponse:
     # プロジェクト存在確認（無ければ 404）。
-    get_project(db, testing_id)
+    project = get_project(db, testing_id)
+    fetch_args = _bug_fetch_args(project)
 
     try:
-        bugs = fetch_child_bugs(testing_id)
+        bugs = fetch_child_bugs(
+            fetch_args["work_item_id"],
+            bug_work_item_type=fetch_args["bug_work_item_type"],
+            bug_tag=fetch_args["bug_tag"],
+        )
     except WorkItemNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -74,7 +87,13 @@ def list_open_bugs(testing_id: int, db: Session = Depends(get_db)) -> list[OpenB
     settings = get_settings()
     if project.bug_count_source == "test_result":
         try:
-            bugs = fetch_child_bugs(testing_id, settings)
+            fetch_args = _bug_fetch_args(project)
+            bugs = fetch_child_bugs(
+                fetch_args["work_item_id"],
+                settings,
+                bug_work_item_type=fetch_args["bug_work_item_type"],
+                bug_tag=fetch_args["bug_tag"],
+            )
         except WorkItemNotFound:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -14,6 +14,9 @@ class ProjectCreate(BaseModel):
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     bug_count_source: BugCountSource = "azure_devops"
+    bug_parent_work_item_id: int | None = Field(None, gt=0)
+    bug_work_item_type: str | None = Field(None, max_length=255)
+    bug_tag: str | None = Field(None, max_length=255)
     pb_chart_range_source: PbChartRangeSource = "plan_actual"
 
     @model_validator(mode="after")
@@ -33,6 +36,9 @@ class ProjectUpdate(BaseModel):
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     bug_count_source: BugCountSource | None = None
+    bug_parent_work_item_id: int | None = Field(None, gt=0)
+    bug_work_item_type: str | None = Field(None, max_length=255)
+    bug_tag: str | None = Field(None, max_length=255)
     pb_chart_range_source: PbChartRangeSource | None = None
     archived: bool | None = None
 
@@ -54,6 +60,9 @@ class ProjectResponse(BaseModel):
     planned_start_date: date | None
     planned_end_date: date | None
     bug_count_source: BugCountSource
+    bug_parent_work_item_id: int | None
+    bug_work_item_type: str | None
+    bug_tag: str | None
     pb_chart_range_source: PbChartRangeSource
     archived: bool
     display_order: int

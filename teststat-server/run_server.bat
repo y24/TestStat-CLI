@@ -1,4 +1,4 @@
 @echo off
 cd /d %~dp0
 call .venv\Scripts\activate.bat
-uvicorn app.main:app --host 0.0.0.0 --port 18000 --workers 2
+uvicorn app.main:app --host 0.0.0.0 --port 18000

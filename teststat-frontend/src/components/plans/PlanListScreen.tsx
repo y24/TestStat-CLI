@@ -5,7 +5,7 @@ import { copyTextToClipboard } from '../../utils/shareLink'
 import { PlanVersionModal } from './PlanVersionModal'
 import type { PlanVersionModalChanges } from './PlanVersionModal'
 import { PlanVersionTable } from './PlanVersionTable'
-import { ArrowLeft, Check, ClipboardList, Copy, Download, Plus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Check, ClipboardList, Copy, Download, RefreshCw } from 'lucide-react'
 
 export function PlanListScreen({
   loading,
@@ -120,15 +120,6 @@ export function PlanListScreen({
               <span>{collectingAll ? '一括更新中...' : 'すべて更新'}</span>
             </button>
           )}
-          <button
-            className="primary-button icon-text-button"
-            type="button"
-            disabled={submitting || collectingAll}
-            onClick={onAddLabel}
-          >
-            <Plus className="button-icon" aria-hidden="true" />
-            <span>集計設定を追加</span>
-          </button>
         </div>
       </header>
 
@@ -150,6 +141,7 @@ export function PlanListScreen({
             collectingLabel={collectingLabel}
             collectErrors={collectErrors}
             onCreate={onCreate}
+            onAddLabel={onAddLabel}
             onEditLabel={onEditLabel}
             onRefreshLabel={onRefreshLabel}
             onManage={onManage}

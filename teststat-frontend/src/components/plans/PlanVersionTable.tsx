@@ -1,4 +1,4 @@
-import { ChartLine, FileSpreadsheet, Pencil, RefreshCw, TriangleAlert } from 'lucide-react'
+import { ChartLine, FileSpreadsheet, Pencil, Plus, RefreshCw, TriangleAlert } from 'lucide-react'
 import type { LabelEditTarget, PlanItem, PlanLabelItem } from '../../api/types'
 import { countBusinessDays, displayPlanLabel } from '../../utils/plans'
 
@@ -16,6 +16,7 @@ export function PlanVersionTable({
   collectingLabel,
   collectErrors,
   onCreate,
+  onAddLabel,
   onEditLabel,
   onRefreshLabel,
   onManage,
@@ -34,6 +35,7 @@ export function PlanVersionTable({
   collectingLabel: string | null
   collectErrors: Record<string, string>
   onCreate: (label: string | null) => void
+  onAddLabel: () => void
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
   onManage: (label: string | null) => void
@@ -51,6 +53,16 @@ export function PlanVersionTable({
         <div>
           <div className="panel-title">集計設定一覧</div>
           <div className="panel-subtitle">集計単位ごとの計画を管理します。</div>
+          <button
+            className="primary-button icon-text-button"
+            type="button"
+            disabled={submitting}
+            onClick={onAddLabel}
+            style={{ marginBottom: '12px' }}
+          >
+            <Plus className="button-icon" aria-hidden="true" />
+            <span>集計設定を追加</span>
+          </button>
         </div>
       </div>
       {rows.length === 0 && (

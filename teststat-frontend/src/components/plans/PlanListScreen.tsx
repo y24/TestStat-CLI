@@ -34,6 +34,7 @@ export function PlanListScreen({
   onEditLabel,
   onRefreshLabel,
   onRefreshAll,
+  onReorderLabels,
   onDownloadListYaml,
   onCreate,
   onManage,
@@ -66,6 +67,7 @@ export function PlanListScreen({
   onEditLabel: (planLabel: LabelEditTarget) => void
   onRefreshLabel: (label: string) => void
   onRefreshAll: () => void
+  onReorderLabels: (labels: string[]) => void
   onDownloadListYaml: () => void
   onCreate: (label: string | null) => void
   onManage: (label: string | null) => void
@@ -144,6 +146,7 @@ export function PlanListScreen({
             onAddLabel={onAddLabel}
             onEditLabel={onEditLabel}
             onRefreshLabel={onRefreshLabel}
+            onReorderLabels={onReorderLabels}
             onManage={onManage}
             formatDate={formatDate}
           />

@@ -15,11 +15,12 @@ from app.crud.plan import (
     list_plan_labels,
     list_plans,
     update_plan_label,
+    update_plan_label_order,
     update_project_label,
 )
 from app.database import get_db
 from app.schemas.pb_chart import PbChartResponse
-from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelUpdate, ProjectLabelUpdate
+from app.schemas.plan import PlanCreate, PlanDetail, PlanItem, PlanLabelCreate, PlanLabelItem, PlanLabelOrderUpdate, PlanLabelUpdate, ProjectLabelUpdate
 from app.services.collector import build_project_list_yaml
 
 router = APIRouter(prefix="/api/v1", tags=["plans"])
@@ -67,6 +68,15 @@ def patch_project_label(
     db: Session = Depends(get_db),
 ) -> PlanLabelItem:
     return update_project_label(db, testing_id, payload)
+
+
+@router.patch("/projects/{testing_id}/plan-labels/order", response_model=list[PlanLabelItem])
+def patch_plan_label_order(
+    testing_id: int,
+    payload: PlanLabelOrderUpdate,
+    db: Session = Depends(get_db),
+) -> list[PlanLabelItem]:
+    return update_plan_label_order(db, testing_id, payload)
 
 
 @router.delete("/projects/{testing_id}/labels", status_code=status.HTTP_204_NO_CONTENT)

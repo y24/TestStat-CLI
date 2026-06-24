@@ -42,6 +42,7 @@ class PlanLabel(Base):
     include_hidden_sheets: Mapped[bool | None] = mapped_column(Boolean)
     target_environments: Mapped[list[str] | None] = mapped_column(JSON)
     ignore_environments: Mapped[list[str] | None] = mapped_column(JSON)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 

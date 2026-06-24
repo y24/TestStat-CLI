@@ -1472,6 +1472,47 @@
   vertical-align: middle;
 }
 
+.plan-table th.plan-table-drag-column,
+.plan-table td.plan-table-drag-column {
+  width: 34px;
+  min-width: 34px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.plan-table tbody tr.dragging {
+  opacity: 0.56;
+  position: relative;
+  z-index: 10;
+}
+
+.plan-label-drag-handle {
+  width: 24px;
+  height: 30px;
+  color: #8a96a3;
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  touch-action: none;
+}
+
+.plan-label-drag-handle:hover {
+  background: #e5ebf2;
+  color: #52606d;
+}
+
+.plan-label-drag-handle:active {
+  cursor: grabbing;
+}
+
+.plan-label-drag-handle svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+}
+
 .plan-row-actions {
   display: inline-flex;
   align-items: center;

@@ -14,6 +14,7 @@ import {
   fetchProgressDaily,
   fetchProgressFiles,
   updateProjectLabel,
+  updatePlanLabelOrder,
 } from '../api/client'
 import type { DailyProgressItem, FileProgressItem, LabelEditTarget, PlanItem, PlanLabelItem, ProjectItem } from '../api/types'
 import { getTodayString } from '../utils/date'
@@ -78,6 +79,7 @@ export function PlanEditor({
   const [collectErrors, setCollectErrors] = useState<Record<string, string>>({})
   const [downloadingListYaml, setDownloadingListYaml] = useState(false)
   const [listYamlError, setListYamlError] = useState<string | null>(null)
+  const [labelOrderOverride, setLabelOrderOverride] = useState<string[] | null>(null)
 
   const loadPlanLabels = () => fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[])
 
@@ -88,9 +90,10 @@ export function PlanEditor({
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
     ])
-      .then(([plans, planLabels, files, daily]) =>
-        setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null }),
-      )
+      .then(([plans, planLabels, files, daily]) => {
+        setLabelOrderOverride(null)
+        setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null })
+      })
       .catch((err) =>
         setResult({
           testingId: project.testing_id,
@@ -113,6 +116,7 @@ export function PlanEditor({
     ])
       .then(([plans, planLabels, files, daily]) => {
         if (!ignore) {
+          setLabelOrderOverride(null)
           setResult({ testingId: project.testing_id, plans, planLabels, files, daily, error: null })
         }
       })
@@ -186,7 +190,17 @@ export function PlanEditor({
       ...planLabels.map((item) => item.label),
       ...plans.map((plan) => plan.label).filter((label): label is string => Boolean(label)),
     ]),
-  ).sort((a, b) => a.localeCompare(b))
+  )
+  const orderedLabelNames = labelOrderOverride ?? planLabels.map((item) => item.label)
+  const labelOrder = new Map(orderedLabelNames.map((label, index) => [label, index]))
+  labels.sort((a, b) => {
+    const orderA = labelOrder.get(a)
+    const orderB = labelOrder.get(b)
+    if (orderA !== undefined || orderB !== undefined) {
+      return (orderA ?? Number.MAX_SAFE_INTEGER) - (orderB ?? Number.MAX_SAFE_INTEGER)
+    }
+    return a.localeCompare(b)
+  })
   const refreshableLabels = planLabels
     .filter((item) => !item.is_disabled && Boolean(item.source_url && item.source_url.trim()))
     .map((item) => item.label)
@@ -281,6 +295,25 @@ export function PlanEditor({
       loadPlans()
       onChanged()
     }
+  }
+
+  const handleReorderLabels = (orderedLabels: string[]) => {
+    if (submitting) {
+      return
+    }
+    const previousOrder = labelOrderOverride
+    setLabelOrderOverride(orderedLabels)
+    updatePlanLabelOrder(project.testing_id, { labels: orderedLabels })
+      .then((updated) => {
+        setResult((current) =>
+          current?.testingId === project.testing_id ? { ...current, planLabels: updated } : current,
+        )
+        setLabelOrderOverride(null)
+      })
+      .catch((err) => {
+        setLabelOrderOverride(previousOrder)
+        setFormError(getErrorMessage(err))
+      })
   }
 
   const handleDownloadListYaml = () => {
@@ -771,6 +804,7 @@ export function PlanEditor({
       onEditLabel={openLabelEditScreen}
       onRefreshLabel={handleRefreshLabel}
       onRefreshAll={handleRefreshAll}
+      onReorderLabels={handleReorderLabels}
       onDownloadListYaml={handleDownloadListYaml}
       onCreate={openCreateScreen}
       onManage={(label) => setModalLabel(label)}

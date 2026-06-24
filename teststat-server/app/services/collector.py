@@ -186,7 +186,7 @@ def _load_targets(db: Session, testing_id: int | None = None, label: str | None 
             PlanLabel.source_url.is_not(None),
             PlanLabel.source_url != "",
         )
-        .order_by(Project.testing_id, PlanLabel.label)
+        .order_by(Project.testing_id, PlanLabel.display_order, PlanLabel.label, PlanLabel.id)
     )
     if testing_id is not None:
         query = query.where(Project.testing_id == testing_id)

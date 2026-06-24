@@ -73,9 +73,31 @@ class PlanLabelItem(BaseModel):
     include_hidden_sheets: bool | None
     target_environments: list[str] | None
     ignore_environments: list[str] | None
+    display_order: int
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PlanLabelOrderUpdate(BaseModel):
+    label_ids: list[int] | None = Field(None, min_length=1)
+    labels: list[str] | None = Field(None, min_length=1)
+
+    @field_validator("labels")
+    @classmethod
+    def normalize_labels(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized = [label.strip() for label in value if label.strip()]
+        if not normalized:
+            raise ValueError("labels は1件以上必要です")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_order_target(self) -> "PlanLabelOrderUpdate":
+        if self.label_ids is None and self.labels is None:
+            raise ValueError("label_ids または labels が必要です")
+        return self
 
 
 class PlanDailyIn(BaseModel):

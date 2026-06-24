@@ -12,6 +12,7 @@ from app.schemas.plan import (
     PlanItem,
     PlanLabelCreate,
     PlanLabelItem,
+    PlanLabelOrderUpdate,
     PlanLabelUpdate,
     ProjectLabelUpdate,
 )
@@ -126,6 +127,13 @@ def _apply_plan_label_payload(label: PlanLabel, payload: PlanLabelCreate) -> Non
     label.ignore_environments = payload.ignore_environments
 
 
+def _next_plan_label_display_order(db: Session, testing_id: int) -> int:
+    max_display_order = db.scalar(
+        select(func.max(PlanLabel.display_order)).where(PlanLabel.testing_id == testing_id)
+    )
+    return (max_display_order + 1) if max_display_order is not None else 0
+
+
 # ---------- public API ----------
 
 def list_plans(db: Session, testing_id: int) -> list[PlanItem]:
@@ -153,7 +161,7 @@ def list_plan_labels(db: Session, testing_id: int) -> list[PlanLabelItem]:
         db.scalars(
             select(PlanLabel)
             .where(PlanLabel.testing_id == testing_id)
-            .order_by(PlanLabel.label)
+            .order_by(PlanLabel.display_order, PlanLabel.label, PlanLabel.id)
         )
     )
     return [PlanLabelItem.model_validate(label) for label in labels]
@@ -181,6 +189,7 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
         include_hidden_sheets=payload.include_hidden_sheets,
         target_environments=payload.target_environments,
         ignore_environments=payload.ignore_environments,
+        display_order=_next_plan_label_display_order(db, testing_id),
     )
     db.add(label)
     db.commit()
@@ -232,6 +241,7 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
             include_hidden_sheets=payload.include_hidden_sheets,
             target_environments=payload.target_environments,
             ignore_environments=payload.ignore_environments,
+            display_order=_next_plan_label_display_order(db, testing_id),
         )
         db.add(label)
         db.flush()
@@ -276,6 +286,58 @@ def delete_project_label(db: Session, testing_id: int, label: str) -> None:
 def delete_plan_label(db: Session, label_id: int) -> None:
     label = _require_plan_label(db, label_id)
     delete_project_label(db, label.testing_id, label.label)
+
+
+def update_plan_label_order(db: Session, testing_id: int, payload: PlanLabelOrderUpdate) -> list[PlanLabelItem]:
+    _require_project(db, testing_id)
+    if payload.labels is not None:
+        unique_labels = list(dict.fromkeys(payload.labels))
+        existing_labels = list(
+            db.scalars(select(PlanLabel).where(PlanLabel.testing_id == testing_id, PlanLabel.label.in_(unique_labels)))
+        )
+        labels_by_name = {label.label: label for label in existing_labels}
+        for label_name in unique_labels:
+            if label_name not in labels_by_name and not _project_label_exists(db, testing_id, label_name):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"label not found: {label_name}",
+                )
+            if label_name not in labels_by_name:
+                label = PlanLabel(
+                    testing_id=testing_id,
+                    label=label_name,
+                    display_order=_next_plan_label_display_order(db, testing_id),
+                )
+                db.add(label)
+                db.flush()
+                labels_by_name[label_name] = label
+
+        for index, label_name in enumerate(unique_labels):
+            labels_by_name[label_name].display_order = index
+        db.commit()
+        return list_plan_labels(db, testing_id)
+
+    unique_ids = list(dict.fromkeys(payload.label_ids or []))
+    labels = list(
+        db.scalars(
+            select(PlanLabel).where(
+                PlanLabel.testing_id == testing_id,
+                PlanLabel.id.in_(unique_ids),
+            )
+        )
+    )
+    labels_by_id = {label.id: label for label in labels}
+    missing_ids = [label_id for label_id in unique_ids if label_id not in labels_by_id]
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"plan label not found: {missing_ids[0]}",
+        )
+
+    for index, label_id in enumerate(unique_ids):
+        labels_by_id[label_id].display_order = index
+    db.commit()
+    return list_plan_labels(db, testing_id)
 
 
 def get_plan_detail(db: Session, plan_id: int) -> PlanDetail:

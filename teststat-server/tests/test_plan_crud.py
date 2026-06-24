@@ -22,6 +22,7 @@ from app.crud.plan import (  # noqa: E402
     list_plan_labels,
     list_plans,
     update_plan_label,
+    update_plan_label_order,
     update_project_label,
 )
 from app.crud.project import create_project  # noqa: E402
@@ -33,7 +34,7 @@ from app.models.progress import (  # noqa: E402
     Testing as TestingModel,
 )
 from app.database import Base  # noqa: E402
-from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelUpdate, ProjectLabelUpdate  # noqa: E402
+from app.schemas.plan import PlanCreate, PlanDailyIn, PlanLabelCreate, PlanLabelOrderUpdate, PlanLabelUpdate, ProjectLabelUpdate  # noqa: E402
 from app.schemas.project import ProjectCreate  # noqa: E402
 
 
@@ -89,10 +90,38 @@ class TestPlanCRUD(unittest.TestCase):
         created = create_plan_label(self.db, 1001, PlanLabelCreate(label="  TEST001  "))
         self.assertEqual(created.label, "TEST001")
         self.assertFalse(created.is_disabled)
+        self.assertEqual(created.display_order, 0)
 
         labels = list_plan_labels(self.db, 1001)
         self.assertEqual([label.label for label in labels], ["TEST001"])
         self.assertFalse(labels[0].is_disabled)
+
+    def test_update_plan_label_order(self):
+        first = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+        second = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002"))
+        third = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST003"))
+
+        ordered = update_plan_label_order(
+            self.db,
+            1001,
+            PlanLabelOrderUpdate(label_ids=[third.id, first.id, second.id]),
+        )
+
+        self.assertEqual([label.label for label in ordered], ["TEST003", "TEST001", "TEST002"])
+        self.assertEqual([label.display_order for label in ordered], [0, 1, 2])
+
+    def test_update_plan_label_order_materializes_actual_only_label(self):
+        self._insert_actual_label("CLI_LABEL")
+        existing = create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST001"))
+
+        ordered = update_plan_label_order(
+            self.db,
+            1001,
+            PlanLabelOrderUpdate(labels=["CLI_LABEL", existing.label]),
+        )
+
+        self.assertEqual([label.label for label in ordered], ["CLI_LABEL", "TEST001"])
+        self.assertEqual([label.display_order for label in ordered], [0, 1])
 
 
 

@@ -75,7 +75,17 @@ def _sync_plan_label_metadata(db: Session, payload: ProgressRequest) -> None:
             )
         )
         if plan_label is None:
-            db.add(PlanLabel(testing_id=payload.testing_id, label=label, **updates))
+            max_display_order = db.scalar(
+                select(func.max(PlanLabel.display_order)).where(PlanLabel.testing_id == payload.testing_id)
+            )
+            db.add(
+                PlanLabel(
+                    testing_id=payload.testing_id,
+                    label=label,
+                    display_order=(max_display_order + 1) if max_display_order is not None else 0,
+                    **updates,
+                )
+            )
         else:
             for field, value in updates.items():
                 setattr(plan_label, field, value)

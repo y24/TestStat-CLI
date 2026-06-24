@@ -177,6 +177,7 @@ export interface PlanLabelItem {
   include_hidden_sheets: boolean | null
   target_environments: string[] | null
   ignore_environments: string[] | null
+  display_order: number
   created_at: string
 }
 
@@ -196,6 +197,11 @@ export interface PlanLabelCreatePayload extends PlanLabelCliOptionsPayload {
 }
 
 export type PlanLabelUpdatePayload = PlanLabelCreatePayload
+
+export interface PlanLabelOrderUpdatePayload {
+  label_ids?: number[]
+  labels?: string[]
+}
 
 export interface ProjectLabelUpdatePayload extends PlanLabelCliOptionsPayload {
   old_label: string

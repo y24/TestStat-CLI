@@ -206,6 +206,15 @@ export function PbChartPanel({
   const visibleDaily = daily.filter((item) => !item.label || !disabledLabels.has(item.label))
   const visiblePlans = plans.filter((plan) => !plan.label || !disabledLabels.has(plan.label))
   const openBugs = isCurrentResult ? result.openBugs : []
+  const labelOrder = new Map(planLabels.map((item, index) => [item.label, index]))
+  const compareLabels = (left: string, right: string) => {
+    const leftOrder = labelOrder.get(left)
+    const rightOrder = labelOrder.get(right)
+    if (leftOrder !== undefined || rightOrder !== undefined) {
+      return (leftOrder ?? Number.MAX_SAFE_INTEGER) - (rightOrder ?? Number.MAX_SAFE_INTEGER)
+    }
+    return left.localeCompare(right, 'ja')
+  }
   const labels = Array.from(
     new Set(
       [
@@ -213,7 +222,7 @@ export function PbChartPanel({
         ...visiblePlans.map((plan) => plan.label),
       ].filter((item): item is string => Boolean(item)),
     ),
-  ).sort((a, b) => a.localeCompare(b))
+  ).sort(compareLabels)
   const loading = !isCurrentResult
   const bugSummary = chart ? getBugSummary(chart) : null
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
@@ -322,6 +331,7 @@ export function PbChartPanel({
           openBugs={bugsAllowed ? openBugs : []}
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
           bugStateColors={bugStateColorSettings.items}
+          labelOrder={labelOrder}
         />
       )}
     </section>
@@ -504,6 +514,7 @@ function ProgressBreakdown({
   openBugs,
   bugDataFetched,
   bugStateColors,
+  labelOrder,
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
@@ -511,8 +522,9 @@ function ProgressBreakdown({
   openBugs: OpenBugItem[]
   bugDataFetched: boolean
   bugStateColors: BugStateColorSetting[]
+  labelOrder: Map<string, number>
 }) {
-  const rows = buildBreakdownRows(files, daily, selectedLabel)
+  const rows = buildBreakdownRows(files, daily, selectedLabel, labelOrder)
   if (rows.length === 0 && !bugDataFetched && openBugs.length === 0) {
     return null
   }
@@ -742,6 +754,7 @@ function buildBreakdownRows(
   files: FileProgressItem[],
   daily: DailyProgressItem[],
   selectedLabel: string | null,
+  labelOrder: Map<string, number>,
 ): BreakdownRow[] {
   const matchingFiles = files.filter((file) => !selectedLabel || file.label === selectedLabel)
   const rows = new Map<string, BreakdownRow>()
@@ -792,6 +805,14 @@ function buildBreakdownRows(
   }
 
   return [...rows.values()].sort((a, b) => {
+    const aLabelOrder = labelOrder.get(a.file)
+    const bLabelOrder = labelOrder.get(b.file)
+    if (aLabelOrder !== undefined || bLabelOrder !== undefined) {
+      const orderCompare = (aLabelOrder ?? Number.MAX_SAFE_INTEGER) - (bLabelOrder ?? Number.MAX_SAFE_INTEGER)
+      if (orderCompare !== 0) {
+        return orderCompare
+      }
+    }
     const fileCompare = a.file.localeCompare(b.file, 'ja')
     return fileCompare === 0 ? a.env.localeCompare(b.env, 'ja') : fileCompare
   })

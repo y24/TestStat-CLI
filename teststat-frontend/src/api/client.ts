@@ -13,6 +13,7 @@ import type {
   PlanLabelCreatePayload,
   PlanLabelItem,
   PlanLabelUpdatePayload,
+  PlanLabelOrderUpdatePayload,
   ProjectLabelUpdatePayload,
   PlanDetail,
   PlanItem,
@@ -165,6 +166,11 @@ export const deleteProjectLabel = (testing_id: number, label: string) => {
 }
 export const updatePlanLabel = (label_id: number, payload: PlanLabelUpdatePayload) =>
   request<PlanLabelItem>(`/api/v1/plan-labels/${label_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+export const updatePlanLabelOrder = (testing_id: number, payload: PlanLabelOrderUpdatePayload) =>
+  request<PlanLabelItem[]>(`/api/v1/projects/${testing_id}/plan-labels/order`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   })

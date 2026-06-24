@@ -180,4 +180,80 @@ GET http://localhost:18000/api/v1/collect/status
 `auth_error: true` の場合は `az login` の期限切れ、権限不足、401/403 などを疑う。ログは `COLLECT_LOG_DIR` の `collect_YYYYMMDD.log` に出力される。
 
 
+---
+
+# Azure DevOps 不具合数の定期同期
+
+対象: `teststat-server/sync_bugs.bat` / `teststat-server/sync_bugs.ps1`
+
+`bug_count_source=azure_devops` のプロジェクト全件に対して不具合数取得（`/api/v1/projects/{testing_id}/bugs/sync`）を一括実行する。
+
+## 前提
+
+- TestStat Server が起動済みであること。
+- `.env` に Azure DevOps 連携設定が済んでいること（`AZURE_DEVOPS_ORGANIZATION` など）。
+- 実行環境の `AZURE_DEVOPS_PAT` ユーザー環境変数（または `.env`）に有効な PAT が設定されていること。
+  - PAT に必要なスコープ: **Work Items (Read)**
+
+## 環境変数
+
+| 変数名 | 既定値 | 説明 |
+|--------|--------|------|
+| `TESTSTAT_SERVER_URL` | `http://localhost:18000` | TestStat Server の URL |
+| `SYNC_BUGS_LOG_DIR` | `teststat-server\logs` | ログ出力先ディレクトリ |
+
+IIS 等で別ポート/ホストで公開している場合はシステム環境変数に設定する。
+
+```cmd
+setx TESTSTAT_SERVER_URL "http://localhost:18000" /M
+```
+
+## 動作確認
+
+タスク登録前に手動で実行して確認する。
+
+```cmd
+cd /d D:\Script\TestStat-CLI\teststat-server
+sync_bugs.bat
+```
+
+ログは `logs\sync_bugs_YYYYMMDD.log` に出力される。
+
+```
+[2026-06-24 09:00:01] sync_bugs.ps1 start BaseUrl=http://localhost:18000
+[2026-06-24 09:00:01] 対象プロジェクト 3 件
+[2026-06-24 09:00:02] testing_id=12345 (プロジェクトA) 成功 fetched=20 open=5 suspended=2 resolved=13
+[2026-06-24 09:00:02] sync_bugs.ps1 end exit=0
+```
+
+## 終了コード
+
+| コード | 意味 |
+|--------|------|
+| `0` | 全件成功（対象なし含む） |
+| `1` | 1 件以上失敗（接続エラー、404 等） |
+| `2` | 認証エラー（PAT 期限切れ・権限不足） |
+
+exit=2 の場合は Azure DevOps PAT を確認する。PAT はユーザー環境変数 `AZURE_DEVOPS_PAT` で設定する（`.env` に書かない）。
+
+## タスクスケジューラ登録例
+
+毎時実行:
+
+```cmd
+schtasks /Create /TN "TestStat\SyncBugs" /TR "D:\Script\TestStat-CLI\teststat-server\sync_bugs.bat" /SC HOURLY /RU <実行アカウント> /RP * /RL HIGHEST /F
+```
+
+タスク設定では「既に実行中の場合、新しいインスタンスを開始しない」を選ぶ。
+
+## collect.bat との違い
+
+| | `collect.bat` | `sync_bugs.bat` |
+|---|---|---|
+| 取得元 | SharePoint（Excel ファイル） | Azure DevOps（Work Item） |
+| 認証 | `az login`（Azure CLI トークン） | `AZURE_DEVOPS_PAT`（PAT） |
+| 対象 | `source_url` 登録済み識別子 | `bug_count_source=azure_devops` プロジェクト全件 |
+| 更新内容 | テスト結果（進捗） | バグ件数スナップショット |
+
+両方を定期実行する場合は別タスクとして登録する。
 

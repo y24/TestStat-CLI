@@ -733,7 +733,9 @@ def main():
     if args.list:
         reporting_config = settings.get("reporting_api", {})
         reporting_enabled = reporting_config.get("enabled", True)
-        if reporting_enabled:
+        # send が明示的に false の場合は送信のみスキップ（ダウンロード・集計は実行する）
+        reporting_send = reporting_config.get("send", True)
+        if reporting_enabled and reporting_send:
             testing_id = project_info.get("testing_id") if project_info else None
             if testing_id is None:
                 execution_warnings.append("testing_id が未設定のため進捗データの送信をスキップします")

@@ -63,6 +63,7 @@
     },
     "reporting_api": {
         "enabled": true,
+        "send": true,
         "base_url": "http://your-server/tstat/api",
         "sender": null
     },

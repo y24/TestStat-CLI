@@ -484,13 +484,15 @@ project:
 {
   "reporting_api": {
     "enabled": true,
+    "send": true,
     "base_url": "http://your-teststat-server:18000/api",
     "sender": null
   }
 }
 ```
 
-- `enabled`: `false` にすると進捗データ送信をスキップします（デフォルトは `true`）。
+- `enabled`: `false` にすると TestStat サーバー連携全体（進捗データ送信に加え、`-t/--testing-id` によるリストのダウンロードも）を無効にします（デフォルトは `true`）。
+- `send`: `false` にすると進捗データの送信のみをスキップします（デフォルトは `true`）。`enabled: true` のままにしておけば、`-t/--testing-id` によるリストのダウンロードや集計は実行しつつ、送信だけを止められます。
 - `base_url`: TestStatサーバーのベースURLを末尾の `/api` まで含めて指定します。`-l, --list` でYAMLを指定した際に `project.testing_id` が設定されていると、`{base_url}/v1/progress` へ集計結果を送信します。`http://<server-name>/tstat/api` のように指定します。
 - `sender`: 送信者名を文字列で指定します（任意）。`null` の場合は送信者情報を含みません。
 

@@ -97,6 +97,7 @@
     },
     "reporting_api": {
         "enabled": true,
+        "send": true,
         "base_url": "http://localhost:18000/api",
         "sender": null
     },

@@ -5,13 +5,14 @@ import { buildProjectShareUrl, copyTextToClipboard } from '../utils/shareLink'
 import type { ProgressStatusThresholds } from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
-import { Check, ClipboardList, FilePenLine, Link2 } from 'lucide-react'
+import { Check, ChevronLeft, ClipboardList, FilePenLine, Link2 } from 'lucide-react'
 
 export function ProjectOverview({
   project,
   progressStatusThresholds,
   pbChartSettings,
   bugStateColorSettings,
+  onBack,
   onCreate,
   onEdit,
   onPlans,
@@ -20,6 +21,7 @@ export function ProjectOverview({
   progressStatusThresholds: ProgressStatusThresholds
   pbChartSettings: PbChartSettings
   bugStateColorSettings: BugStateColorSettings
+  onBack: () => void
   onCreate: () => void
   onEdit: () => void
   onPlans: () => void
@@ -46,23 +48,34 @@ export function ProjectOverview({
   return (
     <div className="content-shell project-overview">
       <header className="content-header">
-        <div>
-          <h1 className="project-title">
-            {project.archived && <LockIcon />}
-            <span>{project.name}</span>
-            <ShareLinkButton testingId={project.testing_id} />
-          </h1>
-          {plannedPeriod && <div className="project-planned-period">予定期間: {plannedPeriod}</div>}
-          <div className="project-status-row">
-            <div className={`project-status ${status.className}`}>
-              <span className="status-dot" aria-hidden="true" />
-              {status.label}
+        <div className="overview-header-left">
+          <button
+            className="overview-back-icon"
+            type="button"
+            onClick={onBack}
+            aria-label="プロジェクト一覧へ戻る"
+            title="プロジェクト一覧へ戻る"
+          >
+            <ChevronLeft aria-hidden="true" />
+          </button>
+          <div>
+            <h1 className="project-title">
+              {project.archived && <LockIcon />}
+              <span>{project.name}</span>
+              <ShareLinkButton testingId={project.testing_id} />
+            </h1>
+            {plannedPeriod && <div className="project-planned-period">予定期間: {plannedPeriod}</div>}
+            <div className="project-status-row">
+              <div className={`project-status ${status.className}`}>
+                <span className="status-dot" aria-hidden="true" />
+                {status.label}
+              </div>
+              {needsPlanInput && (
+                <span className="project-plan-missing-badge" title="テスト計画の入力が必要です。">
+                  未計画
+                </span>
+              )}
             </div>
-            {needsPlanInput && (
-              <span className="project-plan-missing-badge" title="テスト計画の入力が必要です。">
-                未計画
-              </span>
-            )}
           </div>
         </div>
         <div className="header-actions">

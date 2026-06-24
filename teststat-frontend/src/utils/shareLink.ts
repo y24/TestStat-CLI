@@ -1,15 +1,25 @@
-// プロジェクトの共有用ディープリンク（/tstat/<testing_id>）の生成・読取・URL 正規化。
+// アプリ内ロケーションと URL（パス）の対応付け。
 //
-// 通常のナビゲーションでは testing_id を URL に出さず、アドレスバーは常にベースパス（例 /tstat/）
-// のままにする。共有リンクをコピーしたときだけ id 付き URL を作り、それを開いたときは起動時に
-// id を読み取って選択へ反映したのち、アドレスバーをベースパスへ正規化する。
+// ベースパス（例 /tstat/）自体はダッシュボード、その配下の最初のセグメントに testing_id を
+// 付けた /tstat/<testing_id> は個別プロジェクトの PB 図ページを表す。共有リンクのコピーや
+// ダッシュボード/プロジェクト間の遷移ではこのパスをそのままアドレスバーへ反映する。
 
 // import.meta.env.BASE_URL は末尾スラッシュ付き（例: '/tstat/' または '/'）。
 const BASE_PATH = import.meta.env.BASE_URL
 
+/** ダッシュボードのパス（ベースパスそのもの）。例: /tstat/ */
+export function buildDashboardPath(): string {
+  return BASE_PATH
+}
+
+/** 個別プロジェクトのパス。例: /tstat/1001 */
+export function buildProjectPath(testingId: number): string {
+  return `${BASE_PATH}${testingId}`
+}
+
 /** 共有用 URL（絶対 URL）を組み立てる。例: http://host/tstat/1001 */
 export function buildProjectShareUrl(testingId: number): string {
-  return `${window.location.origin}${BASE_PATH}${testingId}`
+  return `${window.location.origin}${buildProjectPath(testingId)}`
 }
 
 /** 現在の URL（ベースパス配下の最初のセグメント）から testing_id を読み取る。無効なら null。 */
@@ -24,13 +34,6 @@ export function readTestingIdFromUrl(): number | null {
   }
   const parsed = Number(segment)
   return Number.isInteger(parsed) ? parsed : null
-}
-
-/** アドレスバーをベースパスへ正規化する（履歴は積まない）。 */
-export function normalizeUrlToBase(): void {
-  if (window.location.pathname !== BASE_PATH) {
-    window.history.replaceState(null, '', BASE_PATH)
-  }
 }
 
 /** クリップボードへコピー。http（非セキュアコンテキスト）でも動くようフォールバックする。 */

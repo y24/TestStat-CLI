@@ -14,6 +14,7 @@ import {
 import type { BugStateColorSettings, PbChartSettings, ProjectItem } from './api/types'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { useConfirmDialog } from './components/confirmDialogContext'
+import { Dashboard } from './components/Dashboard'
 import { PlanEditor } from './components/PlanEditor'
 import type { PlanEditorMode } from './components/PlanEditor'
 import { ProjectEditor } from './components/ProjectEditor'
@@ -23,12 +24,12 @@ import { Sidebar } from './components/Sidebar'
 import type { ApiStatus, ViewMode } from './types/ui'
 import { getErrorMessage } from './utils/errors'
 import { sortProjects } from './utils/projects'
-import { normalizeUrlToBase, readTestingIdFromUrl } from './utils/shareLink'
+import { buildDashboardPath, buildProjectPath, readTestingIdFromUrl } from './utils/shareLink'
 import {
   DEFAULT_PROGRESS_STATUS_THRESHOLDS,
   type ProgressStatusThresholds,
 } from './utils/statusThresholds'
-import { getStoredSelectedTestingId, setStoredSelectedTestingId } from './utils/uiStateStorage'
+import { setStoredSelectedTestingId } from './utils/uiStateStorage'
 
 const DEFAULT_BUG_STATE_COLOR_SETTINGS: BugStateColorSettings = {
   items: [
@@ -49,6 +50,22 @@ const DISCARD_CONFIRM_OPTIONS = {
   danger: true,
 } as const
 
+// アプリ内ロケーション。履歴 state として保存し、popstate で復元する。
+interface AppLocation {
+  view: ViewMode
+  planMode: PlanEditorMode
+  testingId: number | null
+}
+
+// 個別プロジェクトに紐づく画面（アドレスバーを /tstat/<id> にする）。
+const PROJECT_SCOPED_VIEWS: ReadonlySet<ViewMode> = new Set(['overview', 'plans', 'edit'])
+
+function locationPath(view: ViewMode, testingId: number | null): string {
+  return PROJECT_SCOPED_VIEWS.has(view) && testingId != null
+    ? buildProjectPath(testingId)
+    : buildDashboardPath()
+}
+
 export default function App() {
   return (
     <ConfirmDialogProvider>
@@ -63,7 +80,7 @@ function AppContent() {
   const [collectEnabled, setCollectEnabled] = useState(true)
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedTestingId, setSelectedTestingId] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>('overview')
+  const [viewMode, setViewMode] = useState<ViewMode>('dashboard')
   const [planMode, setPlanMode] = useState<PlanEditorMode>('list')
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -79,6 +96,7 @@ function AppContent() {
   // popstate ハンドラから最新値を同期的に参照するための ref。
   const viewModeRef = useRef(viewMode)
   const planModeRef = useRef(planMode)
+  const selectedTestingIdRef = useRef(selectedTestingId)
   const hasUnsavedChangesRef = useRef(hasUnsavedChanges)
 
   useEffect(() => {
@@ -88,6 +106,10 @@ function AppContent() {
   useEffect(() => {
     planModeRef.current = planMode
   }, [planMode])
+
+  useEffect(() => {
+    selectedTestingIdRef.current = selectedTestingId
+  }, [selectedTestingId])
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.testing_id === selectedTestingId) ?? null,
@@ -100,44 +122,73 @@ function AppContent() {
     setHasUnsavedChanges(dirty)
   }, [])
 
-  // 概要 → サブ画面へ。URL は変えず履歴エントリだけ積む（ブラウザバックで概要へ戻れる）。
-  const openSubview = useCallback((view: Exclude<ViewMode, 'overview'>) => {
-    const nextPlanMode: PlanEditorMode = 'list'
-    const state = view === 'plans' ? { view, planMode: nextPlanMode } : { view }
-    if (viewModeRef.current === 'overview') {
-      window.history.pushState(state, '')
-    } else {
-      window.history.replaceState(state, '')
+  // ロケーションを React state へ反映する（履歴操作は呼び出し側が行う）。
+  const applyLocation = useCallback((loc: AppLocation) => {
+    setViewMode(loc.view)
+    setPlanMode(loc.planMode)
+    setSelectedTestingId(loc.testingId)
+    if (loc.testingId != null) {
+      setStoredSelectedTestingId(loc.testingId)
     }
-    setViewMode(view)
-    setPlanMode(nextPlanMode)
   }, [])
+
+  // 履歴エントリを積み（pushState）アドレスバーも更新したうえで画面を切り替える。
+  const pushLocation = useCallback(
+    (loc: AppLocation) => {
+      window.history.pushState(loc, '', locationPath(loc.view, loc.testingId))
+      applyLocation(loc)
+    },
+    [applyLocation],
+  )
+
+  // 現在の履歴エントリを置き換えて（replaceState）画面を切り替える。
+  const replaceLocation = useCallback(
+    (loc: AppLocation) => {
+      window.history.replaceState(loc, '', locationPath(loc.view, loc.testingId))
+      applyLocation(loc)
+    },
+    [applyLocation],
+  )
+
+  // ダッシュボード（俯瞰ビュー）へ。アドレスバーは /tstat/ になる。
+  const goToDashboard = useCallback(() => {
+    pushLocation({ view: 'dashboard', planMode: 'list', testingId: null })
+  }, [pushLocation])
+
+  // 個別プロジェクトの概要（PB 図）へ。アドレスバーは /tstat/<id> になる。
+  const openProjectOverview = useCallback(
+    (testingId: number, mode: 'push' | 'replace' = 'push') => {
+      const loc: AppLocation = { view: 'overview', planMode: 'list', testingId }
+      if (mode === 'replace') {
+        replaceLocation(loc)
+      } else {
+        pushLocation(loc)
+      }
+    },
+    [pushLocation, replaceLocation],
+  )
+
+  // 概要/ダッシュボード → サブ画面（新規・編集・計画・設定）へ。現在の選択を引き継ぐ。
+  const openSubview = useCallback(
+    (view: Exclude<ViewMode, 'overview' | 'dashboard'>) => {
+      pushLocation({ view, planMode: 'list', testingId: selectedTestingIdRef.current })
+    },
+    [pushLocation],
+  )
 
   // 計画一覧 → 計画内サブ画面へ。履歴を一段積み、ブラウザバックで計画一覧へ戻す。
-  const openPlanScreen = useCallback((nextPlanMode: Exclude<PlanEditorMode, 'list'>) => {
-    if (viewModeRef.current !== 'plans') {
-      return
-    }
-    window.history.pushState({ view: 'plans', planMode: nextPlanMode }, '')
-    setPlanMode(nextPlanMode)
-  }, [])
+  const openPlanScreen = useCallback(
+    (nextPlanMode: Exclude<PlanEditorMode, 'list'>) => {
+      if (viewModeRef.current !== 'plans') {
+        return
+      }
+      pushLocation({ view: 'plans', planMode: nextPlanMode, testingId: selectedTestingIdRef.current })
+    },
+    [pushLocation],
+  )
 
-  // 現在の画面から一段戻る（計画内サブ画面→計画一覧、計画一覧→概要）。
-  const goBackOneLevel = useCallback(() => {
-    if (viewModeRef.current === 'overview') {
-      return
-    }
-    window.history.back()
-  }, [])
-
-  const goToOverview = useCallback(() => {
-    if (viewModeRef.current === 'overview') {
-      return
-    }
-    if (viewModeRef.current === 'plans' && planModeRef.current !== 'list') {
-      window.history.go(-2)
-      return
-    }
+  // 一段戻る（ブラウザの戻ると同じ。popstate で直前のロケーションを復元する）。
+  const goBack = useCallback(() => {
     window.history.back()
   }, [])
 
@@ -154,9 +205,12 @@ function AppContent() {
     fetchProjects()
       .then((items) => {
         setProjects(items)
-        const nextSelectedTestingId = resolveSelectedTestingId(items, selectedTestingId)
-        setSelectedTestingId(nextSelectedTestingId)
-        setStoredSelectedTestingId(nextSelectedTestingId)
+        // ダッシュボード表示中は特定プロジェクトを選択状態にしない。
+        if (viewModeRef.current !== 'dashboard') {
+          const nextSelectedTestingId = resolveSelectedTestingId(items, selectedTestingId)
+          setSelectedTestingId(nextSelectedTestingId)
+          setStoredSelectedTestingId(nextSelectedTestingId)
+        }
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
@@ -169,20 +223,31 @@ function AppContent() {
         setCollectEnabled(health.collect_enabled)
       })
       .catch(() => setApiStatus('error'))
-    // 共有リンク（/tstat/<id>）で開かれた場合は URL の id を初期選択に使う。
-    // それ以外は直前選択（localStorage）。判定後、アドレスバーはベースパスへ正規化する。
+    // /tstat/<id> で開かれ、その id が存在すれば個別プロジェクトの概要を表示。
+    // /tstat/（または存在しない id）なら既定でダッシュボードを表示する。
+    // 初期ロケーションは replaceState で履歴に記録し、戻る操作で復元できるようにする。
     const urlTestingId = readTestingIdFromUrl()
     fetchProjects()
       .then((items) => {
         setProjects(items)
-        const preferredTestingId = urlTestingId ?? getStoredSelectedTestingId()
-        const nextSelectedTestingId = resolveSelectedTestingId(items, preferredTestingId)
-        setSelectedTestingId(nextSelectedTestingId)
-        setStoredSelectedTestingId(nextSelectedTestingId)
+        const initialLocation: AppLocation =
+          urlTestingId != null && items.some((item) => item.testing_id === urlTestingId)
+            ? { view: 'overview', planMode: 'list', testingId: urlTestingId }
+            : { view: 'dashboard', planMode: 'list', testingId: null }
+        window.history.replaceState(
+          initialLocation,
+          '',
+          locationPath(initialLocation.view, initialLocation.testingId),
+        )
+        setViewMode(initialLocation.view)
+        setPlanMode(initialLocation.planMode)
+        setSelectedTestingId(initialLocation.testingId)
+        if (initialLocation.testingId != null) {
+          setStoredSelectedTestingId(initialLocation.testingId)
+        }
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoadingProjects(false))
-    normalizeUrlToBase()
     fetchProgressStatusThresholds()
       .then(setProgressStatusThresholds)
       .catch((err) => setError(getErrorMessage(err)))
@@ -197,37 +262,42 @@ function AppContent() {
   // ブラウザの戻る/進む。未保存編集中はここで破棄確認し、キャンセルなら履歴を積み直して留まる。
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      const targetView = (event.state?.view as ViewMode | undefined) ?? 'overview'
-      const targetPlanMode: PlanEditorMode = targetView === 'plans'
-        ? (event.state?.planMode as PlanEditorMode | undefined) ?? 'list'
-        : 'list'
-      const currentView = viewModeRef.current
-      const currentPlanMode = planModeRef.current
-      if (currentView === targetView && currentPlanMode === targetPlanMode) {
+      const fallbackTestingId = readTestingIdFromUrl()
+      const target: AppLocation = (event.state as AppLocation | null) ?? {
+        view: fallbackTestingId != null ? 'overview' : 'dashboard',
+        planMode: 'list',
+        testingId: fallbackTestingId,
+      }
+      const current: AppLocation = {
+        view: viewModeRef.current,
+        planMode: planModeRef.current,
+        testingId: selectedTestingIdRef.current,
+      }
+      if (
+        target.view === current.view &&
+        target.planMode === current.planMode &&
+        target.testingId === current.testingId
+      ) {
         return
       }
-      if (currentView !== 'overview' && hasUnsavedChangesRef.current) {
+      if (hasUnsavedChangesRef.current) {
         void confirm(DISCARD_CONFIRM_OPTIONS).then((confirmed) => {
           if (confirmed) {
             setUnsaved(false)
-            setViewMode(targetView)
-            setPlanMode(targetPlanMode)
+            applyLocation(target)
           } else {
-            const currentState = currentView === 'plans'
-              ? { view: currentView, planMode: currentPlanMode }
-              : { view: currentView }
-            window.history.pushState(currentState, '')
+            // 戻る操作を取り消し、現在のロケーションを履歴に積み直す。
+            window.history.pushState(current, '', locationPath(current.view, current.testingId))
           }
         })
         return
       }
-      setViewMode(targetView)
-      setPlanMode(targetPlanMode)
+      applyLocation(target)
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [confirm, setUnsaved])
+  }, [confirm, setUnsaved, applyLocation])
 
   const confirmDiscardChanges = useCallback(async () => {
     if (!hasUnsavedChanges) {
@@ -278,20 +348,15 @@ function AppContent() {
   const handleProjectSaved = (project: ProjectItem) => {
     setUnsaved(false)
     handleProjectUpdated(project)
-    goToOverview()
+    // 編集画面のエントリを概要で置き換え、保存したプロジェクトの PB 図を表示する。
+    openProjectOverview(project.testing_id, 'replace')
   }
 
   const handleDeleted = (testingId: number) => {
     setUnsaved(false)
-    const nextProjects = projects.filter((item) => item.testing_id !== testingId)
-    const nextSelectedTestingId =
-      selectedTestingId === testingId
-        ? resolveSelectedTestingId(nextProjects, null)
-        : resolveSelectedTestingId(nextProjects, selectedTestingId)
-    setProjects(nextProjects)
-    setSelectedTestingId(nextSelectedTestingId)
-    setStoredSelectedTestingId(nextSelectedTestingId)
-    goToOverview()
+    setProjects((current) => current.filter((item) => item.testing_id !== testingId))
+    // 削除後は対象が存在しないため、ダッシュボードへ戻す。
+    replaceLocation({ view: 'dashboard', planMode: 'list', testingId: null })
   }
 
   const handleProjectReorder = (orderedTestingIds: number[]) => {
@@ -339,14 +404,14 @@ function AppContent() {
       <Sidebar
         apiStatus={apiStatus}
         projects={projects}
-        selectedTestingId={selectedTestingId}
+        selectedTestingId={viewMode === 'dashboard' ? null : selectedTestingId}
+        dashboardActive={viewMode === 'dashboard'}
         loading={loadingProjects}
+        onDashboard={() => {
+          void runAfterDiscardConfirmation(goToDashboard)
+        }}
         onSelect={(testingId) => {
-          void runAfterDiscardConfirmation(() => {
-            setSelectedTestingId(testingId)
-            setStoredSelectedTestingId(testingId)
-            goToOverview()
-          })
+          void runAfterDiscardConfirmation(() => openProjectOverview(testingId))
         }}
         onCreate={() => {
           void runAfterDiscardConfirmation(() => openSubview('new'))
@@ -370,12 +435,19 @@ function AppContent() {
                 </button>
               </div>
             )}
+            {viewMode === 'dashboard' && (
+              <Dashboard
+                projects={projects}
+                onOpenProject={openProjectOverview}
+                onCreate={() => openSubview('new')}
+              />
+            )}
             {viewMode === 'new' && (
               <ProjectEditor
                 mode="new"
                 project={null}
                 onCancel={() => {
-                  void runAfterDiscardConfirmation(goToOverview)
+                  void runAfterDiscardConfirmation(goBack)
                 }}
                 onSaved={handleProjectSaved}
                 onDirtyChange={setUnsaved}
@@ -386,7 +458,7 @@ function AppContent() {
                 mode="edit"
                 project={selectedProject}
                 onCancel={() => {
-                  void runAfterDiscardConfirmation(goToOverview)
+                  void runAfterDiscardConfirmation(goBack)
                 }}
                 onSaved={handleProjectSaved}
                 onDeleted={handleDeleted}
@@ -399,6 +471,7 @@ function AppContent() {
                 progressStatusThresholds={progressStatusThresholds}
                 pbChartSettings={pbChartSettings}
                 bugStateColorSettings={bugStateColorSettings}
+                onBack={goToDashboard}
                 onCreate={() => openSubview('new')}
                 onEdit={() => openSubview('edit')}
                 onPlans={() => openSubview('plans')}
@@ -409,7 +482,7 @@ function AppContent() {
                 project={selectedProject}
                 mode={planMode}
                 collectEnabled={collectEnabled}
-                onBack={goBackOneLevel}
+                onBack={goBack}
                 onOpenScreen={openPlanScreen}
                 onChanged={loadProjects}
                 onDirtyChange={setUnsaved}

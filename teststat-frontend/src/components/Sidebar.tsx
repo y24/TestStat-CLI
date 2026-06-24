@@ -13,7 +13,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, RefreshCw, Search, Settings } from 'lucide-react'
+import { GripVertical, LayoutDashboard, Plus, RefreshCw, Search, Settings } from 'lucide-react'
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { ProjectItem } from '../api/types'
 import type { ApiStatus } from '../types/ui'
@@ -22,7 +22,9 @@ import { LockIcon } from './icons/LockIcon'
 interface ProjectNavProps {
   projects: ProjectItem[]
   selectedTestingId: number | null
+  dashboardActive: boolean
   loading: boolean
+  onDashboard: () => void
   onSelect: (testingId: number) => void
   onCreate: () => void
   onRefresh: () => void
@@ -33,7 +35,9 @@ interface ProjectNavProps {
 export function Sidebar({
   projects,
   selectedTestingId,
+  dashboardActive,
   loading,
+  onDashboard,
   onSelect,
   onCreate,
   onRefresh,
@@ -46,7 +50,9 @@ export function Sidebar({
       <ProjectNav
         projects={projects}
         selectedTestingId={selectedTestingId}
+        dashboardActive={dashboardActive}
         loading={loading}
+        onDashboard={onDashboard}
         onSelect={onSelect}
         onCreate={onCreate}
         onRefresh={onRefresh}
@@ -85,7 +91,9 @@ function formatRate(value: number | null | undefined) {
 function ProjectNav({
   projects,
   selectedTestingId,
+  dashboardActive,
   loading,
+  onDashboard,
   onSelect,
   onCreate,
   onRefresh,
@@ -111,6 +119,15 @@ function ProjectNav({
 
   return (
     <div className="project-nav">
+      <button
+        className={['dashboard-nav-button', dashboardActive ? 'selected' : ''].filter(Boolean).join(' ')}
+        type="button"
+        onClick={onDashboard}
+        aria-current={dashboardActive ? 'page' : undefined}
+      >
+        <LayoutDashboard className="dashboard-nav-icon" aria-hidden="true" strokeWidth={2.1} />
+        <span>プロジェクト一覧</span>
+      </button>
       <div className="nav-actions">
         <button className="primary-button nav-create-button" type="button" onClick={onCreate} disabled={loading}>
           <Plus className="nav-create-icon" aria-hidden="true" strokeWidth={2.4} />

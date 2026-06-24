@@ -401,6 +401,38 @@
   font-size: 23px;
 }
 
+/* 概要ヘッダー左側: タイトル/予定期間/ステータスのまとまりと、その左の戻るアイコン。 */
+.overview-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ボタンらしさを出さない素のアイコン。ホバーで色だけ変えてクリック可能と示す。 */
+.overview-back-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 3px 0 0 -4px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.overview-back-icon:hover {
+  color: var(--accent);
+}
+
+.overview-back-icon svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.1;
+}
+
 .plan-screen .content-header h1 {
   font-size: 23px;
 }
@@ -2369,4 +2401,224 @@
   .confirm-actions button {
     flex: 1;
   }
+}
+
+/* ===== ダッシュボード（サイドバーメニュー） ===== */
+.dashboard-nav-button {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.dashboard-nav-button:hover {
+  background: #f1f4f8;
+}
+
+.dashboard-nav-button.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.dashboard-nav-icon {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+
+/* ===== ダッシュボード（一覧テーブル） ===== */
+.dashboard-table-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  /* テーブルが収まらない幅では横スクロールさせる。 */
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  /* 各列が潰れすぎないよう下限を設け、狭い画面ではカード側で横スクロールさせる。 */
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 13px;
+  /* 長いプロジェクト名でカラムが横に伸び、右側の列が押し出されるのを防ぐ。 */
+  table-layout: fixed;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  border-bottom: 1px solid #d7dde7;
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.dashboard-table thead th {
+  background: #f6f8fb;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard-table th.num,
+.dashboard-table td.num {
+  text-align: right;
+}
+
+.dashboard-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.dashboard-table tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+.dashboard-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboard-id-col {
+  width: 92px;
+}
+
+.dashboard-status-col {
+  width: 104px;
+}
+
+.dashboard-period-col {
+  width: 196px;
+}
+
+.dashboard-rate-col {
+  width: 152px;
+}
+
+.dashboard-testing-id {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* プロジェクト名は残り幅に収め、長い名前は省略記号で切り詰める。 */
+.dashboard-name-cell {
+  overflow: hidden;
+}
+
+.dashboard-proj-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.dashboard-proj-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-chevron {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin-left: 6px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.dashboard-table tbody tr:hover .dashboard-chevron {
+  opacity: 1;
+}
+
+.dashboard-period {
+  color: #3e4c59;
+}
+
+.dashboard-period.empty {
+  color: var(--muted);
+}
+
+/* ステータスピル（ProjectOverview の .project-status と同テイスト） */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pill.active {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.pill.completed {
+  color: #0f6b4d;
+  background: #eaf7f1;
+  border-color: #bfe7d4;
+}
+
+.pill.not-started {
+  color: #4b5563;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+/* 完了率セル（数値 + 横バー） */
+.dashboard-rate-cell {
+  min-width: 120px;
+  margin-left: auto;
+}
+
+.dashboard-rate-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dashboard-rate-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-rate-value.empty {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.dashboard-rate-bar {
+  margin-top: 5px;
+  height: 6px;
+  border-radius: 999px;
+  background: #eceff3;
+  overflow: hidden;
+}
+
+.dashboard-rate-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.dashboard-rate-bar > span.done {
+  background: #0f6b4d;
 }

@@ -43,7 +43,6 @@ class FileProgress(Base):
     result_na: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     start_date: Mapped[date | None] = mapped_column(Date)
     latest_update: Mapped[date | None] = mapped_column(Date)
-    sender: Mapped[str | None] = mapped_column(String(255))
     sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 

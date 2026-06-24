@@ -106,7 +106,7 @@ class TestPlanCRUD(unittest.TestCase):
                 total_cases=10, available_cases=10, excluded_cases=0, completed=1, executed=1,
                 not_run=9, completed_rate=10, executed_rate=10, result_pass=1, result_fixed=0,
                 result_fail=0, result_blocked=0, result_suspend=0, result_na=0,
-                start_date=START, latest_update=START, sender="cli", sent_at=datetime(2026, 5, 1),
+                start_date=START, latest_update=START, sent_at=datetime(2026, 5, 1),
             ),
             DailyProgress(
                 testing_id=1001, file_name="cli.xlsx", label=label, environment=None, date=START,

@@ -745,7 +745,6 @@ def main():
                 payload = build_progress_payload(
                     project_info,
                     results,
-                    sender=reporting_config.get("sender"),
                 )
                 success, msg = send_progress(
                     reporting_config.get("base_url"),

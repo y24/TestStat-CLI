@@ -45,7 +45,6 @@ export interface FileProgressItem {
   executed_rate: number
   start_date: string | null
   latest_update: string | null
-  sender: string | null
   sent_at: string
 }
 

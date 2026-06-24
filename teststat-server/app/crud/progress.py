@@ -121,7 +121,6 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
                 result_na=file.results.na,
                 start_date=file.start_date,
                 latest_update=file.latest_update,
-                sender=payload.sender,
                 sent_at=payload.sent_at,
             )
         )

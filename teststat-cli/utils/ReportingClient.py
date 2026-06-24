@@ -76,7 +76,7 @@ def _build_person_rows(by_name):
     return rows
 
 
-def build_progress_payload(project_info, results, sender=None):
+def build_progress_payload(project_info, results):
     files = []
     for filepath, result in results:
         if not isinstance(result, dict):
@@ -143,7 +143,6 @@ def build_progress_payload(project_info, results, sender=None):
     return {
         "testing_id": project_info["testing_id"],
         "project_name": project_info["project_name"],
-        "sender": sender,
         "sent_at": datetime.now().isoformat(timespec="seconds"),
         "files": files,
     }

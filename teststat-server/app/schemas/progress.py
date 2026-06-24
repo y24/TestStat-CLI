@@ -83,7 +83,6 @@ class FileProgressIn(BaseModel):
 class ProgressRequest(BaseModel):
     testing_id: int = Field(..., description="YAML project.testing_id")
     project_name: str = Field(..., min_length=1, max_length=255)
-    sender: str | None = Field(None, max_length=255)
     sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     files: list[FileProgressIn]
 
@@ -126,7 +125,6 @@ class FileProgressItem(BaseModel):
     executed_rate: float
     start_date: date | None
     latest_update: date | None
-    sender: str | None
     sent_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

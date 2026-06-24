@@ -69,11 +69,10 @@ class ReportingClientPayloadTests(unittest.TestCase):
             )
         ]
 
-        payload = build_progress_payload(project_info, results, sender="sender-a")
+        payload = build_progress_payload(project_info, results)
 
         self.assertEqual(payload["testing_id"], 1001)
         self.assertEqual(payload["project_name"], "Sample")
-        self.assertEqual(payload["sender"], "sender-a")
         self.assertEqual(len(payload["files"]), 1)
 
         file_payload = payload["files"][0]

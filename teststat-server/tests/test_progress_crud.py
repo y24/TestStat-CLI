@@ -78,7 +78,6 @@ def make_payload(
         {
             "testing_id": testing_id,
             "project_name": f"Project {testing_id}",
-            "sender": "sender-a",
             "sent_at": "2026-05-31T10:00:00",
             "files": [file_payload],
         }
@@ -111,7 +110,6 @@ class ProgressCrudTests(unittest.TestCase):
 
         files = get_file_progress(self.db, 1001)
         self.assertEqual(len(files), 1)
-        self.assertEqual(files[0].sender, "sender-a")
 
         daily = get_daily_progress(self.db, 1001)
         self.assertEqual(len(daily), 1)

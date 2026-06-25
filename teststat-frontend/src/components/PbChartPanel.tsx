@@ -343,7 +343,7 @@ export function PbChartPanel({
       )}
       {!loading && !error && chart && chart.series.length > 0 && (
         <div className="chart-wrap">
-          <PbChart chart={chart} layers={effectiveLayers} bugAxisMax={pbChartSettings.bug_axis_max} />
+          <PbChart chart={chart} layers={effectiveLayers} bugAxisMax={chart.bug_axis_max ?? pbChartSettings.bug_axis_max} />
         </div>
       )}
       {!loading && !error && (
@@ -619,6 +619,7 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[]): PbChartResp
     past_plans: charts.flatMap((chart) => chart.past_plans),
     has_bugs: charts.some((chart) => chart.has_bugs),
     bugs_updated_at: bugsUpdatedAt,
+    bug_axis_max: Math.max(...charts.map((chart) => chart.bug_axis_max)),
   }
 }
 

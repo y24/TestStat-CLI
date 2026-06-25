@@ -10,6 +10,7 @@ from app.crud.bug import (
     get_bug_chart_metadata,
     get_bug_cumulative,
 )
+from app.crud.setting import get_pb_chart_settings
 from app.models.plan import Plan, PlanDaily, PlanLabel
 from app.models.progress import DailyProgress, FileProgress, TestResultBugSnapshot, Testing
 from app.models.project import Project
@@ -454,6 +455,7 @@ def get_pb_chart(
     #   (全て)=label=None のときは全 label を日付ごとに合算する。
     # - azure_devops ソース: チケットはテストに紐付かないため、従来どおり (全て) 表示時のみ描画する。
     bug_count_source = project.bug_count_source
+    bug_axis_max = project.bug_axis_max or get_pb_chart_settings(db).bug_axis_max
     test_result_bug_daily_map: dict[date, tuple[int, int, int]] = {}
     bug_from = bug_to = None
     if bug_count_source == "test_result":
@@ -508,6 +510,7 @@ def get_pb_chart(
             actuals_updated_at=actuals_updated_at,
             available_cases=0,
             planned_total_cases=None,
+            bug_axis_max=bug_axis_max,
             series=[],
             past_plans=[],
             has_bugs=bugs_present,
@@ -545,6 +548,7 @@ def get_pb_chart(
         actuals_updated_at=actuals_updated_at,
         available_cases=available_cases,
         planned_total_cases=planned_total,
+        bug_axis_max=bug_axis_max,
         series=series,
         past_plans=past_plans,
         has_bugs=bugs_present,

@@ -119,15 +119,6 @@ function ProjectNav({
 
   return (
     <div className="project-nav">
-      <button
-        className={['dashboard-nav-button', dashboardActive ? 'selected' : ''].filter(Boolean).join(' ')}
-        type="button"
-        onClick={onDashboard}
-        aria-current={dashboardActive ? 'page' : undefined}
-      >
-        <LayoutDashboard className="dashboard-nav-icon" aria-hidden="true" strokeWidth={2.1} />
-        <span>プロジェクト一覧</span>
-      </button>
       <div className="nav-actions">
         <button className="primary-button nav-create-button" type="button" onClick={onCreate} disabled={loading}>
           <Plus className="nav-create-icon" aria-hidden="true" strokeWidth={2.4} />
@@ -143,6 +134,15 @@ function ProjectNav({
           <RefreshCw className="nav-refresh-icon" aria-hidden="true" strokeWidth={2.1} />
         </button>
       </div>
+      <button
+        className={['dashboard-nav-button', dashboardActive ? 'selected' : ''].filter(Boolean).join(' ')}
+        type="button"
+        onClick={onDashboard}
+        aria-current={dashboardActive ? 'page' : undefined}
+      >
+        <LayoutDashboard className="dashboard-nav-icon" aria-hidden="true" strokeWidth={2.1} />
+        <span>プロジェクト一覧</span>
+      </button>
       {loading && <div className="nav-message">読み込み中...</div>}
       {!loading && projects.length === 0 && <div className="nav-message">プロジェクト未登録</div>}
       {!loading && activeProjects.length > 0 && (

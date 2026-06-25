@@ -121,6 +121,7 @@ export interface ProjectItem {
   bug_work_item_type: string | null
   bug_tag: string | null
   pb_chart_range_source: 'plan_actual' | 'project_period'
+  bug_axis_max: number | null
   archived: boolean
   display_order: number
   created_at: string
@@ -146,6 +147,7 @@ export interface ProjectCreatePayload {
   bug_work_item_type?: string | null
   bug_tag?: string | null
   pb_chart_range_source?: 'plan_actual' | 'project_period'
+  bug_axis_max?: number | null
 }
 
 export interface ProjectUpdatePayload {
@@ -158,6 +160,7 @@ export interface ProjectUpdatePayload {
   bug_work_item_type?: string | null
   bug_tag?: string | null
   pb_chart_range_source?: 'plan_actual' | 'project_period'
+  bug_axis_max?: number | null
   archived?: boolean
 }
 
@@ -287,6 +290,7 @@ export interface PbChartResponse {
   actuals_updated_at: string | null
   available_cases: number
   planned_total_cases: number | null
+  bug_axis_max: number
   series: PbChartSeries[]
   past_plans: PbChartPastPlan[]
   has_bugs: boolean

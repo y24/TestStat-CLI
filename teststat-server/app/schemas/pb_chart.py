@@ -46,6 +46,7 @@ class PbChartResponse(BaseModel):
     actuals_updated_at: datetime | None
     available_cases: int        # 実績の available_cases 合計（0 = 実績なし）
     planned_total_cases: int | None  # 有効計画の planned_total_cases 合計（None = 計画なし）
+    bug_axis_max: int
     series: list[PbChartSeriesItem]
     past_plans: list[PastPlanSeries]
     has_bugs: bool = False           # 1件でも bug_snapshots があるか

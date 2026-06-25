@@ -143,6 +143,20 @@ class TestProjectCRUD(unittest.TestCase):
         updated = update_project(self.db, 3006, ProjectUpdate(pb_chart_range_source="plan_actual"))
 
         self.assertEqual(updated.pb_chart_range_source, "plan_actual")
+
+    def test_create_update_and_clear_bug_axis_max(self):
+        created = create_project(
+            self.db,
+            ProjectCreate(testing_id=3009, name="不具合軸P", bug_axis_max=80),
+        )
+        self.assertEqual(created.bug_axis_max, 80)
+
+        updated = update_project(self.db, 3009, ProjectUpdate(bug_axis_max=120))
+        self.assertEqual(updated.bug_axis_max, 120)
+
+        cleared = update_project(self.db, 3009, ProjectUpdate(bug_axis_max=None))
+        self.assertIsNone(cleared.bug_axis_max)
+
     def test_create_and_update_planned_dates(self):
         from datetime import date
 
@@ -419,6 +433,23 @@ class TestProjectRouter(unittest.TestCase):
         reread = self.client.get("/api/v1/projects/9002")
         self.assertEqual(reread.status_code, 200)
         self.assertEqual(reread.json()["pb_chart_range_source"], "project_period")
+
+    def test_patch_bug_axis_max_persists_and_can_be_cleared(self):
+        res = self.client.post(
+            "/api/v1/projects",
+            json={"testing_id": 9004, "name": "P", "bug_axis_max": 80},
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["bug_axis_max"], 80)
+
+        patch = self.client.patch("/api/v1/projects/9004", json={"bug_axis_max": None})
+
+        self.assertEqual(patch.status_code, 200)
+        self.assertIsNone(patch.json()["bug_axis_max"])
+        reread = self.client.get("/api/v1/projects/9004")
+        self.assertEqual(reread.status_code, 200)
+        self.assertIsNone(reread.json()["bug_axis_max"])
+
     def test_patch_azure_bug_settings_persists_and_is_returned(self):
         res = self.client.post("/api/v1/projects", json={"testing_id": 9003, "name": "P"})
         self.assertEqual(res.status_code, 201)

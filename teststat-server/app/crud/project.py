@@ -232,6 +232,7 @@ def _to_response(
         bug_work_item_type=project.bug_work_item_type,
         bug_tag=project.bug_tag,
         pb_chart_range_source=project.pb_chart_range_source,
+        bug_axis_max=project.bug_axis_max,
         archived=project.archived,
         display_order=project.display_order,
         created_at=project.created_at,
@@ -324,6 +325,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
         bug_work_item_type=_blank_to_none(payload.bug_work_item_type),
         bug_tag=_blank_to_none(payload.bug_tag),
         pb_chart_range_source=payload.pb_chart_range_source,
+        bug_axis_max=payload.bug_axis_max,
         display_order=(max_display_order + 1) if max_display_order is not None else 0,
     )
     db.add(project)
@@ -360,6 +362,8 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
         project.bug_tag = _blank_to_none(payload.bug_tag)
     if payload.pb_chart_range_source is not None:
         project.pb_chart_range_source = payload.pb_chart_range_source
+    if "bug_axis_max" in payload.model_fields_set:
+        project.bug_axis_max = payload.bug_axis_max
     if payload.archived is not None:
         project.archived = payload.archived
     _validate_project_planned_date_range(project)

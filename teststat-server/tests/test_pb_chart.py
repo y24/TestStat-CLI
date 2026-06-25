@@ -290,6 +290,29 @@ class TestPbChart(unittest.TestCase):
         self.assertIsNone(result.planned_total_cases)
         self.assertEqual(result.available_cases, 0)
 
+    def test_bug_axis_max_uses_project_value_when_set(self):
+        from app.crud.project import update_project
+        from app.crud.setting import update_pb_chart_settings
+        from app.schemas.project import ProjectUpdate
+        from app.schemas.setting import PbChartSettings
+
+        update_pb_chart_settings(self.db, PbChartSettings(bug_axis_max=60))
+        update_project(self.db, 1001, ProjectUpdate(bug_axis_max=90))
+
+        result = get_pb_chart(self.db, 1001)
+
+        self.assertEqual(result.bug_axis_max, 90)
+
+    def test_bug_axis_max_falls_back_to_global_setting(self):
+        from app.crud.setting import update_pb_chart_settings
+        from app.schemas.setting import PbChartSettings
+
+        update_pb_chart_settings(self.db, PbChartSettings(bug_axis_max=60))
+
+        result = get_pb_chart(self.db, 1001)
+
+        self.assertEqual(result.bug_axis_max, 60)
+
     def test_test_result_bug_source_burndown(self):
         from app.crud.project import update_project
         from app.models.progress import TestResultBugSnapshot, Testing

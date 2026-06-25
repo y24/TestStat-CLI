@@ -18,6 +18,7 @@ class ProjectCreate(BaseModel):
     bug_work_item_type: str | None = Field(None, max_length=255)
     bug_tag: str | None = Field(None, max_length=255)
     pb_chart_range_source: PbChartRangeSource = "plan_actual"
+    bug_axis_max: int | None = Field(None, ge=1, le=100000)
 
     @model_validator(mode="after")
     def validate_planned_date_range(self) -> "ProjectCreate":
@@ -40,6 +41,7 @@ class ProjectUpdate(BaseModel):
     bug_work_item_type: str | None = Field(None, max_length=255)
     bug_tag: str | None = Field(None, max_length=255)
     pb_chart_range_source: PbChartRangeSource | None = None
+    bug_axis_max: int | None = Field(None, ge=1, le=100000)
     archived: bool | None = None
 
     @model_validator(mode="after")
@@ -64,6 +66,7 @@ class ProjectResponse(BaseModel):
     bug_work_item_type: str | None
     bug_tag: str | None
     pb_chart_range_source: PbChartRangeSource
+    bug_axis_max: int | None
     archived: bool
     display_order: int
     created_at: datetime

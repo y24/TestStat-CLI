@@ -20,6 +20,7 @@ class Project(Base):
     bug_work_item_type: Mapped[str | None] = mapped_column(String(255))
     bug_tag: Mapped[str | None] = mapped_column(String(255))
     pb_chart_range_source: Mapped[str] = mapped_column(String(32), nullable=False, default="plan_actual")
+    bug_axis_max: Mapped[int | None] = mapped_column(Integer)
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

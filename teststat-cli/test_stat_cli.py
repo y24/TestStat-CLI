@@ -664,12 +664,14 @@ def main():
     project_subtask_id = project_info.get("subtask_id") if project_info else None
     has_project_subtask = _has_subtask_id(project_subtask_id)
     has_subtasks = any("subtask_id" in r for f, r in results if isinstance(r, dict))
+    api_section_printed = False
     if api_enabled and base_url and (has_project_subtask or has_subtasks):
         from utils.ApiIntegration import update_subtask_progress
-        
+
         if not is_json_mode:
             print()
             ConsoleFormatter.print_section("API Integration")
+            api_section_printed = True
         
         api_updates = []
 
@@ -758,8 +760,10 @@ def main():
                         "message": msg
                     }
                 elif success:
-                    print()
-                    ConsoleFormatter.print_section("Progress Reporting")
+                    if not api_section_printed:
+                        print()
+                        ConsoleFormatter.print_section("API Integration")
+                        api_section_printed = True
                     ConsoleFormatter.print_info(f"testing_id={testing_id} の進捗データを送信しました。")
                 else:
                     execution_warnings.append(f"進捗データの送信に失敗しました: {msg}")

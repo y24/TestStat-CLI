@@ -220,7 +220,7 @@ export function PlanCreateForm({
       </div>
       {projectStartDate && projectEndDate && (
         <div className="project-date-hint">
-          予定期間: {formatHintDate(projectStartDate)} ~ {formatHintDate(projectEndDate)}
+          テスト全体期間: {formatHintDate(projectStartDate)} ~ {formatHintDate(projectEndDate)}
         </div>
       )}
       {form.inputMode === 'csv' && (

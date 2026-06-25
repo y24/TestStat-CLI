@@ -304,7 +304,7 @@ export function ProjectEditor({
         </label>
         <div className="form-grid">
           <label>
-            <span>テスト期間 開始日</span>
+            <span>開始日</span>
             <input
               type="date"
               value={form.planned_start_date}
@@ -313,7 +313,7 @@ export function ProjectEditor({
             />
           </label>
           <label>
-            <span>テスト期間 終了日</span>
+            <span>終了日</span>
             <input
               type="date"
               value={form.planned_end_date}
@@ -335,7 +335,7 @@ export function ProjectEditor({
             }
           >
             <option value="plan_actual">計画線・実績線の範囲</option>
-            <option value="project_period">テスト期間の開始日・終了日</option>
+            <option value="project_period">テスト全体期間の開始日・終了日</option>
           </select>
         </label>
         <label>

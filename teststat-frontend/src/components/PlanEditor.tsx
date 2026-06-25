@@ -620,6 +620,7 @@ export function PlanEditor({
       setFormError(readOnlyMessage)
       return
     }
+    const activePlanDateRange = getActivePlanDateRange(label, plans)
     const actualDateRange = getActualDateRange(label, daily, files)
     const projectDateRange =
       project.planned_start_date && project.planned_end_date
@@ -628,7 +629,7 @@ export function PlanEditor({
             end_date: project.planned_end_date,
           }
         : null
-    const initialDateRange = projectDateRange ?? actualDateRange
+    const initialDateRange = activePlanDateRange ?? projectDateRange ?? actualDateRange
     const initialForm = createInitialPlanForm()
     const plannedTotal =
       label === null
@@ -987,6 +988,22 @@ function isSamePlanForm(left: PlanFormState, right: PlanFormState): boolean {
     left.inputMode === right.inputMode &&
     left.dailyText === right.dailyText
   )
+}
+
+function getActivePlanDateRange(
+  label: string | null,
+  plans: PlanItem[],
+): { start_date: string; end_date: string } | null {
+  const activePlan = plans.find(
+    (plan) => plan.is_active && (label === null ? plan.label === null : plan.label === label),
+  )
+  if (!activePlan) {
+    return null
+  }
+  return {
+    start_date: activePlan.start_date,
+    end_date: activePlan.end_date,
+  }
 }
 
 function getActualDateRange(

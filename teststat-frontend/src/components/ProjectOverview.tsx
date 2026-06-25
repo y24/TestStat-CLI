@@ -66,7 +66,6 @@ export function ProjectOverview({
               <span>{project.name}</span>
               <ShareLinkButton testingId={project.testing_id} />
             </h1>
-            {plannedPeriod && <div className="project-planned-period">テスト全体期間: {plannedPeriod}</div>}
             <div className="project-status-row">
               <div className={`project-status ${status.className}`}>
                 <span className="status-dot" aria-hidden="true" />
@@ -77,6 +76,7 @@ export function ProjectOverview({
                   未計画
                 </span>
               )}
+              {plannedPeriod && <div className="project-planned-period">テスト全体期間: {plannedPeriod}</div>}
             </div>
           </div>
         </div>

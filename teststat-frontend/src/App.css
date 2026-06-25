@@ -1746,6 +1746,17 @@
   stroke-width: 2.4;
 }
 
+.plan-cases-mismatch {
+  color: #d18a00;
+}
+
+.plan-cases-mismatch-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
 .plan-excel-link {
   display: inline-flex;
   align-items: center;

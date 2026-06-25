@@ -139,6 +139,12 @@ export function PlanVersionTable({
                     const displayedTotalCases =
                       activePlan?.planned_total_cases ?? actualAvailableCases ?? null
                     const isPlanOnly = label !== null && !actualLabelSet.has(label)
+                    // 計画とデータの両方がそろっているのに項目数が食い違うときは警告する。
+                    const casesMismatch =
+                      activePlan != null &&
+                      actualAvailableCases !== undefined &&
+                      actualAvailableCases > 0 &&
+                      activePlan.planned_total_cases !== actualAvailableCases
                     const businessDays = activePlan
                       ? countBusinessDays(activePlan.start_date, activePlan.end_date, holidays)
                       : 0
@@ -155,6 +161,8 @@ export function PlanVersionTable({
                         labelTarget={labelTarget}
                         isDisabled={isDisabled}
                         displayedTotalCases={displayedTotalCases}
+                        actualAvailableCases={actualAvailableCases ?? null}
+                        casesMismatch={casesMismatch}
                         businessDays={businessDays}
                         dailyCases={dailyCases}
                         isPlanOnly={isPlanOnly}
@@ -248,6 +256,8 @@ function PlanVersionRowContent({
   labelTarget,
   isDisabled,
   displayedTotalCases,
+  actualAvailableCases,
+  casesMismatch,
   businessDays,
   dailyCases,
   isPlanOnly,
@@ -269,6 +279,8 @@ function PlanVersionRowContent({
   labelTarget: LabelEditTarget | null
   isDisabled: boolean
   displayedTotalCases: number | null
+  actualAvailableCases: number | null
+  casesMismatch: boolean
   businessDays: number
   dailyCases: string
   isPlanOnly: boolean
@@ -352,6 +364,15 @@ function PlanVersionRowContent({
             <span>データがありません</span>
           </span>
         )}
+        {casesMismatch && activePlan && (
+          <span
+            className="row-note plan-only-note"
+            title={`計画とデータが一致していません（計画 ${activePlan.planned_total_cases} / データ ${actualAvailableCases}）`}
+          >
+            <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+            <span>項目数が不一致</span>
+          </span>
+        )}
         {label !== null && collectErrors[label] && (
           <span
             className="row-note plan-only-note collect-error-note"
@@ -372,8 +393,20 @@ function PlanVersionRowContent({
           </span>
         )}
       </td>
-      <td className="plan-table-centered-value">
-        {displayedTotalCases !== null ? `${displayedTotalCases}` : '-'}
+      <td className={`plan-table-centered-value${casesMismatch ? ' plan-cases-mismatch' : ''}`}>
+        {casesMismatch && activePlan ? (
+          <span
+            className="plan-cases-mismatch-value"
+            title={`計画とデータが一致していません（計画 ${activePlan.planned_total_cases} / データ ${actualAvailableCases}）`}
+          >
+            <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+            {displayedTotalCases}
+          </span>
+        ) : displayedTotalCases !== null ? (
+          `${displayedTotalCases}`
+        ) : (
+          '-'
+        )}
       </td>
       <td className="plan-table-centered-value">
         {activePlan && businessDays > 0 ? `${businessDays}` : '-'}

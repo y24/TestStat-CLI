@@ -81,6 +81,13 @@ interface BreakdownRow {
   executedRate: number
 }
 
+interface CompletionSummary {
+  availableCases: number
+  completed: number
+  completedRate: number
+  actualVsPlanRate: number | null
+}
+
 const resultKeys: ResultKey[] = ['Pass', 'Fixed', 'Fail', 'Blocked', 'Suspend', 'N/A']
 
 const resultHeaderClassNames: Record<ResultKey, string> = {
@@ -227,7 +234,8 @@ export function PbChartPanel({
   const bugSummary = chart ? getBugSummary(chart) : null
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
-  const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
+  const completionSummary = chart ? buildCompletionSummary(chart, visibleFiles, label) : null
+  const planStatusLevel = getProgressStatusLevel(completionSummary?.actualVsPlanRate, progressStatusThresholds)
   // Blocked件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
   const blockedCount = visibleDaily.reduce((sum, item) => sum + item.Blocked, 0)
   // 未解決チケットは「未解決チケット一覧」と同じ母数（見送りを除く未解決バグ）。
@@ -237,10 +245,10 @@ export function PbChartPanel({
   return (
     <section className="chart-section">
       <section className="summary-grid">
-        <StatusTile label="完了率(対全体)" value={formatCompletionRate(project)} />
+        <StatusTile label="完了率(対全体)" value={formatCompletionSummary(completionSummary)} />
         <StatusTile
           label="完了率(対計画)"
-          value={formatRate(project.actual_vs_plan_rate)}
+          value={formatRate(completionSummary?.actualVsPlanRate)}
           statusLevel={planStatusLevel}
         />
         <StatusTile label="Blocked件数" value={loading ? '-' : String(blockedCount)} />
@@ -386,12 +394,45 @@ function formatRate(value: number | null | undefined) {
   return `${value.toFixed(1)}%`
 }
 
-function formatCompletionRate(project: ProjectItem) {
-  const rate = formatRate(project.actual_completed_rate)
-  if (rate === '-') {
-    return rate
+function buildCompletionSummary(
+  chart: PbChartResponse,
+  files: FileProgressItem[],
+  selectedLabel: string | null,
+): CompletionSummary {
+  const matchingFiles = files.filter((file) => !selectedLabel || file.label === selectedLabel)
+  const completed = matchingFiles.reduce((sum, file) => sum + file.completed, 0)
+  return {
+    availableCases: chart.available_cases,
+    completed,
+    completedRate: toRate(completed, chart.available_cases),
+    actualVsPlanRate: computeActualVsPlanRate(chart),
   }
-  return `${rate} (${project.actual_completed}/${project.actual_available_cases})`
+}
+
+function computeActualVsPlanRate(chart: PbChartResponse) {
+  const latestActualIndex = chart.series.findLastIndex((point) => point.actual_completed_daily != null)
+  if (latestActualIndex < 0) {
+    return null
+  }
+
+  let actualExecuted = 0
+  let plannedCompletedUntilLatestActual = 0
+  for (const point of chart.series.slice(0, latestActualIndex + 1)) {
+    actualExecuted += point.actual_completed_daily ?? 0
+    plannedCompletedUntilLatestActual += point.planned_completed_daily ?? 0
+  }
+
+  if (plannedCompletedUntilLatestActual <= 0) {
+    return null
+  }
+  return Math.round((actualExecuted / plannedCompletedUntilLatestActual) * 10000) / 100
+}
+
+function formatCompletionSummary(summary: CompletionSummary | null) {
+  if (!summary) {
+    return '-'
+  }
+  return `${summary.completedRate.toFixed(1)}% (${summary.completed}/${summary.availableCases})`
 }
 
 function getBugSummary(

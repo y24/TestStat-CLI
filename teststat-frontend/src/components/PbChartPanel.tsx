@@ -335,7 +335,7 @@ export function PbChartPanel({
             disabled={bugSync.loading || !bugsAllowed || project.archived}
           >
             <Bug className="bug-sync-icon" aria-hidden="true" />
-            {bugSync.loading ? '取得中...' : '課題数を取得'}
+            {bugSync.loading ? '取得中...' : 'チケットを取得'}
           </button>
         )}
         {bugSync.error ? (

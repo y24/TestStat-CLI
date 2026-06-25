@@ -18,6 +18,7 @@ import {
   fetchProgressDaily,
   fetchProgressFiles,
   syncAzureDevOpsBugs,
+  updateProject,
 } from '../api/client'
 import type {
   DailyProgressItem,
@@ -101,12 +102,18 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
 
 const EMPTY_SELECTED_LABELS: string[] = []
 
+interface DisplaySettings {
+  pb_chart_range_source: 'plan_actual' | 'project_period'
+  bug_axis_max: number | null
+}
+
 export function PbChartPanel({
   project,
   pbChartSettings,
   bugStateColorSettings,
   progressStatusThresholds,
   onPlans,
+  onProjectUpdate,
   layerModalOpen,
   onLayerModalClose,
 }: {
@@ -115,6 +122,7 @@ export function PbChartPanel({
   bugStateColorSettings: BugStateColorSettings
   progressStatusThresholds: ProgressStatusThresholds
   onPlans?: () => void
+  onProjectUpdate?: (project: ProjectItem) => void
   layerModalOpen?: boolean
   onLayerModalClose?: () => void
 }) {
@@ -143,6 +151,29 @@ export function PbChartPanel({
     message: null,
     error: null,
   })
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>({
+    pb_chart_range_source: project.pb_chart_range_source,
+    bug_axis_max: project.bug_axis_max,
+  })
+
+  useEffect(() => {
+    setDisplaySettings({
+      pb_chart_range_source: project.pb_chart_range_source,
+      bug_axis_max: project.bug_axis_max,
+    })
+  }, [project.testing_id, project.pb_chart_range_source, project.bug_axis_max])
+
+  const handleLayerModalClose = (changedSettings?: DisplaySettings) => {
+    onLayerModalClose?.()
+    if (changedSettings) {
+      updateProject(project.testing_id, changedSettings)
+        .then((updated) => {
+          onProjectUpdate?.(updated)
+          setReloadKey((key) => key + 1)
+        })
+        .catch(() => {})
+    }
+  }
 
   const handleSyncBugs = () => {
     setBugSync({ loading: true, message: null, error: null })
@@ -362,7 +393,8 @@ export function PbChartPanel({
           layers={layers}
           bugsAllowed={bugsAllowed}
           onChange={setLayers}
-          onClose={() => onLayerModalClose?.()}
+          onClose={handleLayerModalClose}
+          displaySettings={displaySettings}
         />
       )}
     </section>
@@ -638,14 +670,33 @@ function ChartLayerModal({
   onChange,
   bugsAllowed,
   onClose,
+  displaySettings,
 }: {
   layers: ChartLayers
   onChange: (layers: ChartLayers) => void
   bugsAllowed: boolean
-  onClose: () => void
+  onClose: (changedSettings?: DisplaySettings) => void
+  displaySettings: DisplaySettings
 }) {
+  const [pbRangeSource, setPbRangeSource] = useState(displaySettings.pb_chart_range_source)
+  const [bugAxisMaxStr, setBugAxisMaxStr] = useState(
+    displaySettings.bug_axis_max == null ? '' : String(displaySettings.bug_axis_max),
+  )
+
+  const handleClose = () => {
+    const bugAxisMax = bugAxisMaxStr.trim() ? Number(bugAxisMaxStr) : null
+    const validBugAxisMax =
+      bugAxisMax == null || (Number.isInteger(bugAxisMax) && bugAxisMax >= 1 && bugAxisMax <= 100000)
+        ? bugAxisMax
+        : displaySettings.bug_axis_max
+    const changed =
+      pbRangeSource !== displaySettings.pb_chart_range_source ||
+      validBugAxisMax !== displaySettings.bug_axis_max
+    onClose(changed ? { pb_chart_range_source: pbRangeSource, bug_axis_max: validBugAxisMax } : undefined)
+  }
+
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={handleClose}>
       <div
         className="modal-panel layer-settings-panel"
         role="dialog"
@@ -655,66 +706,96 @@ function ChartLayerModal({
       >
         <div className="modal-header">
           <h2 id="layer-settings-title">表示設定</h2>
-          <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="閉じる">
+          <button className="icon-button modal-close" type="button" onClick={handleClose} aria-label="閉じる">
             ×
           </button>
         </div>
         <div className="layer-settings-body">
-          <label>
-            <input
-              type="checkbox"
-              checked={layers.plannedLine}
-              onChange={(event) => onChange({ ...layers, plannedLine: event.target.checked })}
-            />
-            計画線
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={layers.actualLine}
-              onChange={(event) => onChange({ ...layers, actualLine: event.target.checked })}
-            />
-            実績線
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={layers.dailyBars}
-              onChange={(event) => onChange({ ...layers, dailyBars: event.target.checked })}
-            />
-            日別消化
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={layers.pastPlans}
-              onChange={(event) => onChange({ ...layers, pastPlans: event.target.checked })}
-            />
-            過去計画
-          </label>
-          <label
-            className={bugsAllowed ? undefined : 'layer-disabled'}
-            title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
-          >
-            <input
-              type="checkbox"
-              checked={bugsAllowed && layers.bugs}
-              disabled={!bugsAllowed}
-              onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
-            />
-            不具合
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={layers.todayLine}
-              onChange={(event) => onChange({ ...layers, todayLine: event.target.checked })}
-            />
-            今日の日付
-          </label>
+          <div className="layer-settings-section">
+            <div className="layer-settings-section-title">表示レイヤー</div>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.plannedLine}
+                onChange={(event) => onChange({ ...layers, plannedLine: event.target.checked })}
+              />
+              計画線
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.actualLine}
+                onChange={(event) => onChange({ ...layers, actualLine: event.target.checked })}
+              />
+              実績線
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.dailyBars}
+                onChange={(event) => onChange({ ...layers, dailyBars: event.target.checked })}
+              />
+              日別消化
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.pastPlans}
+                onChange={(event) => onChange({ ...layers, pastPlans: event.target.checked })}
+              />
+              過去計画
+            </label>
+            <label
+              className={bugsAllowed ? undefined : 'layer-disabled'}
+              title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
+            >
+              <input
+                type="checkbox"
+                checked={bugsAllowed && layers.bugs}
+                disabled={!bugsAllowed}
+                onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
+              />
+              不具合
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.todayLine}
+                onChange={(event) => onChange({ ...layers, todayLine: event.target.checked })}
+              />
+              今日の日付
+            </label>
+          </div>
+          <div className="layer-settings-section">
+            <div className="layer-settings-section-title">軸・範囲</div>
+            <label className="layer-settings-field">
+              <span>PB図の表示範囲</span>
+              <select
+                value={pbRangeSource}
+                onChange={(event) =>
+                  setPbRangeSource(event.target.value as DisplaySettings['pb_chart_range_source'])
+                }
+              >
+                <option value="plan_actual">計画線・実績線の範囲</option>
+                <option value="project_period">テスト全体期間の開始日・終了日</option>
+              </select>
+            </label>
+            <label className="layer-settings-field">
+              <span>不具合件数の縦軸上限</span>
+              <input
+                type="number"
+                min="1"
+                max="100000"
+                step="1"
+                value={bugAxisMaxStr}
+                placeholder="未設定の場合はシステム全体設定"
+                onChange={(event) => setBugAxisMaxStr(event.target.value)}
+              />
+            </label>
+          </div>
         </div>
         <div className="modal-actions">
-          <button className="secondary-button" type="button" onClick={onClose}>
+          <button className="secondary-button" type="button" onClick={handleClose}>
             閉じる
           </button>
         </div>

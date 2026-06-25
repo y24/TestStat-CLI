@@ -475,6 +475,7 @@ function AppContent() {
                 onCreate={() => openSubview('new')}
                 onEdit={() => openSubview('edit')}
                 onPlans={() => openSubview('plans')}
+                onProjectUpdate={handleProjectUpdated}
               />
             )}
             {viewMode === 'plans' && selectedProject && (

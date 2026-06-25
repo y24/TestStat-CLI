@@ -2224,14 +2224,34 @@
 }
 
 .layer-settings-panel {
-  width: min(380px, 100%);
+  width: min(420px, 100%);
 }
 
 .layer-settings-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   padding: 4px 0 8px;
+}
+
+.layer-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.layer-settings-section + .layer-settings-section {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.layer-settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .layer-settings-body label {
@@ -2258,6 +2278,33 @@
 
 .layer-settings-body label.layer-disabled input {
   cursor: not-allowed;
+}
+
+.layer-settings-body label.layer-settings-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  font-size: 13px;
+  cursor: default;
+  user-select: none;
+}
+
+.layer-settings-field > span {
+  color: var(--text);
+}
+
+.layer-settings-field select,
+.layer-settings-field input[type='number'] {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  cursor: auto;
 }
 
 .settings-panel {

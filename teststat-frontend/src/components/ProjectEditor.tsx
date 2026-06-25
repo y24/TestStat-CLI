@@ -21,8 +21,6 @@ interface ProjectFormState {
   bug_parent_work_item_id: string
   bug_work_item_type: string
   bug_tag: string
-  pb_chart_range_source: 'plan_actual' | 'project_period'
-  bug_axis_max: string
 }
 
 const emptyForm: ProjectFormState = {
@@ -34,8 +32,6 @@ const emptyForm: ProjectFormState = {
   bug_parent_work_item_id: '',
   bug_work_item_type: '',
   bug_tag: '',
-  pb_chart_range_source: 'plan_actual',
-  bug_axis_max: '',
 }
 
 export function ProjectEditor({
@@ -65,8 +61,6 @@ export function ProjectEditor({
           bug_parent_work_item_id: project.bug_parent_work_item_id ? String(project.bug_parent_work_item_id) : '',
           bug_work_item_type: project.bug_work_item_type ?? '',
           bug_tag: project.bug_tag ?? '',
-          pb_chart_range_source: project.pb_chart_range_source,
-          bug_axis_max: project.bug_axis_max == null ? '' : String(project.bug_axis_max),
         }
       : emptyForm,
   )
@@ -90,9 +84,7 @@ export function ProjectEditor({
           form.bug_count_source !== 'azure_devops' ||
           Boolean(form.bug_parent_work_item_id.trim()) ||
           Boolean(form.bug_work_item_type.trim()) ||
-          Boolean(form.bug_tag.trim()) ||
-          form.pb_chart_range_source !== 'plan_actual' ||
-          Boolean(form.bug_axis_max.trim())
+          Boolean(form.bug_tag.trim())
         : project !== null &&
           (form.name !== project.name ||
             form.planned_start_date !== (project.planned_start_date ?? '') ||
@@ -100,9 +92,7 @@ export function ProjectEditor({
             form.bug_count_source !== project.bug_count_source ||
             form.bug_parent_work_item_id !== (project.bug_parent_work_item_id ? String(project.bug_parent_work_item_id) : '') ||
             form.bug_work_item_type !== (project.bug_work_item_type ?? '') ||
-            form.bug_tag !== (project.bug_tag ?? '') ||
-            form.pb_chart_range_source !== project.pb_chart_range_source ||
-            form.bug_axis_max !== (project.bug_axis_max == null ? '' : String(project.bug_axis_max)))
+            form.bug_tag !== (project.bug_tag ?? ''))
     onDirtyChange(dirty)
   }, [form, mode, onDirtyChange, project])
 
@@ -160,12 +150,6 @@ export function ProjectEditor({
       setFormError('親となるチケットのWork Item IDは正の整数で入力してください')
       return
     }
-    const bugAxisMax = form.bug_axis_max.trim() ? Number(form.bug_axis_max) : null
-    if (bugAxisMax !== null && (!Number.isInteger(bugAxisMax) || bugAxisMax < 1 || bugAxisMax > 100000)) {
-      setFormError('不具合件数の縦軸上限は1〜100000の整数で入力してください')
-      return
-    }
-
     setSubmitting(true)
     const plannedDates = {
       planned_start_date: form.planned_start_date || null,
@@ -174,8 +158,6 @@ export function ProjectEditor({
       bug_parent_work_item_id: bugParentWorkItemId,
       bug_work_item_type: form.bug_work_item_type.trim() || null,
       bug_tag: form.bug_tag.trim() || null,
-      pb_chart_range_source: form.pb_chart_range_source,
-      bug_axis_max: bugAxisMax,
     }
     const request =
       mode === 'new'
@@ -333,35 +315,6 @@ export function ProjectEditor({
             />
           </label>
         </div>
-        <label>
-          <span>PB図の表示範囲</span>
-          <select
-            value={form.pb_chart_range_source}
-            disabled={submitting || isArchivedReadOnly}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                pb_chart_range_source: event.target.value as ProjectFormState['pb_chart_range_source'],
-              })
-            }
-          >
-            <option value="plan_actual">計画線・実績線の範囲</option>
-            <option value="project_period">テスト全体期間の開始日・終了日</option>
-          </select>
-        </label>
-        <label>
-          <span>不具合件数の縦軸上限</span>
-          <input
-            type="number"
-            min="1"
-            max="100000"
-            step="1"
-            value={form.bug_axis_max}
-            disabled={submitting || isArchivedReadOnly}
-            placeholder="未設定の場合は全体設定"
-            onChange={(event) => setForm({ ...form, bug_axis_max: event.target.value })}
-          />
-        </label>
         <label>
           <span>不具合件数ソース</span>
           <select

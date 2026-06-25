@@ -16,6 +16,7 @@ export function ProjectOverview({
   onCreate,
   onEdit,
   onPlans,
+  onProjectUpdate,
 }: {
   project: ProjectItem | null
   progressStatusThresholds: ProgressStatusThresholds
@@ -25,6 +26,7 @@ export function ProjectOverview({
   onCreate: () => void
   onEdit: () => void
   onPlans: () => void
+  onProjectUpdate?: (project: ProjectItem) => void
 }) {
   const [showLayerModal, setShowLayerModal] = useState(false)
 
@@ -103,6 +105,7 @@ export function ProjectOverview({
         bugStateColorSettings={bugStateColorSettings}
         progressStatusThresholds={progressStatusThresholds}
         onPlans={onPlans}
+        onProjectUpdate={onProjectUpdate}
         layerModalOpen={showLayerModal}
         onLayerModalClose={() => setShowLayerModal(false)}
       />

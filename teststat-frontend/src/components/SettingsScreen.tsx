@@ -237,7 +237,7 @@ export function SettingsScreen({
 
     const nextBugAxisMax = Math.floor(Number(pbChartForm.bug_axis_max))
     if (!Number.isFinite(nextBugAxisMax) || nextBugAxisMax < 1) {
-      setError('不具合件数の縦軸上限は1以上の整数にしてください。')
+      setError('課題チケット件数の縦軸上限は1以上の整数にしてください。')
       return
     }
 
@@ -342,12 +342,12 @@ export function SettingsScreen({
         <div className="settings-section-header">
           <div>
             <div className="panel-title">PB図</div>
-            <div className="panel-subtitle">不具合件数の右側の縦軸に使用します。</div>
+            <div className="panel-subtitle">課題チケット件数の右側の縦軸に使用します。</div>
           </div>
         </div>
         <form className="threshold-settings-form" onSubmit={handleSavePbChartSettings}>
           <label>
-            <span>不具合件数の縦軸上限</span>
+            <span>課題チケット件数の縦軸上限</span>
             <input
               type="number"
               min="1"
@@ -409,7 +409,7 @@ export function SettingsScreen({
                   />
                 </label>
                 <label>
-                  <span>候補</span>
+                  <span>プリセット</span>
                   <select
                     value={findBugStatePresetLabel(item)}
                     disabled={savingBugStateColors}

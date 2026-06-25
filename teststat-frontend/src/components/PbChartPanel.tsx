@@ -181,7 +181,7 @@ export function PbChartPanel({
       .then((res) => {
         setBugSync({
           loading: false,
-          message: `不具合 ${res.fetched} 件（未解消 ${res.open_count} / 見送り ${res.suspended_count} / 完了 ${res.resolved_count}）`,
+          message: `課題 ${res.fetched} 件（未解消 ${res.open_count} / 見送り ${res.suspended_count} / 完了 ${res.resolved_count}）`,
           error: null,
         })
         setLayers((prev) => ({ ...prev, bugs: true }))
@@ -335,14 +335,14 @@ export function PbChartPanel({
             disabled={bugSync.loading || !bugsAllowed || project.archived}
           >
             <Bug className="bug-sync-icon" aria-hidden="true" />
-            {bugSync.loading ? '取得中...' : '不具合数を取得'}
+            {bugSync.loading ? '取得中...' : '課題数を取得'}
           </button>
         )}
         {bugSync.error ? (
           <span className="bug-meta error">取得失敗: {bugSync.error}</span>
         ) : !bugsAllowed ? null : bugSummary ? (
           <span className="bug-meta">
-            不具合 <b>{bugSummary.total}</b> 件（{usesTestResultBugs ? 'Fail' : '未解消'}{' '}
+            課題 <b>{bugSummary.total}</b> 件（{usesTestResultBugs ? 'Fail' : '未解消'}{' '}
             <b className="open">{bugSummary.open}</b> / {usesTestResultBugs ? 'Suspend' : '見送り'}{' '}
             <b className="suspended">{bugSummary.suspended}</b> / {usesTestResultBugs ? 'Fixed' : '完了'}{' '}
             <b className="resolved">{bugSummary.resolved}</b>）
@@ -351,7 +351,7 @@ export function PbChartPanel({
               : ''}
           </span>
         ) : (
-          <span className="bug-meta">不具合データ未取得</span>
+          <span className="bug-meta">課題データ未取得</span>
         )}
       </div>
 
@@ -747,7 +747,7 @@ function ChartLayerModal({
             </label>
             <label
               className={bugsAllowed ? undefined : 'layer-disabled'}
-              title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
+              title={bugsAllowed ? undefined : '課題数グラフは表示対象が(全て)のときのみ表示できます'}
             >
               <input
                 type="checkbox"
@@ -755,7 +755,7 @@ function ChartLayerModal({
                 disabled={!bugsAllowed}
                 onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
               />
-              不具合
+              課題数
             </label>
             <label>
               <input
@@ -781,7 +781,7 @@ function ChartLayerModal({
               </select>
             </label>
             <label className="layer-settings-field">
-              <span>不具合件数の縦軸上限</span>
+              <span>課題件数の縦軸上限</span>
               <input
                 type="number"
                 min="1"
@@ -980,16 +980,16 @@ function OpenBugList({
     <>
       <BugListSection
         title="未解決チケット一覧"
-        ariaLabel="未解決の不具合チケット一覧"
+        ariaLabel="未解決のチケット一覧"
         bugs={openBugs}
-        emptyText={bugDataFetched ? '未解決の不具合チケットはありません' : '不具合データ未取得です'}
+        emptyText={bugDataFetched ? '未解決のチケットはありません' : '課題データ未取得です'}
         bugStateColors={bugStateColors}
       />
       <BugListSection
         title="対応見送りチケット一覧"
-        ariaLabel="対応見送りの不具合チケット一覧"
+        ariaLabel="対応見送りのチケット一覧"
         bugs={suspendedBugs}
-        emptyText={bugDataFetched ? '対応見送りの不具合チケットはありません' : '不具合データ未取得です'}
+        emptyText={bugDataFetched ? '対応見送りのチケットはありません' : '課題データ未取得です'}
         bugStateColors={bugStateColors}
       />
     </>

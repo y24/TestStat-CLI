@@ -201,8 +201,8 @@ export function ProjectEditor({
       return
     }
     const confirmed = await confirm({
-      title: '不具合数データの削除',
-      message: `Testing ID ${project.testing_id} の取得済み不具合数データを削除します。プロジェクト、計画、実績データは削除されません。`,
+      title: '課題チケット数データの削除',
+      message: `Testing ID ${project.testing_id} の取得済み課題チケット数データを削除します。プロジェクト、計画、実績データは削除されません。`,
       confirmLabel: '削除',
       danger: true,
     })
@@ -213,7 +213,7 @@ export function ProjectEditor({
     setFormError(null)
     setFormNotice(null)
     deleteBugCountData(project.testing_id)
-      .then(() => setFormNotice('不具合数データを削除しました。'))
+      .then(() => setFormNotice('課題チケット数データを削除しました。'))
       .catch((err) => setFormError(getErrorMessage(err)))
       .finally(() => setSubmitting(false))
   }
@@ -316,7 +316,7 @@ export function ProjectEditor({
           </label>
         </div>
         <label>
-          <span>不具合件数ソース</span>
+          <span>課題件数ソース</span>
           <select
             value={form.bug_count_source}
             disabled={submitting || isArchivedReadOnly}
@@ -333,7 +333,7 @@ export function ProjectEditor({
         </label>
         {form.bug_count_source === 'azure_devops' && (
           <fieldset className="ado-bug-settings">
-            <legend>不具合チケット抽出条件</legend>
+            <legend>課題チケット抽出条件</legend>
             <label>
               <span>親チケットのWork Item ID</span>
               <input
@@ -389,12 +389,12 @@ export function ProjectEditor({
                 {project?.archived ? 'アーカイブ解除' : 'アーカイブ'}
               </button>
               <button
-                className="danger-button"
+                className="secondary-button"
                 type="button"
                 onClick={handleDeleteBugData}
                 disabled={submitting || isArchivedReadOnly}
               >
-                不具合数データ削除
+                課題データのクリア
               </button>
               <span
                 className="delete-action-tooltip"
@@ -407,7 +407,7 @@ export function ProjectEditor({
                   onClick={handleDelete}
                   disabled={submitting || Boolean(deleteDisabledReason)}
                 >
-                  削除
+                  プロジェクト削除
                 </button>
               </span>
             </span>

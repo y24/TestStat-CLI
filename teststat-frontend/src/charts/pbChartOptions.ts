@@ -100,7 +100,7 @@ export function buildPbChartOption(
   const bugLegendNames =
     chart.bug_count_source === 'test_result'
       ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
-      : { resolved: '解決済み', suspended: '対応見送り', open: '起票不具合' }
+      : { resolved: '解決済み', suspended: '対応見送り', open: '起票チケット' }
   const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
   const showTodayLine = layers.todayLine && dates.includes(today)
   const todayMarkLine = showTodayLine
@@ -288,7 +288,7 @@ export function buildPbChartOption(
       ? [
           {
             type: 'value',
-            name: '件数',
+            name: '残件数',
             // 0 を底に固定（負の日別補正値や右軸との目盛合わせで軸が負側へ伸びるのを防ぐ）。
             min: 0,
             nameTextStyle: { color: '#7b8794' },
@@ -297,7 +297,7 @@ export function buildPbChartOption(
           },
           {
             type: 'value',
-            name: '件数（不具合）',
+            name: '課題件数',
             position: 'right',
             min: 0,
             max: steppedBugMax(bugPeak, bugAxisMax),

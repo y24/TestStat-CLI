@@ -110,7 +110,7 @@ def has_bugs(db: Session, testing_id: int) -> bool:
 
 
 def delete_bug_count_data(db: Session, testing_id: int) -> tuple[int, int]:
-    """Testing ID に紐づく取得済み不具合数データを削除する。
+    """Testing ID に紐づく取得済み課題数データを削除する。
 
     戻り値は (Azure DevOps 由来の削除件数, テスト結果由来の削除件数)。
     """

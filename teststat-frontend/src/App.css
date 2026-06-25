@@ -2289,6 +2289,29 @@
   accent-color: var(--accent);
 }
 
+.past-plan-multi-select {
+  margin: 2px 0 4px 24px;
+}
+
+.past-plan-select-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.past-plan-multi-select .target-multi-button {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.past-plan-multi-select .target-multi-menu {
+  left: 0;
+  width: 100%;
+}
+
 .layer-settings-body label.layer-disabled {
   color: var(--muted);
   cursor: not-allowed;

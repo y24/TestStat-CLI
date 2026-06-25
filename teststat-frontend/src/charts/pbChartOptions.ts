@@ -75,6 +75,7 @@ export function buildPbChartOption(
   chart: PbChartResponse,
   layers: ChartLayers,
   bugAxisMax: number,
+  hiddenPastPlanIds?: ReadonlySet<number>,
 ): PbChartOption {
   const dates = chart.series.map((item) => item.date)
   const dateTickIndexes = selectDateTickIndexes(dates)
@@ -174,21 +175,23 @@ export function buildPbChartOption(
   }
 
   if (layers.pastPlans) {
-    chart.past_plans.forEach((pastPlan) => {
-      const remainingByDate = new Map(
-        pastPlan.series.map((item) => [item.date, item.planned_remaining]),
-      )
-      series.push({
-        name: `過去計画 ${displayLabel(pastPlan.label)} v${pastPlan.version}`,
-        type: 'line',
-        data: dates.map((date) => remainingByDate.get(date) ?? null),
-        connectNulls: false,
-        symbol: 'none',
-        lineStyle: { type: 'dashed', width: 1, color: pastPlanLineColor },
-        itemStyle: { color: pastPlanLineColor },
-        z: 3,
+    chart.past_plans
+      .filter((pastPlan) => !hiddenPastPlanIds?.has(pastPlan.plan_id))
+      .forEach((pastPlan) => {
+        const remainingByDate = new Map(
+          pastPlan.series.map((item) => [item.date, item.planned_remaining]),
+        )
+        series.push({
+          name: `過去計画 ${displayLabel(pastPlan.label)} v${pastPlan.version}`,
+          type: 'line',
+          data: dates.map((date) => remainingByDate.get(date) ?? null),
+          connectNulls: false,
+          symbol: 'none',
+          lineStyle: { type: 'dashed', width: 1, color: pastPlanLineColor },
+          itemStyle: { color: pastPlanLineColor },
+          z: 3,
+        })
       })
-    })
   }
 
   if (layers.plannedLine) {

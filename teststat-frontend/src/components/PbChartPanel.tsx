@@ -27,6 +27,7 @@ import type {
   BugStateColorSettings,
   BugStateColorSetting,
   PbChartSettings,
+  PbChartPastPlan,
   PbChartResponse,
   PlanItem,
   PlanLabelItem,
@@ -34,6 +35,7 @@ import type {
 } from '../api/types'
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
+import { displayLabel } from '../utils/plans'
 import { Bug, ClipboardList } from 'lucide-react'
 import { formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
@@ -145,6 +147,8 @@ export function PbChartPanel({
     bugs: true,
     todayLine: false,
   })
+  // 過去計画は plan_id 単位で非表示にできる。デフォルトは全て表示（=空集合）。
+  const [hiddenPastPlanIds, setHiddenPastPlanIds] = useState<Set<number>>(() => new Set())
   const [reloadKey, setReloadKey] = useState(0)
   const [bugSync, setBugSync] = useState<{ loading: boolean; message: string | null; error: string | null }>({
     loading: false,
@@ -374,7 +378,12 @@ export function PbChartPanel({
       )}
       {!loading && !error && chart && chart.series.length > 0 && (
         <div className="chart-wrap">
-          <PbChart chart={chart} layers={effectiveLayers} bugAxisMax={chart.bug_axis_max ?? pbChartSettings.bug_axis_max} />
+          <PbChart
+            chart={chart}
+            layers={effectiveLayers}
+            bugAxisMax={chart.bug_axis_max ?? pbChartSettings.bug_axis_max}
+            hiddenPastPlanIds={hiddenPastPlanIds}
+          />
         </div>
       )}
       {!loading && !error && (
@@ -395,6 +404,9 @@ export function PbChartPanel({
           onChange={setLayers}
           onClose={handleLayerModalClose}
           displaySettings={displaySettings}
+          pastPlans={chart?.past_plans ?? []}
+          hiddenPastPlanIds={hiddenPastPlanIds}
+          onHiddenPastPlanIdsChange={setHiddenPastPlanIds}
         />
       )}
     </section>
@@ -490,6 +502,105 @@ function TargetMultiSelect({
 
 function labelsKey(labels: string[]) {
   return [...labels].sort().join('\u0000')
+}
+
+function PastPlanMultiSelect({
+  pastPlans,
+  hiddenPastPlanIds,
+  onHiddenChange,
+}: {
+  pastPlans: PbChartPastPlan[]
+  hiddenPastPlanIds: Set<number>
+  onHiddenChange: (next: Set<number>) => void
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [open, setOpen] = useState(false)
+  const sorted = sortPastPlans(pastPlans)
+  const visibleCount = sorted.filter((plan) => !hiddenPastPlanIds.has(plan.plan_id)).length
+  const allVisible = visibleCount === sorted.length
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  const toggle = (planId: number) => {
+    const next = new Set(hiddenPastPlanIds)
+    if (next.has(planId)) {
+      next.delete(planId)
+    } else {
+      next.add(planId)
+    }
+    onHiddenChange(next)
+  }
+
+  const buttonText = allVisible
+    ? `全て (${sorted.length}件)`
+    : `${visibleCount} / ${sorted.length}件 表示`
+
+  return (
+    <div className="target-multi-select past-plan-multi-select" ref={containerRef}>
+      <span className="past-plan-select-label">表示する版</span>
+      <button
+        type="button"
+        className="target-multi-button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="target-multi-button-text">{buttonText}</span>
+        <span className="target-multi-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="target-multi-menu" role="listbox" aria-multiselectable="true">
+          <button
+            type="button"
+            className={allVisible ? 'target-multi-option selected' : 'target-multi-option'}
+            role="option"
+            aria-selected={allVisible}
+            onClick={() => onHiddenChange(new Set())}
+          >
+            <input type="checkbox" tabIndex={-1} readOnly checked={allVisible} />
+            <span>(全て)</span>
+          </button>
+          {sorted.map((plan) => {
+            const checked = !hiddenPastPlanIds.has(plan.plan_id)
+            return (
+              <button
+                key={plan.plan_id}
+                type="button"
+                className={checked ? 'target-multi-option selected' : 'target-multi-option'}
+                role="option"
+                aria-selected={checked}
+                onClick={() => toggle(plan.plan_id)}
+              >
+                <input type="checkbox" tabIndex={-1} readOnly checked={checked} />
+                <span>
+                  {displayLabel(plan.label)} v{plan.version}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 過去計画チェックボックスの並び順: label 昇順 → version 降順（新しい版を上に）。
+function sortPastPlans(pastPlans: PbChartPastPlan[]) {
+  return [...pastPlans].sort((left, right) => {
+    const labelCompare = displayLabel(left.label).localeCompare(displayLabel(right.label), 'ja')
+    return labelCompare !== 0 ? labelCompare : right.version - left.version
+  })
 }
 
 function formatSelectedTarget(labels: string[]) {
@@ -671,12 +782,18 @@ function ChartLayerModal({
   bugsAllowed,
   onClose,
   displaySettings,
+  pastPlans,
+  hiddenPastPlanIds,
+  onHiddenPastPlanIdsChange,
 }: {
   layers: ChartLayers
   onChange: (layers: ChartLayers) => void
   bugsAllowed: boolean
   onClose: (changedSettings?: DisplaySettings) => void
   displaySettings: DisplaySettings
+  pastPlans: PbChartPastPlan[]
+  hiddenPastPlanIds: Set<number>
+  onHiddenPastPlanIdsChange: (next: Set<number>) => void
 }) {
   const [pbRangeSource, setPbRangeSource] = useState(displaySettings.pb_chart_range_source)
   const [bugAxisMaxStr, setBugAxisMaxStr] = useState(
@@ -745,6 +862,13 @@ function ChartLayerModal({
               />
               過去計画
             </label>
+            {layers.pastPlans && pastPlans.length > 0 && (
+              <PastPlanMultiSelect
+                pastPlans={pastPlans}
+                hiddenPastPlanIds={hiddenPastPlanIds}
+                onHiddenChange={onHiddenPastPlanIdsChange}
+              />
+            )}
             <label
               className={bugsAllowed ? undefined : 'layer-disabled'}
               title={bugsAllowed ? undefined : '課題数グラフは表示対象が(全て)のときのみ表示できます'}
@@ -808,10 +932,12 @@ function PbChart({
   chart,
   layers,
   bugAxisMax,
+  hiddenPastPlanIds,
 }: {
   chart: PbChartResponse
   layers: ChartLayers
   bugAxisMax: number
+  hiddenPastPlanIds: Set<number>
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<ECharts | null>(null)
@@ -833,8 +959,8 @@ function PbChart({
   }, [])
 
   useEffect(() => {
-    instanceRef.current?.setOption(buildPbChartOption(chart, layers, bugAxisMax), true)
-  }, [chart, layers, bugAxisMax])
+    instanceRef.current?.setOption(buildPbChartOption(chart, layers, bugAxisMax, hiddenPastPlanIds), true)
+  }, [chart, layers, bugAxisMax, hiddenPastPlanIds])
 
   return <div className="pb-chart" ref={containerRef} />
 }

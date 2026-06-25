@@ -135,7 +135,7 @@ export function PbChartPanel({
     dailyBars: true,
     pastPlans: false,
     bugs: true,
-    todayLine: true,
+    todayLine: false,
   })
   const [reloadKey, setReloadKey] = useState(0)
   const [bugSync, setBugSync] = useState<{ loading: boolean; message: string | null; error: string | null }>({

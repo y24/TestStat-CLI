@@ -59,8 +59,13 @@
 .nav-actions {
   display: grid;
   grid-template-columns: 1fr 34px;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.nav-actions .dashboard-nav-button {
+  margin-bottom: 0;
 }
 
 .nav-create-button {
@@ -274,6 +279,9 @@
 .sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .settings-button {
@@ -2650,7 +2658,7 @@
 .dashboard-nav-button {
   width: 100%;
   min-height: 42px;
-  border: 1px solid transparent;
+  border: 1px solid #cfd6df;
   border-radius: 7px;
   background: transparent;
   color: var(--text);

@@ -82,13 +82,17 @@ export function buildPbChartOption(
   const hasBugData =
     chart.has_bugs && chart.series.some((item) => item.bug_open !== null)
   const showBugs = layers.bugs && hasBugData
+  const today = getTodayString()
   // 検出累積(open+suspended+resolved)のピーク。右軸の段階的な上限に使う。
+  // 今日以降の未来日付は描画しないため、ピーク計算も今日以前に限定する。
   const bugPeak = showBugs
     ? Math.max(
         0,
-        ...chart.series.map(
-          (item) => (item.bug_open ?? 0) + (item.bug_suspended ?? 0) + (item.bug_resolved ?? 0),
-        ),
+        ...chart.series
+          .filter((item) => item.date <= today)
+          .map(
+            (item) => (item.bug_open ?? 0) + (item.bug_suspended ?? 0) + (item.bug_resolved ?? 0),
+          ),
       )
     : 0
   const plannedLineColor = '#8a94a6'
@@ -98,7 +102,6 @@ export function buildPbChartOption(
       ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
       : { resolved: '解決済み', suspended: '対応見送り', open: '起票不具合' }
   const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
-  const today = getTodayString()
   const showTodayLine = dates.includes(today)
   const todayMarkLine = showTodayLine
     ? {
@@ -116,7 +119,7 @@ export function buildPbChartOption(
       name: bugLegendNames.resolved,
       type: 'line',
       yAxisIndex: 1,
-      data: chart.series.map((item) => item.bug_resolved),
+      data: chart.series.map((item) => (item.date <= today ? item.bug_resolved : null)),
       stack: 'bug',
       symbol: 'none',
       lineStyle: { width: 1, color: 'rgba(46, 160, 67, 0.6)' },
@@ -128,7 +131,7 @@ export function buildPbChartOption(
       name: bugLegendNames.suspended,
       type: 'line',
       yAxisIndex: 1,
-      data: chart.series.map((item) => item.bug_suspended),
+      data: chart.series.map((item) => (item.date <= today ? item.bug_suspended : null)),
       stack: 'bug',
       symbol: 'none',
       lineStyle: { width: 1, color: 'rgba(214, 170, 0, 0.7)' },
@@ -140,7 +143,7 @@ export function buildPbChartOption(
       name: bugLegendNames.open,
       type: 'line',
       yAxisIndex: 1,
-      data: chart.series.map((item) => item.bug_open),
+      data: chart.series.map((item) => (item.date <= today ? item.bug_open : null)),
       stack: 'bug',
       symbol: 'none',
       lineStyle: { width: 1, color: 'rgba(214, 69, 111, 0.65)' },

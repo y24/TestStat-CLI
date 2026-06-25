@@ -55,7 +55,7 @@ echarts.use([
 
 interface ChartResult {
   testingId: number
-  label: string | null
+  labels: string[]
   includePastPlans: boolean
   chart: PbChartResponse | null
   files: FileProgressItem[]
@@ -99,6 +99,8 @@ const resultHeaderClassNames: Record<ResultKey, string> = {
   'N/A': 'na',
 }
 
+const EMPTY_SELECTED_LABELS: string[] = []
+
 export function PbChartPanel({
   project,
   pbChartSettings,
@@ -117,7 +119,16 @@ export function PbChartPanel({
   onLayerModalClose?: () => void
 }) {
   const [result, setResult] = useState<ChartResult | null>(null)
-  const [selectedLabel, setSelectedLabel] = useState<string>('')
+  const [targetSelection, setTargetSelection] = useState<{ testingId: number; labels: string[] }>(() => ({
+    testingId: project.testing_id,
+    labels: [],
+  }))
+  const selectedLabels =
+    targetSelection.testingId === project.testing_id ? targetSelection.labels : EMPTY_SELECTED_LABELS
+  const setSelectedLabels = (labels: string[]) => {
+    setTargetSelection({ testingId: project.testing_id, labels })
+  }
+  const [targetMenuOpen, setTargetMenuOpen] = useState(false)
   const [layers, setLayers] = useState<ChartLayers>({
     plannedLine: true,
     actualLine: true,
@@ -149,24 +160,29 @@ export function PbChartPanel({
       })
   }
 
+
   useEffect(() => {
     let ignore = false
-    const label = selectedLabel || null
+    const labels = [...selectedLabels].sort()
+    const chartRequests =
+      labels.length === 0
+        ? [fetchPbChart(project.testing_id, { label: null, includePastPlans: layers.pastPlans })]
+        : labels.map((label) => fetchPbChart(project.testing_id, { label, includePastPlans: layers.pastPlans }))
     Promise.all([
-      fetchPbChart(project.testing_id, { label, includePastPlans: layers.pastPlans }),
+      Promise.all(chartRequests),
       fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
       fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
       fetchPlans(project.testing_id).catch(() => [] as PlanItem[]),
       fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[]),
       fetchOpenBugs(project.testing_id).catch(() => [] as OpenBugItem[]),
     ])
-      .then(([data, files, daily, plans, planLabels, openBugs]) => {
+      .then(([charts, files, daily, plans, planLabels, openBugs]) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
-            label,
+            labels,
             includePastPlans: layers.pastPlans,
-            chart: data,
+            chart: labels.length <= 1 ? charts[0] : mergePbCharts(charts, labels),
             files,
             daily,
             plans,
@@ -180,7 +196,7 @@ export function PbChartPanel({
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
-            label,
+            labels,
             includePastPlans: layers.pastPlans,
             chart: null,
             files: [],
@@ -195,16 +211,16 @@ export function PbChartPanel({
     return () => {
       ignore = true
     }
-  }, [project.testing_id, selectedLabel, layers.pastPlans, reloadKey])
+  }, [project.testing_id, selectedLabels, layers.pastPlans, reloadKey])
 
-  const label = selectedLabel || null
+  const selectedLabelSet = new Set(selectedLabels)
   const usesTestResultBugs = project.bug_count_source === 'test_result'
   // テスト結果ソースは label 別に不具合を保持しているため、表示対象がテスト別でも描画できる。
   // Azure DevOps ソースはチケットがテストに紐付かないため(全て)のときのみ表示する。
-  const bugsAllowed = usesTestResultBugs || selectedLabel === ''
+  const bugsAllowed = usesTestResultBugs || selectedLabels.length === 0
   const isCurrentResult =
     result?.testingId === project.testing_id &&
-    result.label === label &&
+    labelsKey(result.labels) === labelsKey(selectedLabels) &&
     result.includePastPlans === layers.pastPlans
   const chart = isCurrentResult ? result.chart : null
   const error = isCurrentResult ? result.error : null
@@ -238,10 +254,12 @@ export function PbChartPanel({
   const bugSummary = chart ? getBugSummary(chart) : null
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
   const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
-  const completionSummary = chart ? buildCompletionSummary(chart, visibleFiles, label) : null
+  const completionSummary = chart ? buildCompletionSummary(chart, visibleFiles, selectedLabels) : null
   const planStatusLevel = getProgressStatusLevel(completionSummary?.actualVsPlanRate, progressStatusThresholds)
   // Blocked件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
-  const blockedCount = visibleDaily.reduce((sum, item) => sum + item.Blocked, 0)
+  const blockedCount = visibleDaily
+    .filter((item) => selectedLabels.length === 0 || (item.label != null && selectedLabelSet.has(item.label)))
+    .reduce((sum, item) => sum + item.Blocked, 0)
   // 未解決チケットは「未解決チケット一覧」と同じ母数（見送りを除く未解決バグ）。
   const bugDataFetched = usesTestResultBugs || Boolean(chart?.has_bugs)
   const openTicketCount = openBugs.filter((bug) => !bug.is_suspended).length
@@ -263,21 +281,14 @@ export function PbChartPanel({
       </section>
 
       <div className="chart-controls">
-        <label className="target-select">
-          <span>表示対象</span>
-          <select
-            value={selectedLabel}
-            disabled={loading && labels.length === 0}
-            onChange={(event) => setSelectedLabel(event.target.value)}
-          >
-            <option value="">(全て)</option>
-            {labels.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
+        <TargetMultiSelect
+          labels={labels}
+          selectedLabels={selectedLabels}
+          disabled={loading && labels.length === 0}
+          open={targetMenuOpen}
+          onOpenChange={setTargetMenuOpen}
+          onChange={setSelectedLabels}
+        />
         <span className="chart-period">
           最終更新: {formatDateTimeWithRelative(project.actuals_updated_at)}
         </span>
@@ -317,8 +328,8 @@ export function PbChartPanel({
       {!loading && !error && chart && chart.series.length === 0 && (
         <div className="chart-state">
           <p>
-            {selectedLabel
-              ? `${selectedLabel} の計画または実績データがまだありません。`
+            {selectedLabels.length > 0
+              ? `${formatSelectedTarget(selectedLabels)} の計画または実績データがまだありません。`
               : '計画または実績データがまだありません。'}
           </p>
           {onPlans && (
@@ -338,7 +349,7 @@ export function PbChartPanel({
         <ProgressBreakdown
           files={visibleFiles}
           daily={visibleDaily}
-          selectedLabel={label}
+          selectedLabels={selectedLabels}
           openBugs={bugsAllowed ? openBugs : []}
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
           bugStateColors={bugStateColorSettings.items}
@@ -355,6 +366,107 @@ export function PbChartPanel({
       )}
     </section>
   )
+}
+
+function TargetMultiSelect({
+  labels,
+  selectedLabels,
+  disabled,
+  open,
+  onOpenChange,
+  onChange,
+}: {
+  labels: string[]
+  selectedLabels: string[]
+  disabled: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onChange: (labels: string[]) => void
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const selectedSet = new Set(selectedLabels)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        onOpenChange(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open, onOpenChange])
+
+  const toggleLabel = (label: string) => {
+    if (selectedSet.has(label)) {
+      onChange(selectedLabels.filter((item) => item !== label))
+      return
+    }
+    onChange([...selectedLabels, label])
+  }
+
+  return (
+    <div className="target-select target-multi-select" ref={containerRef}>
+      <span>表示対象</span>
+      <button
+        type="button"
+        className="target-multi-button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+      >
+        <span className="target-multi-button-text">{formatSelectedTarget(selectedLabels)}</span>
+        <span className="target-multi-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="target-multi-menu" role="listbox" aria-multiselectable="true">
+          <button
+            type="button"
+            className={selectedLabels.length === 0 ? 'target-multi-option selected' : 'target-multi-option'}
+            role="option"
+            aria-selected={selectedLabels.length === 0}
+            onClick={() => onChange([])}
+          >
+            <input type="checkbox" tabIndex={-1} readOnly checked={selectedLabels.length === 0} />
+            <span>(全て)</span>
+          </button>
+          {labels.map((label) => (
+            <button
+              key={label}
+              type="button"
+              className={selectedSet.has(label) ? 'target-multi-option selected' : 'target-multi-option'}
+              role="option"
+              aria-selected={selectedSet.has(label)}
+              onClick={() => toggleLabel(label)}
+            >
+              <input type="checkbox" tabIndex={-1} readOnly checked={selectedSet.has(label)} />
+              <span>{label}</span>
+            </button>
+          ))}
+          {labels.length === 0 && <div className="target-multi-empty">選択できるテスト種別がありません</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function labelsKey(labels: string[]) {
+  return [...labels].sort().join('\u0000')
+}
+
+function formatSelectedTarget(labels: string[]) {
+  if (labels.length === 0) {
+    return '(全て)'
+  }
+  if (labels.length <= 2) {
+    return labels.join(', ')
+  }
+  return `${labels[0]}, ${labels[1]} 他${labels.length - 2}件`
 }
 
 function StatusTile({
@@ -408,9 +520,12 @@ function formatRate(value: number | null | undefined) {
 function buildCompletionSummary(
   chart: PbChartResponse,
   files: FileProgressItem[],
-  selectedLabel: string | null,
+  selectedLabels: string[],
 ): CompletionSummary {
-  const matchingFiles = files.filter((file) => !selectedLabel || file.label === selectedLabel)
+  const selectedLabelSet = new Set(selectedLabels)
+  const matchingFiles = files.filter(
+    (file) => selectedLabels.length === 0 || (file.label != null && selectedLabelSet.has(file.label)),
+  )
   const completed = matchingFiles.reduce((sum, file) => sum + file.completed, 0)
   return {
     availableCases: chart.available_cases,
@@ -462,6 +577,58 @@ function getBugSummary(
     }
   }
   return { open: 0, suspended: 0, resolved: 0, total: 0 }
+}
+
+function mergePbCharts(charts: PbChartResponse[], labels: string[]): PbChartResponse {
+  const base = charts[0]
+  const dates = [...new Set(charts.flatMap((chart) => chart.series.map((point) => point.date)))].sort()
+  const series = dates.map((date) => {
+    const points = charts.map((chart) => chart.series.find((point) => point.date === date))
+    return {
+      date,
+      planned_remaining: sumNullable(points.map((point) => point?.planned_remaining)),
+      actual_remaining: sumNullable(points.map((point) => point?.actual_remaining)),
+      planned_completed_daily: sumNullable(points.map((point) => point?.planned_completed_daily)),
+      actual_completed_daily: sumNullable(points.map((point) => point?.actual_completed_daily)),
+      bug_open: sumNullable(points.map((point) => point?.bug_open)),
+      bug_suspended: sumNullable(points.map((point) => point?.bug_suspended)),
+      bug_resolved: sumNullable(points.map((point) => point?.bug_resolved)),
+    }
+  })
+  const fromDates = charts.map((chart) => chart.range?.from).filter((date): date is string => Boolean(date))
+  const toDates = charts.map((chart) => chart.range?.to).filter((date): date is string => Boolean(date))
+  const plannedTotals = charts.map((chart) => chart.planned_total_cases)
+  const actualsUpdatedAt = maxDateTime(charts.map((chart) => chart.actuals_updated_at))
+  const bugsUpdatedAt = maxDateTime(charts.map((chart) => chart.bugs_updated_at))
+
+  return {
+    testing_id: base.testing_id,
+    label: labels.join(', '),
+    bug_count_source: base.bug_count_source,
+    range:
+      fromDates.length > 0 && toDates.length > 0
+        ? { from: fromDates.sort()[0], to: toDates.sort()[toDates.length - 1] }
+        : null,
+    actuals_updated_at: actualsUpdatedAt,
+    available_cases: charts.reduce((sum, chart) => sum + chart.available_cases, 0),
+    planned_total_cases: plannedTotals.every((value) => value == null)
+      ? null
+      : plannedTotals.reduce<number>((sum, value) => sum + (value ?? 0), 0),
+    series,
+    past_plans: charts.flatMap((chart) => chart.past_plans),
+    has_bugs: charts.some((chart) => chart.has_bugs),
+    bugs_updated_at: bugsUpdatedAt,
+  }
+}
+
+function sumNullable(values: Array<number | null | undefined>) {
+  const numbers = values.filter((value): value is number => value != null)
+  return numbers.length > 0 ? numbers.reduce((sum, value) => sum + value, 0) : null
+}
+
+function maxDateTime(values: Array<string | null>) {
+  const dates = values.filter((value): value is string => Boolean(value))
+  return dates.length > 0 ? dates.sort()[dates.length - 1] : null
 }
 
 function ChartLayerModal({
@@ -584,7 +751,7 @@ function PbChart({
 function ProgressBreakdown({
   files,
   daily,
-  selectedLabel,
+  selectedLabels,
   openBugs,
   bugDataFetched,
   bugStateColors,
@@ -592,13 +759,13 @@ function ProgressBreakdown({
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
-  selectedLabel: string | null
+  selectedLabels: string[]
   openBugs: OpenBugItem[]
   bugDataFetched: boolean
   bugStateColors: BugStateColorSetting[]
   labelOrder: Map<string, number>
 }) {
-  const rows = buildBreakdownRows(files, daily, selectedLabel, labelOrder)
+  const rows = buildBreakdownRows(files, daily, selectedLabels, labelOrder)
   if (rows.length === 0 && !bugDataFetched && openBugs.length === 0) {
     return null
   }
@@ -827,10 +994,13 @@ function ResultHeader({ result }: { result: ResultKey }) {
 function buildBreakdownRows(
   files: FileProgressItem[],
   daily: DailyProgressItem[],
-  selectedLabel: string | null,
+  selectedLabels: string[],
   labelOrder: Map<string, number>,
 ): BreakdownRow[] {
-  const matchingFiles = files.filter((file) => !selectedLabel || file.label === selectedLabel)
+  const selectedLabelSet = new Set(selectedLabels)
+  const matchesSelectedLabels = (label: string | null) =>
+    selectedLabels.length === 0 || (label != null && selectedLabelSet.has(label))
+  const matchingFiles = files.filter((file) => matchesSelectedLabels(file.label))
   const rows = new Map<string, BreakdownRow>()
 
   for (const file of matchingFiles) {
@@ -850,7 +1020,7 @@ function buildBreakdownRows(
   }
 
   for (const item of daily) {
-    if (selectedLabel && item.label !== selectedLabel) {
+    if (!matchesSelectedLabels(item.label)) {
       continue
     }
     const key = breakdownKey(item.file_name, item.label, item.environment)

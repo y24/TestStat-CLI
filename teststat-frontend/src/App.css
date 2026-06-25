@@ -887,6 +887,95 @@
   padding: 5px 9px;
 }
 
+.target-multi-select {
+  position: relative;
+}
+
+.target-multi-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 190px;
+  max-width: min(360px, calc(100vw - 48px));
+  min-height: 32px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.target-multi-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.target-multi-button-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-multi-caret {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #687386;
+  flex: 0 0 auto;
+}
+
+.target-multi-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 65px;
+  width: min(320px, calc(100vw - 48px));
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgb(16 24 40 / 12%);
+  padding: 4px;
+}
+
+.target-multi-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.target-multi-option:hover,
+.target-multi-option.selected {
+  background: var(--accent-soft);
+}
+
+.target-multi-option input {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.target-multi-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px;
+}
+
 .layer-controls {
   display: flex;
   align-items: center;
@@ -2442,6 +2531,18 @@
 
   .chart-controls {
     justify-content: flex-start;
+  }
+
+  .target-select {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .target-multi-button,
+  .target-multi-menu {
+    left: 0;
+    width: min(320px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
   }
 
   .holiday-add-form {

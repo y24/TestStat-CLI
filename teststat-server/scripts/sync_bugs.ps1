@@ -25,7 +25,7 @@ try {
     exit 1
 }
 
-$targets = @($projects | Where-Object { $_.bug_count_source -eq "azure_devops" })
+$targets = @($projects | Where-Object { $_.bug_count_source -eq "azure_devops" -and -not $_.archived })
 if ($targets.Count -eq 0) {
     Log "対象プロジェクトなし (bug_count_source=azure_devops のプロジェクトがありません)"
     exit 0
@@ -53,6 +53,8 @@ foreach ($p in $targets) {
         } elseif ($code -eq 404) {
             $failed++
             Log "testing_id=$tid ($name) 親 Work Item 未検出 (404)"
+        } elseif ($code -eq 409) {
+            Log "testing_id=$tid ($name) アーカイブ済みのためスキップ (409)"
         } else {
             $failed++
             Log "testing_id=$tid ($name) 失敗 HTTP=$code $($_.Exception.Message)"

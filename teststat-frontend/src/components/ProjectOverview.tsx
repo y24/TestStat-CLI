@@ -5,7 +5,7 @@ import { buildProjectShareUrl, copyTextToClipboard } from '../utils/shareLink'
 import type { ProgressStatusThresholds } from '../utils/statusThresholds'
 import { PbChartPanel } from './PbChartPanel'
 import { LockIcon } from './icons/LockIcon'
-import { Check, ChevronLeft, ClipboardList, FilePenLine, Link2 } from 'lucide-react'
+import { Check, ChevronLeft, ClipboardList, FilePenLine, Link2, SlidersHorizontal } from 'lucide-react'
 
 export function ProjectOverview({
   project,
@@ -26,6 +26,8 @@ export function ProjectOverview({
   onEdit: () => void
   onPlans: () => void
 }) {
+  const [showLayerModal, setShowLayerModal] = useState(false)
+
   if (!project) {
     return (
       <div className="empty-state">
@@ -79,6 +81,10 @@ export function ProjectOverview({
           </div>
         </div>
         <div className="header-actions">
+          <button className="secondary-button icon-text-button" type="button" onClick={() => setShowLayerModal(true)}>
+            <SlidersHorizontal className="button-icon" aria-hidden="true" />
+            <span>表示設定</span>
+          </button>
           <button className="secondary-button icon-text-button" type="button" onClick={onEdit}>
             <FilePenLine className="button-icon" aria-hidden="true" />
             <span>プロジェクト設定</span>
@@ -97,6 +103,8 @@ export function ProjectOverview({
         bugStateColorSettings={bugStateColorSettings}
         progressStatusThresholds={progressStatusThresholds}
         onPlans={onPlans}
+        layerModalOpen={showLayerModal}
+        onLayerModalClose={() => setShowLayerModal(false)}
       />
     </div>
   )

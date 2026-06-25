@@ -105,12 +105,16 @@ export function PbChartPanel({
   bugStateColorSettings,
   progressStatusThresholds,
   onPlans,
+  layerModalOpen,
+  onLayerModalClose,
 }: {
   project: ProjectItem
   pbChartSettings: PbChartSettings
   bugStateColorSettings: BugStateColorSettings
   progressStatusThresholds: ProgressStatusThresholds
   onPlans?: () => void
+  layerModalOpen?: boolean
+  onLayerModalClose?: () => void
 }) {
   const [result, setResult] = useState<ChartResult | null>(null)
   const [selectedLabel, setSelectedLabel] = useState<string>('')
@@ -277,7 +281,6 @@ export function PbChartPanel({
         <span className="chart-period">
           最終更新: {formatDateTimeWithRelative(project.actuals_updated_at)}
         </span>
-        <ChartLayerControls layers={layers} onChange={setLayers} bugsAllowed={bugsAllowed} />
       </div>
 
       <div className="bug-bar">
@@ -340,6 +343,14 @@ export function PbChartPanel({
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
           bugStateColors={bugStateColorSettings.items}
           labelOrder={labelOrder}
+        />
+      )}
+      {layerModalOpen && (
+        <ChartLayerModal
+          layers={layers}
+          bugsAllowed={bugsAllowed}
+          onChange={setLayers}
+          onClose={() => onLayerModalClose?.()}
         />
       )}
     </section>
@@ -453,62 +464,84 @@ function getBugSummary(
   return { open: 0, suspended: 0, resolved: 0, total: 0 }
 }
 
-function ChartLayerControls({
+function ChartLayerModal({
   layers,
   onChange,
   bugsAllowed,
+  onClose,
 }: {
   layers: ChartLayers
   onChange: (layers: ChartLayers) => void
   bugsAllowed: boolean
+  onClose: () => void
 }) {
   return (
-    <div className="layer-controls">
-      <span className="layer-controls-label">表示:</span>
-      <label>
-        <input
-          type="checkbox"
-          checked={layers.plannedLine}
-          onChange={(event) => onChange({ ...layers, plannedLine: event.target.checked })}
-        />
-        計画線
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={layers.actualLine}
-          onChange={(event) => onChange({ ...layers, actualLine: event.target.checked })}
-        />
-        実績線
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={layers.dailyBars}
-          onChange={(event) => onChange({ ...layers, dailyBars: event.target.checked })}
-        />
-        日別消化
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={layers.pastPlans}
-          onChange={(event) => onChange({ ...layers, pastPlans: event.target.checked })}
-        />
-        過去計画
-      </label>
-      <label
-        className={bugsAllowed ? undefined : 'layer-disabled'}
-        title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="modal-panel layer-settings-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="layer-settings-title"
+        onMouseDown={(event) => event.stopPropagation()}
       >
-        <input
-          type="checkbox"
-          checked={bugsAllowed && layers.bugs}
-          disabled={!bugsAllowed}
-          onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
-        />
-        不具合
-      </label>
+        <div className="modal-header">
+          <h2 id="layer-settings-title">表示設定</h2>
+          <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="閉じる">
+            ×
+          </button>
+        </div>
+        <div className="layer-settings-body">
+          <label>
+            <input
+              type="checkbox"
+              checked={layers.plannedLine}
+              onChange={(event) => onChange({ ...layers, plannedLine: event.target.checked })}
+            />
+            計画線
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={layers.actualLine}
+              onChange={(event) => onChange({ ...layers, actualLine: event.target.checked })}
+            />
+            実績線
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={layers.dailyBars}
+              onChange={(event) => onChange({ ...layers, dailyBars: event.target.checked })}
+            />
+            日別消化
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={layers.pastPlans}
+              onChange={(event) => onChange({ ...layers, pastPlans: event.target.checked })}
+            />
+            過去計画
+          </label>
+          <label
+            className={bugsAllowed ? undefined : 'layer-disabled'}
+            title={bugsAllowed ? undefined : '不具合グラフは表示対象が(全て)のときのみ表示できます'}
+          >
+            <input
+              type="checkbox"
+              checked={bugsAllowed && layers.bugs}
+              disabled={!bugsAllowed}
+              onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
+            />
+            不具合
+          </label>
+        </div>
+        <div className="modal-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            閉じる
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

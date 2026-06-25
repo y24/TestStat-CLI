@@ -38,6 +38,7 @@ export function PlanCreateForm({
   onSubmit: (event: FormEvent) => void
 }) {
   const preview = useMemo(() => buildPreview(form, holidays), [form, holidays])
+  const dailySummary = useMemo(() => buildDailySummary(form), [form])
   const handlePlannedTotalChange = (value: string) => {
     const nextForm = syncDerivedFromDates({ ...form, planned_total_cases: value }, holidays)
     onFormChange(syncGeneratedDailyText(form, nextForm, holidays))
@@ -191,8 +192,8 @@ export function PlanCreateForm({
               handleInputModeChange(event.target.value as PlanInputMode)
             }
           >
-            <option value="even">均等配分</option>
-            <option value="csv">日別/CSV</option>
+            <option value="even">営業日で均等配分</option>
+            <option value="csv">日別に設定</option>
           </select>
         </label>
       </div>
@@ -233,6 +234,28 @@ export function PlanCreateForm({
             placeholder={'date,planned_count\n2026-06-01,40\n2026-06-02,45'}
             rows={7}
           />
+          {dailySummary && (
+            <div className="daily-sum-hint">
+              <span>
+                現在の合計: <strong>{dailySummary.total}</strong> 項目
+              </span>
+              {dailySummary.plannedTotal !== null && (
+                <span
+                  className={
+                    dailySummary.diff === 0
+                      ? 'daily-sum-diff match'
+                      : 'daily-sum-diff mismatch'
+                  }
+                >
+                  {dailySummary.diff === 0
+                    ? 'OK'
+                    : dailySummary.diff > 0
+                      ? `残り ${dailySummary.diff} 項目`
+                      : `${-dailySummary.diff} 項目超過`}
+                </span>
+              )}
+            </div>
+          )}
         </label>
       )}
       <PlanPreview preview={preview} />
@@ -389,6 +412,41 @@ function buildPreview(form: PlanFormState, holidays: Set<string>): PreviewState 
       plannedTotal: total,
       error: err instanceof Error ? err.message : 'プレビューを作成できません。',
     }
+  }
+}
+
+interface DailySummary {
+  total: number
+  plannedTotal: number | null
+  diff: number
+}
+
+// 日別計画テキストを寛容に集計する。入力途中の不正行は無視し、
+// 有効な planned_count のみ合算して合計と計画ボリュームとの差を返す。
+function buildDailySummary(form: PlanFormState): DailySummary | null {
+  if (form.inputMode !== 'csv') {
+    return null
+  }
+  const rows = form.dailyText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  let total = 0
+  for (const row of rows) {
+    if (/^date\s*,\s*planned_count$/i.test(row)) {
+      continue
+    }
+    const count = Number(row.split(',')[1]?.trim())
+    if (Number.isFinite(count) && count >= 0) {
+      total += count
+    }
+  }
+  const planned = Number(form.planned_total_cases)
+  const plannedTotal = Number.isInteger(planned) && planned > 0 ? planned : null
+  return {
+    total,
+    plannedTotal,
+    diff: plannedTotal === null ? 0 : plannedTotal - total,
   }
 }
 

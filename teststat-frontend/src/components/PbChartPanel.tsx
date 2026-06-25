@@ -135,6 +135,7 @@ export function PbChartPanel({
     dailyBars: true,
     pastPlans: false,
     bugs: true,
+    todayLine: true,
   })
   const [reloadKey, setReloadKey] = useState(0)
   const [bugSync, setBugSync] = useState<{ loading: boolean; message: string | null; error: string | null }>({
@@ -701,6 +702,14 @@ function ChartLayerModal({
               onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
             />
             不具合
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={layers.todayLine}
+              onChange={(event) => onChange({ ...layers, todayLine: event.target.checked })}
+            />
+            今日の日付
           </label>
         </div>
         <div className="modal-actions">

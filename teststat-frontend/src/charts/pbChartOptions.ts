@@ -102,7 +102,7 @@ export function buildPbChartOption(
       ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
       : { resolved: '解決済み', suspended: '対応見送り', open: '起票不具合' }
   const dashedLegendIcon = 'path://M0,4h5v2H0zM8,4h5v2H8z'
-  const showTodayLine = dates.includes(today)
+  const showTodayLine = layers.todayLine && dates.includes(today)
   const todayMarkLine = showTodayLine
     ? {
         symbol: 'none',

@@ -2658,7 +2658,7 @@
 .dashboard-nav-button {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #cfd6df;
+  border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--text);

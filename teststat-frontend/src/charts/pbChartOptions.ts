@@ -119,10 +119,14 @@ export function buildPbChartOption(
   const hasBugData =
     chart.has_bugs && chart.series.some((item) => item.bug_open !== null)
   const showBugs = layers.bugs && hasBugData
+  // 未解決課題件数の単独曲線。積み上げエリアとは独立にトグルできる（デフォルトOFF）。
+  const showOpenBugLine = layers.openBugLine && hasBugData
+  // 右軸(課題件数)はエリア・曲線のいずれかが表示されていれば出す。
+  const showBugAxis = showBugs || showOpenBugLine
   const today = getTodayString()
   // 検出累積(open+suspended+resolved)のピーク。右軸の段階的な上限に使う。
   // 今日以降の未来日付は描画しないため、ピーク計算も今日以前に限定する。
-  const bugPeak = showBugs
+  const bugPeak = showBugAxis
     ? Math.max(
         0,
         ...chart.series
@@ -134,6 +138,7 @@ export function buildPbChartOption(
     : 0
   const plannedLineColor = '#8a94a6'
   const pastPlanLineColor = 'rgba(95, 107, 126, 0.42)'
+  const openBugLineColor = '#a01023'
   const bugLegendNames =
     chart.bug_count_source === 'test_result'
       ? { resolved: 'Fixed', suspended: 'Suspend', open: 'Fail' }
@@ -187,6 +192,22 @@ export function buildPbChartOption(
       areaStyle: { color: 'rgba(214, 69, 111, 0.16)' },
       itemStyle: { color: 'rgba(214, 69, 111, 0.55)' },
       z: 0,
+    })
+  }
+
+  if (showOpenBugLine) {
+    // 未解決課題件数を右軸に細い紺色の曲線で重ねる。
+    series.push({
+      name: '未解決課題件数',
+      type: 'line',
+      yAxisIndex: 1,
+      data: chart.series.map((item) => (item.date <= today ? item.bug_open : null)),
+      connectNulls: false,
+      smooth: 1,
+      symbol: 'none',
+      lineStyle: { width: 1, color: openBugLineColor },
+      itemStyle: { color: openBugLineColor },
+      z: 4,
     })
   }
 
@@ -302,7 +323,7 @@ export function buildPbChartOption(
       type: 'scroll',
       data: legendData,
     },
-    grid: { left: 58, right: showBugs ? 52 : 24, top: 42, bottom: 42 },
+    grid: { left: 58, right: showBugAxis ? 52 : 24, top: 42, bottom: 42 },
     xAxis: {
       type: 'category',
       data: dates,
@@ -325,7 +346,7 @@ export function buildPbChartOption(
         lineStyle: { color: '#cbd2dc' },
       },
     },
-    yAxis: showBugs
+    yAxis: showBugAxis
       ? [
           {
             type: 'value',

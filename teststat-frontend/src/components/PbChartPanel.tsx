@@ -44,6 +44,7 @@ import {
   type ProgressStatusThresholds,
 } from '../utils/statusThresholds'
 import { getErrorMessage } from '../utils/errors'
+import { getStoredSelectedLabels, setStoredSelectedLabels } from '../utils/uiStateStorage'
 
 echarts.use([
   BarChart,
@@ -131,13 +132,19 @@ export function PbChartPanel({
   const [result, setResult] = useState<ChartResult | null>(null)
   const [targetSelection, setTargetSelection] = useState<{ testingId: number; labels: string[] }>(() => ({
     testingId: project.testing_id,
-    labels: [],
+    labels: getStoredSelectedLabels(project.testing_id),
   }))
   const selectedLabels =
     targetSelection.testingId === project.testing_id ? targetSelection.labels : EMPTY_SELECTED_LABELS
   const setSelectedLabels = (labels: string[]) => {
+    setStoredSelectedLabels(project.testing_id, labels)
     setTargetSelection({ testingId: project.testing_id, labels })
   }
+
+  // 画面遷移で再マウントされても、また別計画へ切り替えても、保存済みの表示対象を復元する。
+  useEffect(() => {
+    setTargetSelection({ testingId: project.testing_id, labels: getStoredSelectedLabels(project.testing_id) })
+  }, [project.testing_id])
   const [targetMenuOpen, setTargetMenuOpen] = useState(false)
   const [layers, setLayers] = useState<ChartLayers>({
     plannedLine: true,
@@ -145,6 +152,7 @@ export function PbChartPanel({
     dailyBars: true,
     pastPlans: false,
     bugs: true,
+    openBugLine: false,
     todayLine: false,
   })
   // 過去計画は plan_id 単位で非表示にできる。デフォルトは全て表示（=空集合）。
@@ -289,7 +297,7 @@ export function PbChartPanel({
   const loading = !isCurrentResult
   const bugSummary = chart ? getBugSummary(chart) : null
   // 不具合レイヤーが許可されない表示対象では強制的にOFFにして描画する。
-  const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false }
+  const effectiveLayers = bugsAllowed ? layers : { ...layers, bugs: false, openBugLine: false }
   const completionSummary = chart ? buildCompletionSummary(chart, visibleFiles, selectedLabels) : null
   const planStatusLevel = getProgressStatusLevel(completionSummary?.actualVsPlanRate, progressStatusThresholds)
   // Blocked件数はプロジェクト全体（label横断）の Blocked 合計。テスト結果合計の Blocked と同じ集計。
@@ -1009,6 +1017,18 @@ function ChartLayerModal({
                 onChange={(event) => onChange({ ...layers, bugs: event.target.checked })}
               />
               課題数
+            </label>
+            <label
+              className={bugsAllowed ? undefined : 'layer-disabled'}
+              title={bugsAllowed ? undefined : '未解決課題件数は表示対象が(全て)のときのみ表示できます'}
+            >
+              <input
+                type="checkbox"
+                checked={bugsAllowed && layers.openBugLine}
+                disabled={!bugsAllowed}
+                onChange={(event) => onChange({ ...layers, openBugLine: event.target.checked })}
+              />
+              未解決課題件数
             </label>
             <label>
               <input

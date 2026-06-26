@@ -1751,16 +1751,19 @@
   font-weight: 750;
 }
 
-.plan-missing-badge {
+.plan-missing-warning {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  border: 1px solid #f1c66d;
-  border-radius: 999px;
-  background: #fff8e6;
-  color: #8a5a00;
-  font-weight: 750;
-  padding: 2px 8px;
+  gap: 4px;
+  color: #b45309;
+  font-size: 0.85em;
+}
+
+.plan-missing-warning-icon {
+  width: 14px;
+  height: 14px;
+  color: #f59e0b;
+  flex-shrink: 0;
 }
 
 .row-note {

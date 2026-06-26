@@ -387,7 +387,8 @@ function PlanVersionRowContent({
         {activePlan ? (
           `v${activePlan.version}`
         ) : (
-          <span className="plan-missing-badge" title="計画入力が必要です。">
+          <span className="plan-missing-warning">
+            <TriangleAlert className="plan-missing-warning-icon" aria-hidden="true" />
             未計画
           </span>
         )}

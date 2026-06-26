@@ -382,7 +382,6 @@ function PlanVersionRowContent({
             <span>取得エラー: {collectErrors[label]}</span>
           </span>
         )}
-        {activePlan?.reason && <span className="row-note">{activePlan.reason}</span>}
       </td>
       <td className="plan-table-centered-value">
         {activePlan ? (

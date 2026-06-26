@@ -984,6 +984,28 @@
   padding: 8px;
 }
 
+.target-multi-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 8px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.target-multi-apply {
+  background: var(--accent, #1976d2);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.target-multi-apply:hover {
+  opacity: 0.85;
+}
+
 .layer-controls {
   display: flex;
   align-items: center;

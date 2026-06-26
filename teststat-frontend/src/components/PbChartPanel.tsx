@@ -439,7 +439,14 @@ function TargetMultiSelect({
   onChange: (labels: string[]) => void
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const selectedSet = new Set(selectedLabels)
+  const [pending, setPending] = useState<string[]>(selectedLabels)
+  const pendingSet = new Set(pending)
+
+  useEffect(() => {
+    if (open) {
+      setPending(selectedLabels)
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) {
@@ -457,11 +464,16 @@ function TargetMultiSelect({
   }, [open, onOpenChange])
 
   const toggleLabel = (label: string) => {
-    if (selectedSet.has(label)) {
-      onChange(selectedLabels.filter((item) => item !== label))
+    if (pendingSet.has(label)) {
+      setPending(pending.filter((item) => item !== label))
       return
     }
-    onChange([...selectedLabels, label])
+    setPending([...pending, label])
+  }
+
+  const apply = () => {
+    onChange(pending)
+    onOpenChange(false)
   }
 
   return (
@@ -482,28 +494,33 @@ function TargetMultiSelect({
         <div className="target-multi-menu" role="listbox" aria-multiselectable="true">
           <button
             type="button"
-            className={selectedLabels.length === 0 ? 'target-multi-option selected' : 'target-multi-option'}
+            className={pending.length === 0 ? 'target-multi-option selected' : 'target-multi-option'}
             role="option"
-            aria-selected={selectedLabels.length === 0}
-            onClick={() => onChange([])}
+            aria-selected={pending.length === 0}
+            onClick={() => setPending([])}
           >
-            <input type="checkbox" tabIndex={-1} readOnly checked={selectedLabels.length === 0} />
+            <input type="checkbox" tabIndex={-1} readOnly checked={pending.length === 0} />
             <span>(全て)</span>
           </button>
           {labels.map((label) => (
             <button
               key={label}
               type="button"
-              className={selectedSet.has(label) ? 'target-multi-option selected' : 'target-multi-option'}
+              className={pendingSet.has(label) ? 'target-multi-option selected' : 'target-multi-option'}
               role="option"
-              aria-selected={selectedSet.has(label)}
+              aria-selected={pendingSet.has(label)}
               onClick={() => toggleLabel(label)}
             >
-              <input type="checkbox" tabIndex={-1} readOnly checked={selectedSet.has(label)} />
+              <input type="checkbox" tabIndex={-1} readOnly checked={pendingSet.has(label)} />
               <span>{label}</span>
             </button>
           ))}
           {labels.length === 0 && <div className="target-multi-empty">選択できるテスト種別がありません</div>}
+          <div className="target-multi-footer">
+            <button type="button" className="target-multi-apply" onClick={apply}>
+              適用
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -525,9 +542,18 @@ function PastPlanMultiSelect({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [open, setOpen] = useState(false)
+  const [pendingHidden, setPendingHidden] = useState<Set<number>>(new Set(hiddenPastPlanIds))
   const sorted = sortPastPlans(pastPlans)
-  const visibleCount = sorted.filter((plan) => !hiddenPastPlanIds.has(plan.plan_id)).length
-  const allVisible = visibleCount === sorted.length
+  const pendingVisibleCount = sorted.filter((plan) => !pendingHidden.has(plan.plan_id)).length
+  const pendingAllVisible = pendingVisibleCount === sorted.length
+  const committedVisibleCount = sorted.filter((plan) => !hiddenPastPlanIds.has(plan.plan_id)).length
+  const committedAllVisible = committedVisibleCount === sorted.length
+
+  useEffect(() => {
+    if (open) {
+      setPendingHidden(new Set(hiddenPastPlanIds))
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) {
@@ -543,18 +569,23 @@ function PastPlanMultiSelect({
   }, [open])
 
   const toggle = (planId: number) => {
-    const next = new Set(hiddenPastPlanIds)
+    const next = new Set(pendingHidden)
     if (next.has(planId)) {
       next.delete(planId)
     } else {
       next.add(planId)
     }
-    onHiddenChange(next)
+    setPendingHidden(next)
   }
 
-  const buttonText = allVisible
+  const apply = () => {
+    onHiddenChange(pendingHidden)
+    setOpen(false)
+  }
+
+  const buttonText = committedAllVisible
     ? `全て (${sorted.length}件)`
-    : `${visibleCount} / ${sorted.length}件 表示`
+    : `${committedVisibleCount} / ${sorted.length}件 表示`
 
   return (
     <div className="target-multi-select past-plan-multi-select" ref={containerRef}>
@@ -573,16 +604,16 @@ function PastPlanMultiSelect({
         <div className="target-multi-menu" role="listbox" aria-multiselectable="true">
           <button
             type="button"
-            className={allVisible ? 'target-multi-option selected' : 'target-multi-option'}
+            className={pendingAllVisible ? 'target-multi-option selected' : 'target-multi-option'}
             role="option"
-            aria-selected={allVisible}
-            onClick={() => onHiddenChange(new Set())}
+            aria-selected={pendingAllVisible}
+            onClick={() => setPendingHidden(new Set())}
           >
-            <input type="checkbox" tabIndex={-1} readOnly checked={allVisible} />
+            <input type="checkbox" tabIndex={-1} readOnly checked={pendingAllVisible} />
             <span>(全て)</span>
           </button>
           {sorted.map((plan) => {
-            const checked = !hiddenPastPlanIds.has(plan.plan_id)
+            const checked = !pendingHidden.has(plan.plan_id)
             return (
               <button
                 key={plan.plan_id}
@@ -599,6 +630,11 @@ function PastPlanMultiSelect({
               </button>
             )
           })}
+          <div className="target-multi-footer">
+            <button type="button" className="target-multi-apply" onClick={apply}>
+              適用
+            </button>
+          </div>
         </div>
       )}
     </div>

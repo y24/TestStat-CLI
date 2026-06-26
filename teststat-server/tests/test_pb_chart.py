@@ -49,7 +49,7 @@ def _insert_actuals(db, testing_id: int, rows: list[tuple[str | None, date, int]
     db.commit()
 
 
-def _insert_file_progress(db, testing_id: int, label: str | None, available: int):
+def _insert_file_progress(db, testing_id: int, label: str | None, available: int, executed: int = 0):
     from app.models.progress import FileProgress, Testing
     from sqlalchemy import select
     from datetime import datetime
@@ -59,9 +59,9 @@ def _insert_file_progress(db, testing_id: int, label: str | None, available: int
     db.add(FileProgress(
         testing_id=testing_id, file_name="f.xlsx", label=label,
         total_cases=available, available_cases=available, excluded_cases=0,
-        completed=0, executed=0, not_run=available,
-        completed_rate=0.0, executed_rate=0.0,
-        result_pass=0, result_fixed=0, result_fail=0,
+        completed=executed, executed=executed, not_run=max(available - executed, 0),
+        completed_rate=round((executed / available) * 100, 2) if available else 0.0, executed_rate=round((executed / available) * 100, 2) if available else 0.0,
+        result_pass=executed, result_fixed=0, result_fail=0,
         result_blocked=0, result_suspend=0, result_na=0,
         sent_at=datetime(2026, 5, 20, 18, 0),
     ))
@@ -96,7 +96,7 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label="TEST001")
 
         self.assertEqual(result.planned_total_cases, 100)
-        self.assertEqual(result.available_cases, 100)
+        self.assertEqual(result.available_cases, 0)
         self.assertIsNotNone(result.range)
         self.assertEqual(len(result.series), 5)
 
@@ -104,17 +104,17 @@ class TestPbChart(unittest.TestCase):
         s0 = result.series[0]
         self.assertEqual(s0.planned_remaining, 80)
         self.assertEqual(s0.planned_completed_daily, 20)
-        self.assertEqual(s0.actual_remaining, 100)
+        self.assertIsNone(s0.actual_remaining)
         self.assertIsNone(s0.actual_completed_daily)
 
-        # 最終日: planned remaining = 0, actual remaining = 100 because no actual data exists yet
+        # 最終日: planned remaining = 0, actual remaining is unknown because no actual data exists yet
         self.assertEqual(result.series[-1].planned_remaining, 0)
-        self.assertEqual(result.series[-1].actual_remaining, 100)
+        self.assertIsNone(result.series[-1].actual_remaining)
 
     # ---- 実績のみ（計画なし） ----
 
     def test_actuals_only(self):
-        _insert_file_progress(self.db, 1001, "TEST001", available=100)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=55)
         _insert_actuals(self.db, 1001, [
             ("TEST001", date(2026, 5, 1), 25),
             ("TEST001", date(2026, 5, 3), 30),
@@ -144,7 +144,7 @@ class TestPbChart(unittest.TestCase):
 
     def test_plan_and_actuals(self):
         self._make_plan(total=100, daily_counts=[20] * 5)
-        _insert_file_progress(self.db, 1001, "TEST001", available=100)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=40)
         _insert_actuals(self.db, 1001, [
             ("TEST001", date(2026, 5, 1), 15),  # 計画より少ない
             ("TEST001", date(2026, 5, 2), 25),  # 計画より多い
@@ -173,8 +173,8 @@ class TestPbChart(unittest.TestCase):
     def test_all_labels_aggregated(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
-        _insert_file_progress(self.db, 1001, "TEST001", available=100)
-        _insert_file_progress(self.db, 1001, "TEST002", available=50)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
+        _insert_file_progress(self.db, 1001, "TEST002", available=50, executed=5)
         _insert_actuals(self.db, 1001, [
             ("TEST001", date(2026, 5, 1), 10),
             ("TEST002", date(2026, 5, 1), 5),
@@ -190,10 +190,26 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(s0.actual_completed_daily, 15)     # 10 + 5
         self.assertEqual(s0.actual_remaining, 135)          # 150 - 15
 
-    def test_all_labels_counts_plan_only_label_as_not_run(self):
+
+    def test_actual_remaining_uses_file_executed_total_when_daily_is_short(self):
+        self._make_plan(label="TEST001", total=112, daily_counts=[28] * 4)
+        _insert_file_progress(self.db, 1001, "TEST001", available=112, executed=78)
+        _insert_actuals(self.db, 1001, [
+            ("TEST001", date(2026, 5, 1), 30),
+            ("TEST001", date(2026, 5, 2), 39),
+        ])
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertEqual(result.available_cases, 112)
+        self.assertEqual(result.series[0].actual_remaining, 73)
+        self.assertEqual(result.series[1].actual_completed_daily, 39)
+        self.assertEqual(result.series[1].actual_remaining, 34)
+
+    def test_all_labels_does_not_count_plan_only_label_as_actual_remaining(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
-        _insert_file_progress(self.db, 1001, "TEST001", available=100)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
         _insert_actuals(self.db, 1001, [
             ("TEST001", date(2026, 5, 1), 10),
         ])
@@ -201,17 +217,17 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertEqual(result.planned_total_cases, 150)
-        self.assertEqual(result.available_cases, 150)       # TEST001 actual + TEST002 plan-only
+        self.assertEqual(result.available_cases, 100)       # actual files only; plan-only labels affect only the plan line
         self.assertEqual(result.series[0].actual_completed_daily, 10)
-        self.assertEqual(result.series[0].actual_remaining, 140)
+        self.assertEqual(result.series[0].actual_remaining, 90)
 
 
     def test_disabled_label_excluded_from_all_and_label_chart(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
         create_plan_label(self.db, 1001, PlanLabelCreate(label="TEST002", is_disabled=True))
-        _insert_file_progress(self.db, 1001, "TEST001", available=100)
-        _insert_file_progress(self.db, 1001, "TEST002", available=50)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
+        _insert_file_progress(self.db, 1001, "TEST002", available=50, executed=5)
         _insert_actuals(self.db, 1001, [
             ("TEST001", date(2026, 5, 1), 10),
             ("TEST002", date(2026, 5, 1), 5),

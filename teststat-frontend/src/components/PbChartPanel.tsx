@@ -37,7 +37,7 @@ import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { displayLabel } from '../utils/plans'
 import { Bug, ClipboardList } from 'lucide-react'
-import { formatDateTime, formatDateTimeWithRelative } from '../utils/date'
+import { enumerateDates, formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
   type ProgressStatusLevel,
@@ -218,7 +218,7 @@ export function PbChartPanel({
             testingId: project.testing_id,
             labels,
             includePastPlans: layers.pastPlans,
-            chart: labels.length <= 1 ? charts[0] : mergePbCharts(charts, labels),
+            chart: labels.length <= 1 ? charts[0] : mergePbCharts(charts, labels, files),
             files,
             daily,
             plans,
@@ -723,25 +723,89 @@ function getBugSummary(
   return { open: 0, suspended: 0, resolved: 0, total: 0 }
 }
 
-function mergePbCharts(charts: PbChartResponse[], labels: string[]): PbChartResponse {
+function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileProgressItem[]): PbChartResponse {
   const base = charts[0]
-  const dates = [...new Set(charts.flatMap((chart) => chart.series.map((point) => point.date)))].sort()
-  const series = dates.map((date) => {
-    const points = charts.map((chart) => chart.series.find((point) => point.date === date))
-    return {
-      date,
-      planned_remaining: sumNullable(points.map((point) => point?.planned_remaining)),
-      actual_remaining: sumNullable(points.map((point) => point?.actual_remaining)),
-      planned_completed_daily: sumNullable(points.map((point) => point?.planned_completed_daily)),
-      actual_completed_daily: sumNullable(points.map((point) => point?.actual_completed_daily)),
-      bug_open: sumNullable(points.map((point) => point?.bug_open)),
-      bug_suspended: sumNullable(points.map((point) => point?.bug_suspended)),
-      bug_resolved: sumNullable(points.map((point) => point?.bug_resolved)),
-    }
-  })
   const fromDates = charts.map((chart) => chart.range?.from).filter((date): date is string => Boolean(date))
   const toDates = charts.map((chart) => chart.range?.to).filter((date): date is string => Boolean(date))
+  const rangeFrom = fromDates.length > 0 ? fromDates.sort()[0] : null
+  const rangeTo = toDates.length > 0 ? toDates.sort()[toDates.length - 1] : null
+  const dates =
+    rangeFrom != null && rangeTo != null
+      ? enumerateDates(rangeFrom, rangeTo)
+      : [...new Set(charts.flatMap((chart) => chart.series.map((point) => point.date)))].sort()
+  const selectedLabelSet = new Set(labels)
+  const matchingFiles = files.filter((file) => file.label != null && selectedLabelSet.has(file.label))
+  const availableSum = matchingFiles.reduce((sum, file) => sum + file.available_cases, 0)
+  const executedSum = matchingFiles.reduce((sum, file) => sum + file.executed, 0)
   const plannedTotals = charts.map((chart) => chart.planned_total_cases)
+  const plannedTotalSum = plannedTotals.every((value) => value == null)
+    ? null
+    : plannedTotals.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+  const plannedDates = charts.flatMap((chart) =>
+    chart.series
+      .filter((point) => point.planned_remaining != null)
+      .map((point) => point.date),
+  )
+  const globalFirstPlannedDate = plannedDates.length > 0 ? plannedDates.sort()[0] : null
+  const globalLastPlannedDate = plannedDates.length > 0 ? plannedDates[plannedDates.length - 1] : null
+  const pointMaps = charts.map((chart) => new Map(chart.series.map((point) => [point.date, point])))
+  const bugPointSeries = charts.map((chart) =>
+    chart.series.filter(
+      (point) => point.bug_open != null || point.bug_suspended != null || point.bug_resolved != null,
+    ),
+  )
+  const actualDailyDates = charts.flatMap((chart) =>
+    chart.series
+      .filter((point) => point.actual_completed_daily != null)
+      .map((point) => point.date),
+  )
+  const initialActualDates = charts.flatMap((chart) =>
+    chart.series
+      .filter((point) => point.actual_remaining != null)
+      .map((point) => point.date),
+  )
+  const globalLastActualDate =
+    actualDailyDates.length > 0
+      ? actualDailyDates.sort()[actualDailyDates.length - 1]
+      : initialActualDates.length > 0
+        ? initialActualDates.sort()[initialActualDates.length - 1]
+        : null
+  const datedActualSum = charts.reduce(
+    (sum, chart) => sum + chart.series.reduce((chartSum, point) => chartSum + (point.actual_completed_daily ?? 0), 0),
+    0,
+  )
+  const undatedActual = Math.max(executedSum - datedActualSum, 0)
+  let cumulativePlanned = 0
+  let cumulativeActual = undatedActual
+  const series = dates.map((date) => {
+    const points = pointMaps.map((pointMap) => pointMap.get(date))
+    const withinPlannedRange =
+      globalFirstPlannedDate != null && globalLastPlannedDate != null &&
+      date >= globalFirstPlannedDate && date <= globalLastPlannedDate
+    const plannedCompletedDaily = withinPlannedRange
+      ? points.reduce((sum, point) => sum + (point?.planned_completed_daily ?? 0), 0)
+      : null
+    const actualCompletedDaily = sumNullable(points.map((point) => point?.actual_completed_daily))
+    cumulativePlanned += plannedCompletedDaily ?? 0
+    cumulativeActual += points.reduce((sum, point) => sum + (point?.actual_completed_daily ?? 0), 0)
+    return {
+      date,
+      planned_remaining: plannedTotalSum != null && withinPlannedRange ? plannedTotalSum - cumulativePlanned : null,
+      actual_remaining:
+        globalLastActualDate != null && date <= globalLastActualDate
+          ? availableSum - cumulativeActual
+          : null,
+      planned_completed_daily: plannedCompletedDaily,
+      actual_completed_daily: actualCompletedDaily,
+      bug_open: sumNullable(bugPointSeries.map((points) => getCumulativeFieldAt(points, date, 'bug_open'))),
+      bug_suspended: sumNullable(
+        bugPointSeries.map((points) => getCumulativeFieldAt(points, date, 'bug_suspended')),
+      ),
+      bug_resolved: sumNullable(
+        bugPointSeries.map((points) => getCumulativeFieldAt(points, date, 'bug_resolved')),
+      ),
+    }
+  })
   const actualsUpdatedAt = maxDateTime(charts.map((chart) => chart.actuals_updated_at))
   const bugsUpdatedAt = maxDateTime(charts.map((chart) => chart.bugs_updated_at))
 
@@ -749,21 +813,34 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[]): PbChartResp
     testing_id: base.testing_id,
     label: labels.join(', '),
     bug_count_source: base.bug_count_source,
-    range:
-      fromDates.length > 0 && toDates.length > 0
-        ? { from: fromDates.sort()[0], to: toDates.sort()[toDates.length - 1] }
-        : null,
+    range: rangeFrom != null && rangeTo != null ? { from: rangeFrom, to: rangeTo } : null,
     actuals_updated_at: actualsUpdatedAt,
-    available_cases: charts.reduce((sum, chart) => sum + chart.available_cases, 0),
-    planned_total_cases: plannedTotals.every((value) => value == null)
-      ? null
-      : plannedTotals.reduce<number>((sum, value) => sum + (value ?? 0), 0),
+    available_cases: availableSum,
+    planned_total_cases: plannedTotalSum,
     series,
     past_plans: charts.flatMap((chart) => chart.past_plans),
     has_bugs: charts.some((chart) => chart.has_bugs),
     bugs_updated_at: bugsUpdatedAt,
     bug_axis_max: Math.max(...charts.map((chart) => chart.bug_axis_max)),
   }
+}
+
+function getCumulativeFieldAt(
+  points: PbChartResponse['series'],
+  date: string,
+  field: 'bug_open' | 'bug_suspended' | 'bug_resolved',
+) {
+  if (points.length === 0) {
+    return null
+  }
+  let value = 0
+  for (const point of points) {
+    if (point.date > date) {
+      break
+    }
+    value = point[field] ?? value
+  }
+  return value
 }
 
 function sumNullable(values: Array<number | null | undefined>) {

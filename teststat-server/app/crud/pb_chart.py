@@ -145,49 +145,33 @@ def _get_test_result_bug_metadata(db: Session, testing_id: int) -> tuple[bool, d
     return (count or 0) > 0, updated_at
 
 
-def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, datetime | None]:
-    """実績の対象件数合計と更新日時。実績なし=0。"""
+def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, int, datetime | None]:
+    """実績の対象件数・消化数合計と更新日時。実績なし=0。"""
     if _label_is_disabled(db, testing_id, label):
         updated_at = db.scalar(select(Testing.updated_at).where(Testing.testing_id == testing_id))
-        return 0, updated_at
-    available_query = select(func.coalesce(func.sum(FileProgress.available_cases), 0)).where(
-        FileProgress.testing_id == testing_id
-    )
+        return 0, 0, updated_at
+    file_query = select(
+        func.coalesce(func.sum(FileProgress.available_cases), 0).label("available_cases"),
+        func.coalesce(func.sum(FileProgress.executed), 0).label("executed_cases"),
+    ).where(FileProgress.testing_id == testing_id)
     if label is not None:
-        available_query = available_query.where(FileProgress.label == label)
+        file_query = file_query.where(FileProgress.label == label)
     else:
         disabled_labels = _get_disabled_labels(db, testing_id)
         if disabled_labels:
-            available_query = available_query.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
+            file_query = file_query.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
 
-    available_cases, updated_at = db.execute(
+    file_totals = file_query.subquery()
+    available_cases, executed_cases, updated_at = db.execute(
         select(
-            available_query.scalar_subquery(),
+            file_totals.c.available_cases,
+            file_totals.c.executed_cases,
             select(Testing.updated_at)
             .where(Testing.testing_id == testing_id)
             .scalar_subquery(),
         )
     ).one()
-    return available_cases or 0, updated_at
-
-
-def _get_actual_labels(db: Session, testing_id: int, label: str | None) -> set[str | None]:
-    """実績データが存在する label の集合。FileProgress がない計画 label の判定に使う。"""
-    if _label_is_disabled(db, testing_id, label):
-        return set()
-    q = select(FileProgress.label).where(FileProgress.testing_id == testing_id).distinct()
-    if label is not None:
-        q = q.where(FileProgress.label == label)
-    else:
-        disabled_labels = _get_disabled_labels(db, testing_id)
-        if disabled_labels:
-            q = q.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
-    return set(db.scalars(q))
-
-
-def _compute_plan_only_available_cases(plans: list[Plan], actual_labels: set[str | None]) -> int:
-    """実績データがまだない計画の件数を、未実施扱いで実績母数へ補完する。"""
-    return sum(plan.planned_total_cases for plan in plans if plan.label not in actual_labels)
+    return available_cases or 0, executed_cases or 0, updated_at
 
 
 # ---------- 系列計算 ----------
@@ -220,21 +204,23 @@ def _compute_plan_series(
 def _compute_actual_series(
     actual_daily_map: dict[date, int],
     available_cases: int,
+    executed_cases: int,
 ) -> dict[date, int]:
     """
     実績系列（actual_remaining）を計算。
-    日付間のギャップは前の値を引き継ぐ（CLI が実行されなかった日）。
-    戻り値: {date: remaining} — actual_daily_map に含まれる日付のみ
+    DailyProgress は日付あり実績、FileProgress.executed は no_date を含む最新総数。
+    日付なし実績は配置日がないため、実績線の初期オフセットとして扱う。
     """
     if not actual_daily_map or available_cases == 0:
         return {}
-    cumsum = 0
+    dated_executed = sum(actual_daily_map.values())
+    undated_executed = max(executed_cases - dated_executed, 0)
+    cumsum = undated_executed
     remaining_map: dict[date, int] = {}
     for d in sorted(actual_daily_map):
         cumsum += actual_daily_map[d]
         remaining_map[d] = available_cases - cumsum
     return remaining_map
-
 
 def _compute_test_result_bug_series(
     date_range: list[date],
@@ -445,10 +431,7 @@ def get_pb_chart(
 
     # 実績
     actual_daily_map = _get_actual_daily_map(db, testing_id, label)
-    actual_available_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
-    actual_labels = _get_actual_labels(db, testing_id, label)
-    plan_only_available_cases = _compute_plan_only_available_cases(active_plans, actual_labels)
-    available_cases = actual_available_cases + plan_only_available_cases
+    available_cases, executed_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
 
     # 不具合
     # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
@@ -518,10 +501,14 @@ def get_pb_chart(
         )
 
     date_list = _date_range(range_from, range_to)
-    actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases)
-    if not actual_daily_map and plan_only_available_cases > 0:
+    actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases, executed_cases)
+    if actual_daily_map and available_cases > 0:
+        first_actual_date = min(actual_daily_map)
+        for d in date_list:
+            if d < first_actual_date:
+                actual_remaining_sparse[d] = available_cases
+    elif available_cases > 0:
         actual_remaining_sparse = {d: available_cases for d in date_list}
-
     bug_cumulative = None
     if bugs_visible:
         if bug_count_source == "test_result":

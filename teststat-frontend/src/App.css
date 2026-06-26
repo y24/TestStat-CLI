@@ -904,8 +904,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-width: 190px;
-  max-width: min(360px, calc(100vw - 48px));
+  min-width: 240px;
+  max-width: min(480px, calc(100vw - 48px));
   min-height: 32px;
   border: 1px solid #cfd6df;
   border-radius: 6px;
@@ -941,7 +941,7 @@
   z-index: 30;
   top: calc(100% + 4px);
   left: 65px;
-  width: min(320px, calc(100vw - 48px));
+  width: min(480px, calc(100vw - 48px));
   max-height: 240px;
   overflow: auto;
   border: 1px solid #cfd6df;

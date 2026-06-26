@@ -179,8 +179,8 @@ def _fetch_work_item_remote(work_item_id: int, settings: Settings) -> WorkItemIn
     return WorkItemInfo(
         work_item_id=work_item_id,
         name=fields.get(settings.azure_devops_title_field) or "",
-        start_date=_parse_date(fields.get(settings.azure_devops_start_date_field)),
-        end_date=_parse_date(fields.get(settings.azure_devops_end_date_field)),
+        start_date=_first_date(fields, settings.azure_devops_start_date_fields),
+        end_date=_first_date(fields, settings.azure_devops_end_date_fields),
     )
 
 
@@ -197,14 +197,25 @@ def _configured_fields(settings: Settings) -> list[str]:
     """取得するフィールド参照名（空文字は除外、順序維持で重複排除）。"""
     candidates = [
         settings.azure_devops_title_field,
-        settings.azure_devops_start_date_field,
-        settings.azure_devops_end_date_field,
+        *settings.azure_devops_start_date_fields,
+        *settings.azure_devops_end_date_fields,
     ]
     result: list[str] = []
     for name in candidates:
         if name and name not in result:
             result.append(name)
     return result
+
+
+def _first_date(fields: dict, field_names: list[str]) -> "date | None":
+    """フィールド名リストを左から順に試して最初に値が取れた日付を返す。"""
+    for name in field_names:
+        value = fields.get(name)
+        if value is not None:
+            parsed = _parse_date(value)
+            if parsed is not None:
+                return parsed
+    return None
 
 
 def _parse_date(value: object) -> date | None:

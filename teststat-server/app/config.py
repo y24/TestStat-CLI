@@ -75,6 +75,14 @@ class Settings(BaseSettings):
         return self._csv_set(self.azure_devops_bug_suspend_status) - self.azure_devops_bug_ignore_status_set
 
     @property
+    def azure_devops_start_date_fields(self) -> list[str]:
+        return self._csv_list(self.azure_devops_start_date_field)
+
+    @property
+    def azure_devops_end_date_fields(self) -> list[str]:
+        return self._csv_list(self.azure_devops_end_date_field)
+
+    @property
     def azure_devops_bug_created_date_fields(self) -> list[str]:
         return self._csv_list(self.azure_devops_bug_created_date_field)
 

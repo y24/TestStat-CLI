@@ -35,25 +35,55 @@ function formatAxisDate(value: string): string {
   return `${Number(match[2])}/${Number(match[3])}`
 }
 
+function getHiddenDateIndexes(chart: PbChartResponse): Set<number> {
+  if (chart.series.length < 2) {
+    return new Set()
+  }
+
+  const first = chart.series[0]
+  const second = chart.series[1]
+  const firstHasVisibleValue =
+    first.planned_remaining != null ||
+    first.actual_remaining != null ||
+    first.planned_completed_daily != null ||
+    first.actual_completed_daily != null ||
+    first.bug_open != null ||
+    first.bug_suspended != null ||
+    first.bug_resolved != null
+  const isLeadingPadding = !firstHasVisibleValue
+  const isPlanBaseline =
+    first.planned_remaining != null &&
+    first.planned_completed_daily === 0 &&
+    second.planned_completed_daily != null &&
+    second.planned_completed_daily > 0
+  const isActualBaseline =
+    first.actual_remaining != null &&
+    first.actual_completed_daily == null &&
+    second.actual_completed_daily != null
+
+  return isLeadingPadding || isPlanBaseline || isActualBaseline ? new Set([0]) : new Set()
+}
+
 function getDayOfWeek(value: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return null
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getDay()
 }
 
-function selectDateTickIndexes(dates: string[]): Set<number> {
+function selectDateTickIndexes(dates: string[], hiddenIndexes: ReadonlySet<number> = new Set()): Set<number> {
   if (dates.length <= maxDateTickCount) {
-    return new Set(dates.map((_, index) => index))
+    return new Set(dates.map((_, index) => index).filter((index) => !hiddenIndexes.has(index)))
   }
 
   const minGap = Math.ceil(dates.length / maxDateTickCount)
-  const selected = new Set<number>([0, dates.length - 1])
-  let lastSelected = 0
+  const firstVisibleIndex = hiddenIndexes.has(0) ? 1 : 0
+  const selected = new Set<number>([firstVisibleIndex, dates.length - 1])
+  let lastSelected = firstVisibleIndex
 
   dates.forEach((date, index) => {
     const isMonday = getDayOfWeek(date) === 1
     const isMonthStart = date.endsWith('-01')
-    if (!isMonday && !isMonthStart) {
+    if (hiddenIndexes.has(index) || (!isMonday && !isMonthStart)) {
       return
     }
     if (index - lastSelected >= minGap && dates.length - 1 - index >= Math.max(1, minGap - 1)) {
@@ -63,7 +93,10 @@ function selectDateTickIndexes(dates: string[]): Set<number> {
   })
 
   for (let index = 0; index < dates.length; index += minGap) {
-    if (![...selected].some((selectedIndex) => Math.abs(selectedIndex - index) < minGap)) {
+    if (
+      !hiddenIndexes.has(index) &&
+      ![...selected].some((selectedIndex) => Math.abs(selectedIndex - index) < minGap)
+    ) {
       selected.add(index)
     }
   }
@@ -78,7 +111,10 @@ export function buildPbChartOption(
   hiddenPastPlanIds?: ReadonlySet<number>,
 ): PbChartOption {
   const dates = chart.series.map((item) => item.date)
-  const dateTickIndexes = selectDateTickIndexes(dates)
+  const hiddenDateIndexes = getHiddenDateIndexes(chart)
+  const hiddenDates = new Set([...hiddenDateIndexes].map((index) => dates[index]))
+  const firstVisibleDate = dates.find((_, index) => !hiddenDateIndexes.has(index))
+  const dateTickIndexes = selectDateTickIndexes(dates, hiddenDateIndexes)
   const series: PbChartOption['series'] = []
   const hasBugData =
     chart.has_bugs && chart.series.some((item) => item.bug_open !== null)
@@ -270,20 +306,22 @@ export function buildPbChartOption(
     xAxis: {
       type: 'category',
       data: dates,
+      min: firstVisibleDate,
       boundaryGap: true,
       axisLabel: {
         show: true,
         color: '#687386',
         margin: 10,
         hideOverlap: true,
-        formatter: (value: string) => formatAxisDate(value),
-        interval: (index: number) => dateTickIndexes.has(index),
+        showMinLabel: true,
+        formatter: (value: string) => (hiddenDates.has(value) ? '' : formatAxisDate(value)),
+        interval: (index: number, value: string) => value === firstVisibleDate || dateTickIndexes.has(index),
       },
       axisLine: { show: false },
       axisTick: {
         show: true,
         alignWithLabel: true,
-        interval: (index: number) => dateTickIndexes.has(index),
+        interval: (index: number, value: string) => value === firstVisibleDate || (dateTickIndexes.has(index) && !hiddenDates.has(value)),
         lineStyle: { color: '#cbd2dc' },
       },
     },

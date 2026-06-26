@@ -119,6 +119,7 @@ class FileProgressItem(BaseModel):
     environment: str | None
     total_cases: int
     available_cases: int
+    result_na: int
     completed: int
     executed: int
     completed_rate: float

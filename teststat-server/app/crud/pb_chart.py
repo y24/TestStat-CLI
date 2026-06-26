@@ -145,14 +145,15 @@ def _get_test_result_bug_metadata(db: Session, testing_id: int) -> tuple[bool, d
     return (count or 0) > 0, updated_at
 
 
-def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, int, datetime | None]:
+def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, int, int, datetime | None]:
     """実績の対象件数・消化数合計と更新日時。実績なし=0。"""
     if _label_is_disabled(db, testing_id, label):
         updated_at = db.scalar(select(Testing.updated_at).where(Testing.testing_id == testing_id))
-        return 0, 0, updated_at
+        return 0, 0, 0, updated_at
     file_query = select(
         func.coalesce(func.sum(FileProgress.available_cases), 0).label("available_cases"),
         func.coalesce(func.sum(FileProgress.executed), 0).label("executed_cases"),
+        func.coalesce(func.sum(FileProgress.result_na), 0).label("na_cases"),
     ).where(FileProgress.testing_id == testing_id)
     if label is not None:
         file_query = file_query.where(FileProgress.label == label)
@@ -162,16 +163,17 @@ def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tup
             file_query = file_query.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
 
     file_totals = file_query.subquery()
-    available_cases, executed_cases, updated_at = db.execute(
+    available_cases, executed_cases, na_cases, updated_at = db.execute(
         select(
             file_totals.c.available_cases,
             file_totals.c.executed_cases,
+            file_totals.c.na_cases,
             select(Testing.updated_at)
             .where(Testing.testing_id == testing_id)
             .scalar_subquery(),
         )
     ).one()
-    return available_cases or 0, executed_cases or 0, updated_at
+    return available_cases or 0, executed_cases or 0, na_cases or 0, updated_at
 
 
 # ---------- 系列計算 ----------
@@ -186,10 +188,10 @@ def _compute_plan_series(
     """
     計画系列を計算。
     戻り値: (planned_remaining_map, planned_daily_map)
-    planned_remaining_map: {date: remaining} — plan_start〜plan_end の全日
-    planned_daily_map: {date: count} — 同上（エントリなし日は 0）
+    planned_remaining_map: {date: remaining} — plan_start の前日〜plan_end の全日
+    planned_daily_map: {date: count} — 同上（開始前日は 0、エントリなし日は 0）
     """
-    dates = _date_range(plan_start, plan_end)
+    dates = _date_range(plan_start - timedelta(days=1), plan_end)
     cumsum = 0
     remaining_map: dict[date, int] = {}
     daily_map: dict[date, int] = {}
@@ -217,6 +219,8 @@ def _compute_actual_series(
     undated_executed = max(executed_cases - dated_executed, 0)
     cumsum = undated_executed
     remaining_map: dict[date, int] = {}
+    first_actual_date = min(actual_daily_map)
+    remaining_map[first_actual_date - timedelta(days=1)] = available_cases - cumsum
     for d in sorted(actual_daily_map):
         cumsum += actual_daily_map[d]
         remaining_map[d] = available_cases - cumsum
@@ -357,7 +361,7 @@ def _compute_past_plans(
 
             cumsum = 0
             series_items: list[PastPlanSeriesItem] = []
-            for d in _date_range(start_date, end_date):
+            for d in _date_range(start_date - timedelta(days=1), end_date):
                 cnt = daily_map.get(d, 0)
                 cumsum += cnt
                 series_items.append(PastPlanSeriesItem(
@@ -377,7 +381,7 @@ def _compute_past_plans(
 
     for plan in past_plans:
         dm = daily_by_plan.get(plan.id, {})
-        dates = _date_range(plan.start_date, plan.end_date)
+        dates = _date_range(plan.start_date - timedelta(days=1), plan.end_date)
         cumsum = 0
         series_items: list[PastPlanSeriesItem] = []
         for d in dates:
@@ -431,7 +435,13 @@ def get_pb_chart(
 
     # 実績
     actual_daily_map = _get_actual_daily_map(db, testing_id, label)
-    available_cases, executed_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
+    available_cases, executed_cases, actual_na_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
+    actual_plan_comparable_cases = max(available_cases - actual_na_cases, 0)
+    plan_case_mismatch = (
+        planned_total is not None
+        and actual_plan_comparable_cases > 0
+        and planned_total != actual_plan_comparable_cases
+    )
 
     # 不具合
     # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
@@ -460,12 +470,13 @@ def get_pb_chart(
     plan_actual_from: date | None = None
     plan_actual_to: date | None = None
     if has_plan:
-        plan_actual_from = plan_start
+        plan_actual_from = plan_start - timedelta(days=1)
         plan_actual_to = plan_end
     if actual_daily_map:
         actual_min = min(actual_daily_map)
         actual_max = max(actual_daily_map)
-        plan_actual_from = min(plan_actual_from, actual_min) if plan_actual_from else actual_min
+        actual_from = actual_min - timedelta(days=1)
+        plan_actual_from = min(plan_actual_from, actual_from) if plan_actual_from else actual_from
         plan_actual_to = max(plan_actual_to, actual_max) if plan_actual_to else actual_max
 
     if (
@@ -473,7 +484,7 @@ def get_pb_chart(
         and project.planned_start_date is not None
         and project.planned_end_date is not None
     ):
-        range_from = project.planned_start_date
+        range_from = project.planned_start_date - timedelta(days=1)
         range_to = project.planned_end_date
     else:
         range_from = plan_actual_from
@@ -492,7 +503,10 @@ def get_pb_chart(
             range=None,
             actuals_updated_at=actuals_updated_at,
             available_cases=0,
+            actual_na_cases=0,
+            actual_plan_comparable_cases=0,
             planned_total_cases=None,
+            plan_case_mismatch=False,
             bug_axis_max=bug_axis_max,
             series=[],
             past_plans=[],
@@ -504,9 +518,12 @@ def get_pb_chart(
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases, executed_cases)
     if actual_daily_map and available_cases > 0:
         first_actual_date = min(actual_daily_map)
+        dated_executed = sum(actual_daily_map.values())
+        undated_executed = max(executed_cases - dated_executed, 0)
+        initial_actual_remaining = available_cases - undated_executed
         for d in date_list:
             if d < first_actual_date:
-                actual_remaining_sparse[d] = available_cases
+                actual_remaining_sparse[d] = initial_actual_remaining
     elif available_cases > 0:
         actual_remaining_sparse = {d: available_cases for d in date_list}
     bug_cumulative = None
@@ -534,7 +551,10 @@ def get_pb_chart(
         range={"from": range_from.isoformat(), "to": range_to.isoformat()},
         actuals_updated_at=actuals_updated_at,
         available_cases=available_cases,
+        actual_na_cases=actual_na_cases,
+        actual_plan_comparable_cases=actual_plan_comparable_cases,
         planned_total_cases=planned_total,
+        plan_case_mismatch=plan_case_mismatch,
         bug_axis_max=bug_axis_max,
         series=series,
         past_plans=past_plans,

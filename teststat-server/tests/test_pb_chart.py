@@ -89,6 +89,9 @@ class TestPbChart(unittest.TestCase):
             activate=activate, daily=daily,
         ))
 
+    def _point_by_date(self, result, target_date):
+        return next(point for point in result.series if point.date == target_date)
+
     # ---- 計画のみ（実績なし） ----
 
     def test_plan_only(self):
@@ -98,12 +101,15 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(result.planned_total_cases, 100)
         self.assertEqual(result.available_cases, 0)
         self.assertIsNotNone(result.range)
-        self.assertEqual(len(result.series), 5)
+        self.assertEqual(len(result.series), 6)
 
-        # 1日目: remaining = 100 - 20 = 80
-        s0 = result.series[0]
-        self.assertEqual(s0.planned_remaining, 80)
-        self.assertEqual(s0.planned_completed_daily, 20)
+        # 0日目: remaining = 100、1日目: remaining = 100 - 20 = 80
+        s0 = self._point_by_date(result, date(2026, 4, 30))
+        self.assertEqual(s0.planned_remaining, 100)
+        self.assertEqual(s0.planned_completed_daily, 0)
+        s1 = self._point_by_date(result, date(2026, 5, 1))
+        self.assertEqual(s1.planned_remaining, 80)
+        self.assertEqual(s1.planned_completed_daily, 20)
         self.assertIsNone(s0.actual_remaining)
         self.assertIsNone(s0.actual_completed_daily)
 
@@ -123,21 +129,24 @@ class TestPbChart(unittest.TestCase):
 
         self.assertIsNone(result.planned_total_cases)
         self.assertEqual(result.available_cases, 100)
-        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-03"})
+        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-03"})
 
-        # 5/1: actual_remaining = 100 - 25 = 75
-        s0 = result.series[0]
-        self.assertEqual(s0.actual_completed_daily, 25)
-        self.assertEqual(s0.actual_remaining, 75)
+        # 4/30: actual_remaining = 100、5/1: actual_remaining = 100 - 25 = 75
+        s0 = self._point_by_date(result, date(2026, 4, 30))
+        self.assertIsNone(s0.actual_completed_daily)
+        self.assertEqual(s0.actual_remaining, 100)
+        s1 = self._point_by_date(result, date(2026, 5, 1))
+        self.assertEqual(s1.actual_completed_daily, 25)
+        self.assertEqual(s1.actual_remaining, 75)
         self.assertIsNone(s0.planned_remaining)
 
         # 5/2: actual がない日→前日値を引き継ぎ
-        s1 = result.series[1]
+        s1 = self._point_by_date(result, date(2026, 5, 2))
         self.assertIsNone(s1.actual_completed_daily)
         self.assertEqual(s1.actual_remaining, 75)
 
         # 5/3: actual_remaining = 75 - 30 = 45
-        s2 = result.series[2]
+        s2 = self._point_by_date(result, date(2026, 5, 3))
         self.assertEqual(s2.actual_remaining, 45)
 
     # ---- 計画＋実績 ----
@@ -154,18 +163,24 @@ class TestPbChart(unittest.TestCase):
         # range は plan_end まで広がる
         self.assertEqual(result.range["to"], "2026-05-05")
 
-        s0 = result.series[0]
-        self.assertEqual(s0.planned_remaining, 80)   # 100 - 20
-        self.assertEqual(s0.actual_remaining, 85)    # 100 - 15
-        self.assertEqual(s0.planned_completed_daily, 20)
-        self.assertEqual(s0.actual_completed_daily, 15)
+        s0 = self._point_by_date(result, date(2026, 4, 30))
+        self.assertEqual(s0.planned_remaining, 100)
+        self.assertEqual(s0.actual_remaining, 100)
+        self.assertEqual(s0.planned_completed_daily, 0)
+        self.assertIsNone(s0.actual_completed_daily)
 
-        s1 = result.series[1]
+        s1 = self._point_by_date(result, date(2026, 5, 1))
+        self.assertEqual(s1.planned_remaining, 80)   # 100 - 20
+        self.assertEqual(s1.actual_remaining, 85)    # 100 - 15
+        self.assertEqual(s1.planned_completed_daily, 20)
+        self.assertEqual(s1.actual_completed_daily, 15)
+
+        s1 = self._point_by_date(result, date(2026, 5, 2))
         self.assertEqual(s1.planned_remaining, 60)   # 100 - 20 - 20
         self.assertEqual(s1.actual_remaining, 60)    # 100 - 15 - 25
 
         # 実績データ最終日より後は actual_remaining = None
-        s4 = result.series[4]  # 5/5
+        s4 = self._point_by_date(result, date(2026, 5, 5))
         self.assertIsNone(s4.actual_remaining)
 
     # ---- 全テスト合算（label=None） ----
@@ -184,12 +199,43 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(result.planned_total_cases, 150)   # 100 + 50
         self.assertEqual(result.available_cases, 150)       # 100 + 50
 
-        s0 = result.series[0]
-        self.assertEqual(s0.planned_completed_daily, 30)    # 20 + 10
-        self.assertEqual(s0.planned_remaining, 120)         # 150 - 30
-        self.assertEqual(s0.actual_completed_daily, 15)     # 10 + 5
-        self.assertEqual(s0.actual_remaining, 135)          # 150 - 15
+        s0 = self._point_by_date(result, date(2026, 4, 30))
+        self.assertEqual(s0.planned_completed_daily, 0)
+        self.assertEqual(s0.planned_remaining, 150)
+        self.assertIsNone(s0.actual_completed_daily)
+        self.assertEqual(s0.actual_remaining, 150)
 
+        s1 = self._point_by_date(result, date(2026, 5, 1))
+        self.assertEqual(s1.planned_completed_daily, 30)    # 20 + 10
+        self.assertEqual(s1.planned_remaining, 120)         # 150 - 30
+        self.assertEqual(s1.actual_completed_daily, 15)     # 10 + 5
+        self.assertEqual(s1.actual_remaining, 135)          # 150 - 15
+
+
+    def test_plan_case_mismatch_uses_available_cases_excluding_na(self):
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
+        _insert_file_progress(self.db, 1001, "TEST001", available=110, executed=10)
+
+        from app.models.progress import FileProgress
+        from sqlalchemy import select
+
+        file_progress = self.db.scalar(select(FileProgress).where(FileProgress.testing_id == 1001))
+        file_progress.result_na = 10
+        self.db.commit()
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertEqual(result.available_cases, 110)
+        self.assertEqual(result.actual_na_cases, 10)
+        self.assertEqual(result.actual_plan_comparable_cases, 100)
+        self.assertFalse(result.plan_case_mismatch)
+
+        file_progress.result_na = 9
+        self.db.commit()
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+        self.assertEqual(result.actual_plan_comparable_cases, 101)
+        self.assertTrue(result.plan_case_mismatch)
 
     def test_actual_remaining_uses_file_executed_total_when_daily_is_short(self):
         self._make_plan(label="TEST001", total=112, daily_counts=[28] * 4)
@@ -202,9 +248,10 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertEqual(result.available_cases, 112)
-        self.assertEqual(result.series[0].actual_remaining, 73)
-        self.assertEqual(result.series[1].actual_completed_daily, 39)
-        self.assertEqual(result.series[1].actual_remaining, 34)
+        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 103)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 73)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_completed_daily, 39)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_remaining, 34)
 
     def test_all_labels_does_not_count_plan_only_label_as_actual_remaining(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
@@ -218,8 +265,10 @@ class TestPbChart(unittest.TestCase):
 
         self.assertEqual(result.planned_total_cases, 150)
         self.assertEqual(result.available_cases, 100)       # actual files only; plan-only labels affect only the plan line
-        self.assertEqual(result.series[0].actual_completed_daily, 10)
-        self.assertEqual(result.series[0].actual_remaining, 90)
+        self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_completed_daily)
+        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 100)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_completed_daily, 10)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 90)
 
 
     def test_disabled_label_excluded_from_all_and_label_chart(self):
@@ -237,8 +286,10 @@ class TestPbChart(unittest.TestCase):
 
         self.assertEqual(result.planned_total_cases, 100)
         self.assertEqual(result.available_cases, 100)
-        self.assertEqual(result.series[0].planned_completed_daily, 20)
-        self.assertEqual(result.series[0].actual_completed_daily, 10)
+        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).planned_completed_daily, 0)
+        self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_completed_daily)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).planned_completed_daily, 20)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_completed_daily, 10)
 
         disabled_result = get_pb_chart(self.db, 1001, label="TEST002")
         self.assertIsNone(disabled_result.range)
@@ -257,8 +308,11 @@ class TestPbChart(unittest.TestCase):
         pp = result.past_plans[0]
         self.assertEqual(pp.version, 1)
         self.assertEqual(pp.planned_total_cases, 80)
-        # 1日目: 80 - 16 = 64
-        self.assertEqual(pp.series[0].planned_remaining, 64)
+        # 0日目: 80、1日目: 80 - 16 = 64
+        self.assertEqual(pp.series[0].date, date(2026, 4, 30))
+        self.assertEqual(pp.series[0].planned_remaining, 80)
+        self.assertEqual(pp.series[0].planned_completed_daily, 0)
+        self.assertEqual(pp.series[1].planned_remaining, 64)
 
     def test_past_plans_aggregated_for_all_labels(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5, activate=True)
@@ -273,8 +327,10 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(pp.version, 1)
         self.assertIsNone(pp.label)
         self.assertEqual(pp.planned_total_cases, 150)       # 100 + 50
-        self.assertEqual(pp.series[0].planned_completed_daily, 30)  # 20 + 10
-        self.assertEqual(pp.series[0].planned_remaining, 120)       # 150 - 30
+        self.assertEqual(pp.series[0].planned_completed_daily, 0)
+        self.assertEqual(pp.series[0].planned_remaining, 150)
+        self.assertEqual(pp.series[1].planned_completed_daily, 30)  # 20 + 10
+        self.assertEqual(pp.series[1].planned_remaining, 120)       # 150 - 30
 
     def test_past_plan_for_one_label_includes_other_active_labels_in_all_view(self):
         self._make_plan(label="TEST001", total=80, daily_counts=[16] * 5, activate=True)
@@ -288,8 +344,10 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(pp.version, 1)
         self.assertIsNone(pp.label)
         self.assertEqual(pp.planned_total_cases, 130)       # TEST001 v1 + TEST002 active
-        self.assertEqual(pp.series[0].planned_completed_daily, 26)  # 16 + 10
-        self.assertEqual(pp.series[0].planned_remaining, 104)       # 130 - 26
+        self.assertEqual(pp.series[0].planned_completed_daily, 0)
+        self.assertEqual(pp.series[0].planned_remaining, 130)
+        self.assertEqual(pp.series[1].planned_completed_daily, 26)  # 16 + 10
+        self.assertEqual(pp.series[1].planned_remaining, 104)       # 130 - 26
 
     def test_past_plans_not_returned_by_default(self):
         self._make_plan(total=80, activate=True)
@@ -444,11 +502,12 @@ class TestPbChart(unittest.TestCase):
 
         result = get_pb_chart(self.db, 1001, label="TEST001")
 
-        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-10"})
-        self.assertEqual(len(result.series), 11)
+        self.assertEqual(result.range, {"from": "2026-04-29", "to": "2026-05-10"})
+        self.assertEqual(len(result.series), 12)
         self.assertIsNone(result.series[0].planned_remaining)
-        self.assertEqual(result.series[1].planned_remaining, 80)
-        self.assertEqual(result.series[5].planned_remaining, 0)
+        self.assertEqual(result.series[1].planned_remaining, 100)
+        self.assertEqual(result.series[2].planned_remaining, 80)
+        self.assertEqual(result.series[6].planned_remaining, 0)
         self.assertIsNone(result.series[-1].planned_remaining)
 
     def test_project_period_range_source_falls_back_without_project_planned_dates(self):
@@ -460,8 +519,8 @@ class TestPbChart(unittest.TestCase):
 
         result = get_pb_chart(self.db, 1001, label="TEST001")
 
-        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
-        self.assertEqual(len(result.series), 5)
+        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 6)
     def test_azure_devops_bug_dates_do_not_expand_plan_actual_range(self):
         from app.models.bug import BugSnapshot
         from datetime import datetime
@@ -494,15 +553,15 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertTrue(result.has_bugs)
-        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
-        self.assertEqual(len(result.series), 5)
+        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 6)
         self.assertEqual(
             [item.date for item in result.series],
-            [date(2026, 5, day) for day in range(1, 6)],
+            [date(2026, 4, 30), *[date(2026, 5, day) for day in range(1, 6)]],
         )
         self.assertEqual(
             [(item.bug_open, item.bug_suspended, item.bug_resolved) for item in result.series],
-            [(1, 0, 0)] * 5,
+            [(1, 0, 0)] * 6,
         )
 
     def test_test_result_bug_dates_do_not_expand_plan_actual_range(self):
@@ -554,11 +613,11 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertTrue(result.has_bugs)
-        self.assertEqual(result.range, {"from": "2026-05-01", "to": "2026-05-05"})
-        self.assertEqual(len(result.series), 5)
+        self.assertEqual(result.range, {"from": "2026-04-30", "to": "2026-05-05"})
+        self.assertEqual(len(result.series), 6)
         self.assertEqual(
             [(item.bug_open, item.bug_suspended, item.bug_resolved) for item in result.series],
-            [(2, 0, 0), (2, 0, 0), (3, 0, 0), (3, 0, 0), (3, 0, 0)],
+            [(2, 0, 0), (2, 0, 0), (2, 0, 0), (3, 0, 0), (3, 0, 0), (3, 0, 0)],
         )
 
     # ---- 存在しないプロジェクト ----

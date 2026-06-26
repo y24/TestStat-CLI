@@ -1093,6 +1093,27 @@
   color: #9d2145;
 }
 
+.plan-mismatch-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  border: 1px solid #f1c66d;
+  border-radius: 7px;
+  background: #fff8e6;
+  color: #7a4f00;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-mismatch-alert-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke-width: 2.3;
+}
+
 .chart-wrap {
   border: 1px solid var(--border);
   background: #fff;

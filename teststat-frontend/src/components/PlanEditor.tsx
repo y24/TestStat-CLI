@@ -208,7 +208,7 @@ export function PlanEditor({
     .map((item) => item.label)
   const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
     if (file.label) {
-      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + file.available_cases
+      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + planComparableCases(file)
     }
     return casesByLabel
   }, {})
@@ -216,7 +216,7 @@ export function PlanEditor({
   const unlabeledFiles = files.filter((file) => !file.label)
   const hasUnlabeledData = unlabeledFiles.length > 0
   const unlabeledAvailableCases = unlabeledFiles.reduce(
-    (total, file) => total + file.available_cases,
+    (total, file) => total + planComparableCases(file),
     0,
   )
   const selectedModalPlans =
@@ -866,6 +866,9 @@ export function PlanEditor({
   )
 }
 
+function planComparableCases(file: FileProgressItem) {
+  return Math.max(file.available_cases - (file.result_na ?? 0), 0)
+}
 
 function createEmptyCliOptionsInput(): LabelCliOptionsInput {
   return {

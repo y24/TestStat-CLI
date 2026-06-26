@@ -39,6 +39,7 @@ export interface FileProgressItem {
   environment: string | null
   total_cases: number
   available_cases: number
+  result_na: number
   completed: number
   executed: number
   completed_rate: number
@@ -289,7 +290,10 @@ export interface PbChartResponse {
   range: { from: string; to: string } | null
   actuals_updated_at: string | null
   available_cases: number
+  actual_na_cases: number
+  actual_plan_comparable_cases: number
   planned_total_cases: number | null
+  plan_case_mismatch: boolean
   bug_axis_max: number
   series: PbChartSeries[]
   past_plans: PbChartPastPlan[]

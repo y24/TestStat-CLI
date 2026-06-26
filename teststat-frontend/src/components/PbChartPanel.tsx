@@ -36,7 +36,7 @@ import type {
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { displayLabel } from '../utils/plans'
-import { Bug, ClipboardList } from 'lucide-react'
+import { Bug, ClipboardList, TriangleAlert } from 'lucide-react'
 import { enumerateDates, formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
@@ -329,6 +329,16 @@ export function PbChartPanel({
           最終更新: {formatDateTimeWithRelative(project.actuals_updated_at)}
         </span>
       </div>
+
+      {chart?.plan_case_mismatch && chart.planned_total_cases != null && chart.actual_plan_comparable_cases > 0 && (
+        <div className="plan-mismatch-alert" role="status">
+          <TriangleAlert className="plan-mismatch-alert-icon" aria-hidden="true" />
+          <span>
+            計画と実績の項目数が一致していません。計画 {chart.planned_total_cases} / 実績 {chart.actual_plan_comparable_cases}
+            {chart.actual_na_cases > 0 ? `（N/A ${chart.actual_na_cases} 件を除外）` : ''}
+          </span>
+        </div>
+      )}
 
       <div className="bug-bar">
         {!usesTestResultBugs && (
@@ -736,6 +746,8 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
   const selectedLabelSet = new Set(labels)
   const matchingFiles = files.filter((file) => file.label != null && selectedLabelSet.has(file.label))
   const availableSum = matchingFiles.reduce((sum, file) => sum + file.available_cases, 0)
+  const actualNaSum = matchingFiles.reduce((sum, file) => sum + (file.result_na ?? 0), 0)
+  const actualPlanComparableSum = Math.max(availableSum - actualNaSum, 0)
   const executedSum = matchingFiles.reduce((sum, file) => sum + file.executed, 0)
   const plannedTotals = charts.map((chart) => chart.planned_total_cases)
   const plannedTotalSum = plannedTotals.every((value) => value == null)
@@ -816,7 +828,11 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
     range: rangeFrom != null && rangeTo != null ? { from: rangeFrom, to: rangeTo } : null,
     actuals_updated_at: actualsUpdatedAt,
     available_cases: availableSum,
+    actual_na_cases: actualNaSum,
+    actual_plan_comparable_cases: actualPlanComparableSum,
     planned_total_cases: plannedTotalSum,
+    plan_case_mismatch:
+      plannedTotalSum != null && actualPlanComparableSum > 0 && plannedTotalSum !== actualPlanComparableSum,
     series,
     past_plans: charts.flatMap((chart) => chart.past_plans),
     has_bugs: charts.some((chart) => chart.has_bugs),

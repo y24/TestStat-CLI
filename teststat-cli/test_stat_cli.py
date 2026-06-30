@@ -210,7 +210,9 @@ def _build_file_api_payloads(results, skipped_subtask_ids=None):
     skipped_subtask_ids = set(skipped_subtask_ids or [])
     api_payloads = {}
 
-    # 同じファイル・同じサブタスクIDで合算
+    # 同じサブタスクIDを持つ複数のlabel/ファイルを合算する
+    # （1プロジェクト内で同一サブタスクIDが複数labelに指定された場合、
+    #   合算した進捗率を当該サブタスクIDへ1回だけ送信する）
     for filepath, result in results:
         if not isinstance(result, dict) or "subtask_id" not in result or "error" in result or "total" not in result:
             continue
@@ -219,22 +221,25 @@ def _build_file_api_payloads(results, skipped_subtask_ids=None):
         if subtask_id in skipped_subtask_ids:
             continue
 
-        key = (filepath, subtask_id)
         completed = result["total"].get("完了数", 0)
         available = result.get("stats", {}).get("available", 0)
         start_date = result.get("run", {}).get("start_date")
+        label = result.get("label", "")
 
-        if key not in api_payloads:
-            api_payloads[key] = {
+        if subtask_id not in api_payloads:
+            api_payloads[subtask_id] = {
                 "completed": completed,
                 "available": available,
-                "start_dates": [start_date] if start_date else []
+                "start_dates": [start_date] if start_date else [],
+                "labels": [label] if label else []
             }
         else:
-            api_payloads[key]["completed"] += completed
-            api_payloads[key]["available"] += available
+            api_payloads[subtask_id]["completed"] += completed
+            api_payloads[subtask_id]["available"] += available
             if start_date:
-                api_payloads[key]["start_dates"].append(start_date)
+                api_payloads[subtask_id]["start_dates"].append(start_date)
+            if label and label not in api_payloads[subtask_id]["labels"]:
+                api_payloads[subtask_id]["labels"].append(label)
 
     return api_payloads
 
@@ -762,21 +767,24 @@ def main():
                     ConsoleFormatter.print_info(f"プロジェクト全体 (サブタスクID: {project_subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
 
         api_payloads = _build_file_api_payloads(results, skipped_subtask_ids)
-                        
-        for (f, subtask_id), data in api_payloads.items():
+
+        for subtask_id, data in api_payloads.items():
             completed = data["completed"]
             available = data["available"]
             progress_percent = (completed / available * 100) if available > 0 else 0
-            
+
             kwargs = {}
             if data["start_dates"]:
                 kwargs["actual_start_date"] = min(data["start_dates"])
-                
+
             success, msg = update_subtask_progress(base_url, subtask_id, progress_percent, verbose_logger, **kwargs)
+            labels = data.get("labels", [])
+            label_text = ", ".join(labels)
+            target_desc = f"{label_text} (サブタスクID: {subtask_id})" if label_text else f"サブタスクID: {subtask_id}"
             if is_json_mode:
                 api_updates.append({
-                    "scope": "file",
-                    "file": f,
+                    "scope": "subtask",
+                    "labels": labels,
                     "subtask_id": subtask_id,
                     "progress": int(progress_percent),
                     "success": success,
@@ -784,9 +792,9 @@ def main():
                 })
             else:
                 if not success:
-                    ConsoleFormatter.print_warning(f"ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率更新に失敗: {msg}")
+                    ConsoleFormatter.print_warning(f"{target_desc} の進捗率更新に失敗: {msg}")
                 else:
-                    ConsoleFormatter.print_info(f"ファイル '{f}' (サブタスクID: {subtask_id}) の進捗率を {int(progress_percent)}% に更新しました。")
+                    ConsoleFormatter.print_info(f"{target_desc} の進捗率を {int(progress_percent)}% に更新しました。")
         
         if is_json_mode:
             output_data["api_updates"] = api_updates

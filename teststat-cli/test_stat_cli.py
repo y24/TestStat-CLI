@@ -461,7 +461,9 @@ def main():
                     remote_index += 1
                     sp_config = settings.get("sharepoint", {})
                     if not sp_config.get("enabled", True):
-                        execution_warnings.append(f"SharePoint連携が無効のためスキップします: {file_info['path']}")
+                        label = file_info.get("label", "")
+                        label_prefix = f"[{label}] " if label else ""
+                        execution_warnings.append(f"{label_prefix}SharePoint連携が無効のためスキップします: {file_info['path']}")
                         continue
                     try:
                         if remote_mgr is None:
@@ -477,7 +479,9 @@ def main():
                             progress_stream=progress_stream,
                         )
                     except RemoteSource.RemoteSourceError as e:
-                        execution_warnings.append(f"SharePointダウンロードに失敗しました: {file_info['path']} ({e})")
+                        label = file_info.get("label", "")
+                        label_prefix = f"[{label}] " if label else ""
+                        execution_warnings.append(f"{label_prefix}SharePointダウンロードに失敗しました: {file_info['path']} ({e})")
                         continue
                 else:
                     target_path = file_info["path"]

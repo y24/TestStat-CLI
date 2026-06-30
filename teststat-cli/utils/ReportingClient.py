@@ -169,6 +169,43 @@ def _get_project_status(base_url, testing_id, timeout=10):
         return False, f"プロジェクト状態の確認に失敗しました: {e}"
 
 
+def fetch_active_project_ids(base_url, timeout=10, logger=None):
+    """サーバーに登録された未アーカイブの Testing ID を取得する。"""
+    if not base_url:
+        return False, "reporting_api.base_url が設定されていません。"
+
+    url = f"{base_url.rstrip('/')}/v1/projects"
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("Accept", "application/json")
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            body = response.read().decode("utf-8")
+            if not 200 <= response.status < 300:
+                return False, f"プロジェクト一覧の取得に失敗しました: ステータスコード {response.status}"
+            projects = json.loads(body)
+            if not isinstance(projects, list):
+                return False, "プロジェクト一覧のレスポンス形式が不正です。"
+            testing_ids = [
+                project["testing_id"]
+                for project in projects
+                if isinstance(project, dict)
+                and not project.get("archived", False)
+                and isinstance(project.get("testing_id"), int)
+            ]
+            if logger:
+                logger.log(f"未アーカイブのプロジェクトを取得しました: count={len(testing_ids)}")
+            return True, testing_ids
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        return False, f"プロジェクト一覧の取得に失敗しました: ステータスコード {e.code}, レスポンス: {body}"
+    except urllib.error.URLError as e:
+        return False, f"APIへの接続に失敗しました: {e}"
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return False, f"プロジェクト一覧のレスポンスを解析できませんでした: {e}"
+    except Exception as e:
+        return False, f"プロジェクト一覧の取得に失敗しました: {e}"
+
 def fetch_project_list_yaml(base_url, testing_id, timeout=10, logger=None):
     if not base_url:
         return False, "reporting_api.base_url が設定されていません。"

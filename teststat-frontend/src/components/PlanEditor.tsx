@@ -68,7 +68,7 @@ export function PlanEditor({
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
   const [subtaskIdInput, setSubtaskIdInput] = useState('')
-  const [usePlanAsActualOffset, setUsePlanAsActualOffset] = useState(true)
+  const [usePlanAsActualOffset, setUsePlanAsActualOffset] = useState(false)
   const [cliOptionsInput, setCliOptionsInput] = useState<LabelCliOptionsInput>(() => createEmptyCliOptionsInput())
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
@@ -171,7 +171,7 @@ export function PlanEditor({
           (labelInput.trim() !== editingPlanLabel.label ||
             sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
             subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
-            usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? true) ||
+            usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? false) ||
             !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))),
     )
   }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput, subtaskIdInput, usePlanAsActualOffset])
@@ -377,7 +377,7 @@ export function PlanEditor({
       (labelInput.trim() !== editingPlanLabel.label ||
         sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
         subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
-        usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? true) ||
+        usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? false) ||
         !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))
     ) {
       const confirmed = await confirm({
@@ -552,7 +552,7 @@ export function PlanEditor({
       old_label: editingPlanLabel.label,
       label: editingPlanLabel.label,
       is_disabled: !editingPlanLabel.is_disabled,
-      use_plan_as_actual_offset: editingPlanLabel.use_plan_as_actual_offset ?? true,
+      use_plan_as_actual_offset: editingPlanLabel.use_plan_as_actual_offset ?? false,
       source_url: editingPlanLabel.source_url ?? null,
       subtask_id: editingPlanLabel.subtask_id ?? null,
       target_sheets: editingPlanLabel.target_sheets ?? null,
@@ -763,11 +763,12 @@ export function PlanEditor({
   }
 
   if (mode === 'label-edit' && editingPlanLabel !== null) {
+    const hasActualData = actualLabels.includes(editingPlanLabel.label)
     const labelEditUnchanged =
       labelInput.trim() === editingPlanLabel.label &&
       sourceUrlInput.trim() === (editingPlanLabel.source_url ?? '') &&
       subtaskIdInput.trim() === subtaskIdInputFromLabel(editingPlanLabel) &&
-      usePlanAsActualOffset === (editingPlanLabel.use_plan_as_actual_offset ?? true) &&
+      usePlanAsActualOffset === (editingPlanLabel.use_plan_as_actual_offset ?? false) &&
       isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel))
     return (
       <PlanLabelEditScreen
@@ -778,6 +779,7 @@ export function PlanEditor({
         subtaskId={subtaskIdInput}
         cliOptions={cliOptionsInput}
         usePlanAsActualOffset={usePlanAsActualOffset}
+        usePlanAsActualOffsetDisabled={hasActualData}
         isDisabled={Boolean(editingPlanLabel.is_disabled)}
         unchanged={labelEditUnchanged}
         formError={formError}

@@ -11,6 +11,7 @@ export function PlanLabelEditScreen({
   subtaskId,
   cliOptions,
   usePlanAsActualOffset,
+  usePlanAsActualOffsetDisabled,
   isDisabled,
   unchanged,
   formError,
@@ -32,6 +33,7 @@ export function PlanLabelEditScreen({
   subtaskId: string
   cliOptions: LabelCliOptionsInput
   usePlanAsActualOffset: boolean
+  usePlanAsActualOffsetDisabled: boolean
   isDisabled: boolean
   unchanged: boolean
   formError: string | null
@@ -113,11 +115,14 @@ export function PlanLabelEditScreen({
             <input
               type="checkbox"
               checked={usePlanAsActualOffset}
-              disabled={submitting}
+              disabled={submitting || usePlanAsActualOffsetDisabled}
               onChange={(event) => onUsePlanAsActualOffsetChange(event.target.checked)}
             />
             <span>実績データ未送信時、計画項目数を0日目の実績未実施数に加算する</span>
           </label>
+          {usePlanAsActualOffsetDisabled && (
+            <p className="field-hint">実績データが送信済みのため、この設定は不要です。</p>
+          )}
 
 
           <div className="form-actions">

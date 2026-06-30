@@ -5,6 +5,7 @@ import argparse
 import atexit
 import os
 import pkgutil
+import subprocess
 import traceback
 from datetime import datetime
 
@@ -304,6 +305,7 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログ出力")
     parser.add_argument("-l", "--list", help="パスリストファイルのパス（YAML形式）")
     parser.add_argument("-t", "--testing-id", type=int, help="testing_idを指定してサーバーからリストYAMLを取得し、集計・送信を実行")
+    parser.add_argument("-a", "--all-projects", action="store_true", help="未アーカイブの全プロジェクトを順次集計・送信")
     parser.add_argument("-p", "--clipboard", action="store_true", help="TSV形式でクリップボードにコピー")
     parser.add_argument("--detailed", action="store_true", help="複数ファイル処理時にファイル別の詳細結果も表示")
     parser.add_argument("--install-skills", action="store_true", help="AIエージェント用のスラッシュコマンドとスキルをカレントディレクトリへ配置して終了")
@@ -347,6 +349,60 @@ def main():
         print(f"ERROR: {message}", file=sys.stderr)
         sys.exit(1)
     
+    if args.all_projects:
+        if args.testing_id is not None or args.list or args.path:
+            print("ERROR: --all-projects は path、-l/--list、-t/--testing-id と同時に指定できません", file=sys.stderr)
+            sys.exit(1)
+        if args.output_file or args.clipboard or args.json or args.json_detailed or args.output_format != "table":
+            print("ERROR: --all-projects は出力形式・出力先・クリップボードのオプションと同時に指定できません", file=sys.stderr)
+            sys.exit(1)
+
+        reporting_config = settings.get("reporting_api", {})
+        if not reporting_config.get("enabled", True):
+            print("ERROR: reporting_api が無効のため --all-projects を実行できません", file=sys.stderr)
+            sys.exit(1)
+        if not reporting_config.get("base_url"):
+            print("ERROR: reporting_api.base_url が設定されていません", file=sys.stderr)
+            sys.exit(1)
+
+        from utils.ReportingClient import fetch_active_project_ids
+
+        success, result = fetch_active_project_ids(
+            reporting_config.get("base_url"), logger=verbose_logger
+        )
+        if not success:
+            print(f"ERROR: {result}", file=sys.stderr)
+            sys.exit(1)
+        if not result:
+            print("未アーカイブのプロジェクトはありません。")
+            return
+
+        failed_ids = []
+        total = len(result)
+        for index, testing_id in enumerate(result, start=1):
+            print(f"\n[{index}/{total}] testing_id={testing_id} を更新します")
+            command = [
+                sys.executable,
+                os.path.abspath(__file__),
+                "--testing-id",
+                str(testing_id),
+                "--config",
+                os.path.abspath(args.config),
+            ]
+            if args.verbose:
+                command.append("--verbose")
+            if args.detailed:
+                command.append("--detailed")
+            completed = subprocess.run(command, check=False)
+            if completed.returncode != 0:
+                failed_ids.append(testing_id)
+
+        succeeded = total - len(failed_ids)
+        print(f"\n全プロジェクトの更新を完了しました: 成功={succeeded}, 失敗={len(failed_ids)}")
+        if failed_ids:
+            print(f"ERROR: 更新に失敗した testing_id: {', '.join(map(str, failed_ids))}", file=sys.stderr)
+            sys.exit(1)
+        return
     # ファイルリストの作成
     tasks = []
     project_info = None

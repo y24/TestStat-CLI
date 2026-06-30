@@ -63,6 +63,8 @@ tstat [オプション] [ファイルパス/フォルダパス]
 | `path` | - | 集計対象のファイルまたはフォルダのパス | 必須 |
 | `-c, --config` | `-c` | 設定ファイルのパス | `config.json` |
 | `-l, --list` | `-l` | プロジェクトリストファイルのパス（YAML形式） | なし |
+| `-t, --testing-id` | `-t` | Testing IDを指定してサーバーからリストを取得し、集計・送信 | なし |
+| `-a, --all-projects` | `-a` | 未アーカイブの全プロジェクトを順次集計・送信 | `false` |
 | `-f, --output-format` | `-f` | 出力形式（table/json/csv） | `table` |
 | `-o, --output-file` | `-o` | 出力ファイルパス | なし（コンソール出力のみ） |
 | `-j, --json` | `-j` | JSON形式でサマリ出力 | `false` |
@@ -106,6 +108,9 @@ tstat path/to/your_folder
 
 # プロジェクトリストファイル使用（YAML形式）
 tstat -l project_list.yaml
+
+# 未アーカイブの全プロジェクトを一括更新
+tstat -a  # --all-projects でも可
 
 # カスタム設定ファイルを使用
 tstat path/to/your_file.xlsx -c custom_config.json

@@ -2,7 +2,7 @@ import unittest
 import urllib.error
 from unittest.mock import patch
 
-from utils.ReportingClient import build_progress_payload, fetch_project_list_yaml, send_progress
+from utils.ReportingClient import build_progress_payload, fetch_active_project_ids, fetch_project_list_yaml, send_progress
 
 
 class FakeResponse:
@@ -121,6 +121,18 @@ class ReportingClientPayloadTests(unittest.TestCase):
         self.assertEqual(payload["files"][0]["available_cases"], 0)
         self.assertEqual(payload["files"][0]["error"], "sheet missing")
 
+
+class ReportingClientProjectListTests(unittest.TestCase):
+    def test_fetch_active_project_ids_excludes_archived_projects(self):
+        def fake_urlopen(req, timeout=10):
+            return FakeResponse(body='[{"testing_id":1001,"archived":false},{"testing_id":1002,"archived":true},{"testing_id":1003,"archived":false}]')
+
+        with patch("utils.ReportingClient.urllib.request.urlopen", side_effect=fake_urlopen) as urlopen:
+            success, testing_ids = fetch_active_project_ids("http://localhost:18000/api")
+
+        self.assertTrue(success)
+        self.assertEqual(testing_ids, [1001, 1003])
+        self.assertEqual(urlopen.call_args.args[0].full_url, "http://localhost:18000/api/v1/projects")
 
 class ReportingClientListYamlTests(unittest.TestCase):
     def test_fetch_project_list_yaml_gets_expected_endpoint(self):

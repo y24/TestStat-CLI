@@ -2,6 +2,11 @@ import { ChevronRight, LayoutDashboard, LockKeyhole, Search } from 'lucide-react
 import { useMemo, useState } from 'react'
 import type { ProjectItem } from '../api/types'
 import { formatDate } from '../utils/date'
+import {
+  getProgressStatusLevel,
+  type ProgressStatusLevel,
+  type ProgressStatusThresholds,
+} from '../utils/statusThresholds'
 
 // マネージャー層向けの俯瞰ビュー。プロジェクトを 1 表で確認する。
 // データは App が保持する projects（GET /api/v1/projects）をそのまま利用し、専用 API は持たない。
@@ -32,23 +37,53 @@ function formatPlannedPeriod(project: ProjectItem): string | null {
   return null
 }
 
+function getProgressStatusLabel(level: ProgressStatusLevel): string {
+  if (level === 'normal') {
+    return '正常'
+  }
+  if (level === 'caution') {
+    return '注意'
+  }
+  if (level === 'warning') {
+    return '警告'
+  }
+  return '状態なし'
+}
+
 function RateCell({
   value,
   done,
+  showBar = true,
+  statusLevel,
 }: {
   value: number | null | undefined
   done: boolean
+  showBar?: boolean
+  statusLevel?: ProgressStatusLevel
 }) {
   const hasValue = value != null
   const width = hasValue ? Math.max(0, Math.min(100, value)) : 0
+  // 未開始（値なし=unknown）のときは丸を出さず - だけ表示する。
+  const showDot = statusLevel != null && statusLevel !== 'unknown'
   return (
-    <div className="dashboard-rate-cell">
+    <div className={`dashboard-rate-cell${showBar ? '' : ' no-bar'}`}>
       <div className="dashboard-rate-top">
+        {showDot && (
+          <span
+            className={`plan-status-indicator ${statusLevel}`}
+            aria-label={getProgressStatusLabel(statusLevel)}
+            title={getProgressStatusLabel(statusLevel)}
+          >
+            ●
+          </span>
+        )}
         <span className={`dashboard-rate-value${hasValue ? '' : ' empty'}`}>{formatRate(value)}</span>
       </div>
-      <div className="dashboard-rate-bar">
-        <span className={done ? 'done' : ''} style={{ width: `${width}%` }} />
-      </div>
+      {showBar && (
+        <div className="dashboard-rate-bar">
+          <span className={done ? 'done' : ''} style={{ width: `${width}%` }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -56,15 +91,18 @@ function RateCell({
 function ProjectRow({
   project,
   archived,
+  progressStatusThresholds,
   onOpenProject,
 }: {
   project: ProjectItem
   archived: boolean
+  progressStatusThresholds: ProgressStatusThresholds
   onOpenProject: (testingId: number) => void
 }) {
   const status = getProjectStatus(project)
   const plannedPeriod = formatPlannedPeriod(project)
   const completed = project.actual_all_completed
+  const planStatusLevel = getProgressStatusLevel(project.actual_vs_plan_rate, progressStatusThresholds)
   return (
     <tr onClick={() => onOpenProject(project.testing_id)} title={`${project.name} (#${project.testing_id})`}>
       <td className="dashboard-testing-id">{project.testing_id}</td>
@@ -86,7 +124,7 @@ function ProjectRow({
         <RateCell value={project.actual_completed_rate} done={completed} />
       </td>
       <td className="num">
-        <RateCell value={project.actual_vs_plan_rate} done={completed} />
+        <RateCell value={project.actual_vs_plan_rate} done={completed} showBar={false} statusLevel={planStatusLevel} />
       </td>
     </tr>
   )
@@ -94,10 +132,12 @@ function ProjectRow({
 
 export function Dashboard({
   projects,
+  progressStatusThresholds,
   onOpenProject,
   onCreate,
 }: {
   projects: ProjectItem[]
+  progressStatusThresholds: ProgressStatusThresholds
   onOpenProject: (testingId: number) => void
   onCreate: () => void
 }) {
@@ -207,6 +247,7 @@ export function Dashboard({
                   key={project.testing_id}
                   project={project}
                   archived={tab === 'archived'}
+                  progressStatusThresholds={progressStatusThresholds}
                   onOpenProject={onOpenProject}
                 />
               ))

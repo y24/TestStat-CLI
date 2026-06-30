@@ -3050,7 +3050,34 @@
 
 .dashboard-rate-top {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 6px;
+}
+
+.dashboard-rate-top .plan-status-indicator {
+  font-size: 14px;
+}
+
+/* バー無し（対計画）はセル高さいっぱいに上下中央寄せし、丸・数値を一回り大きく見せる。 */
+.dashboard-rate-cell.no-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  min-height: 34px;
+}
+
+.dashboard-rate-cell.no-bar .dashboard-rate-top {
+  justify-content: center;
+}
+
+.dashboard-rate-cell.no-bar .dashboard-rate-value {
+  font-size: 16px;
+}
+
+.dashboard-rate-cell.no-bar .plan-status-indicator {
+  font-size: 17px;
 }
 
 .dashboard-rate-value {

@@ -438,6 +438,7 @@ function AppContent() {
             {viewMode === 'dashboard' && (
               <Dashboard
                 projects={projects}
+                progressStatusThresholds={progressStatusThresholds}
                 onOpenProject={openProjectOverview}
                 onCreate={() => openSubview('new')}
               />

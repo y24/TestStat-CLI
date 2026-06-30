@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { PlanItem } from '../../api/types'
 import { formatDate } from '../../utils/date'
@@ -12,12 +13,14 @@ export interface PlanVersionModalChanges {
 export function PlanVersionModal({
   label,
   plans,
+  actualAvailableCases,
   submitting,
   onSave,
   onClose,
 }: {
   label: string | null
   plans: PlanItem[]
+  actualAvailableCases: number | null
   submitting: boolean
   onSave: (changes: PlanVersionModalChanges) => void
   onClose: () => void
@@ -90,7 +93,13 @@ export function PlanVersionModal({
               </tr>
             </thead>
             <tbody>
-              {visiblePlans.map((plan) => (
+              {visiblePlans.map((plan) => {
+                // 実データの項目数があるのに計画の項目数と食い違う版は警告する。
+                const casesMismatch =
+                  actualAvailableCases !== null &&
+                  actualAvailableCases > 0 &&
+                  plan.planned_total_cases !== actualAvailableCases
+                return (
                 <tr key={plan.id} className={selectedPlanId === plan.id ? 'active-plan-row' : ''}>
                   <td>
                     <input
@@ -106,7 +115,19 @@ export function PlanVersionModal({
                   <td>
                     v{plan.version}
                   </td>
-                  <td>{plan.planned_total_cases}</td>
+                  <td className={casesMismatch ? 'plan-cases-mismatch' : ''}>
+                    {casesMismatch ? (
+                      <span
+                        className="plan-cases-mismatch-value"
+                        title={`計画とデータが一致していません（計画 ${plan.planned_total_cases} / データ ${actualAvailableCases}）`}
+                      >
+                        <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+                        {plan.planned_total_cases}
+                      </span>
+                    ) : (
+                      plan.planned_total_cases
+                    )}
+                  </td>
                   <td>
                     {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
                   </td>
@@ -124,7 +145,8 @@ export function PlanVersionModal({
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
               {visiblePlans.length === 0 && (
                 <tr>
                   <td colSpan={6}>保存すると、計画がすべて削除されます。</td>

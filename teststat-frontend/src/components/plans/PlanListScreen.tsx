@@ -201,6 +201,11 @@ export function PlanListScreen({
           key={modalResetKey}
           label={modalLabel}
           plans={selectedModalPlans}
+          actualAvailableCases={
+            (modalLabel === null
+              ? unlabeledAvailableCases
+              : availableCasesByLabel[modalLabel]) ?? null
+          }
           submitting={submitting}
           onSave={onSaveModal}
           onClose={onCloseModal}

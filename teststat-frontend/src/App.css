@@ -1916,6 +1916,12 @@
   fill: var(--accent);
 }
 
+.preview-chart text.preview-point-label {
+  fill: var(--accent);
+  font-size: 9px;
+  font-weight: 600;
+}
+
 .preview-x-tick line {
   stroke: #aeb8c5;
 }

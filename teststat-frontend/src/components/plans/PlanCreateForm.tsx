@@ -351,10 +351,20 @@ function PlanPreview({ preview }: { preview: PreviewState }) {
         {preview.points.map((point, index) => {
           const x = padding.left + xStep * index
           const y = padding.top + (1 - point.remaining / maxValue) * plotHeight
-          if (preview.points.length > 20 && index !== 0 && index !== preview.points.length - 1) {
-            return null
-          }
-          return <circle key={point.date} cx={x} cy={y} r="3" />
+          const above = y - 10 >= padding.top
+          const labelY = above ? y - 8 : y + 16
+          // 直前と同じ残項目数が続く場合はラベルを省略する
+          const showLabel = index === 0 || point.remaining !== preview.points[index - 1].remaining
+          return (
+            <g key={point.date}>
+              <circle cx={x} cy={y} r="2.5" />
+              {showLabel && (
+                <text className="preview-point-label" x={x} y={labelY} textAnchor="middle">
+                  {point.remaining}
+                </text>
+              )}
+            </g>
+          )
         })}
       </svg>
     </div>

@@ -1239,7 +1239,9 @@ function ProgressBreakdown({
         )}
       </section>
 
-      <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} bugStateColors={bugStateColors} />
+      {selectedLabels.length === 0 && (
+        <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} bugStateColors={bugStateColors} />
+      )}
     </div>
   )
 }

@@ -118,12 +118,8 @@ export function PlanLabelEditScreen({
               disabled={submitting || usePlanAsActualOffsetDisabled}
               onChange={(event) => onUsePlanAsActualOffsetChange(event.target.checked)}
             />
-            <span>実績データ未送信時、計画項目数を0日目の実績未実施数に加算する</span>
+            <span>計画項目数を実績オフセットとして加算する</span>
           </label>
-          {usePlanAsActualOffsetDisabled && (
-            <p className="field-hint">実績データが送信済みのため、この設定は不要です。</p>
-          )}
-
 
           <div className="form-actions">
             <button className="primary-button" type="submit" disabled={submitting || unchanged}>

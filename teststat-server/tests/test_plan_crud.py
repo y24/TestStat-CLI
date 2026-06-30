@@ -90,6 +90,7 @@ class TestPlanCRUD(unittest.TestCase):
         created = create_plan_label(self.db, 1001, PlanLabelCreate(label="  TEST001  "))
         self.assertEqual(created.label, "TEST001")
         self.assertFalse(created.is_disabled)
+        self.assertTrue(created.use_plan_as_actual_offset)
         self.assertEqual(created.display_order, 0)
 
         labels = list_plan_labels(self.db, 1001)

@@ -176,6 +176,43 @@ def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tup
     return available_cases or 0, executed_cases or 0, na_cases or 0, updated_at
 
 
+def _get_actual_data_labels(db: Session, testing_id: int, label: str | None) -> set[str | None]:
+    """実績が一度でも送信された label を返す。件数 0 のファイルも送信済みとして扱う。"""
+    disabled_labels = _get_disabled_labels(db, testing_id) if label is None else set()
+    file_query = select(FileProgress.label).where(FileProgress.testing_id == testing_id)
+    daily_query = select(DailyProgress.label).where(DailyProgress.testing_id == testing_id)
+    if label is not None:
+        file_query = file_query.where(FileProgress.label == label)
+        daily_query = daily_query.where(DailyProgress.label == label)
+    elif disabled_labels:
+        file_query = file_query.where(
+            (FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels))
+        )
+        daily_query = daily_query.where(
+            (DailyProgress.label.is_(None)) | (DailyProgress.label.not_in(disabled_labels))
+        )
+    return set(db.scalars(file_query.distinct())) | set(db.scalars(daily_query.distinct()))
+
+
+def _get_plan_actual_offset(
+    db: Session,
+    testing_id: int,
+    active_plans: list[Plan],
+    actual_data_labels: set[str | None],
+) -> int:
+    """未送信 label の計画件数を、設定に従って実績未実施数の初期値へ加算する。"""
+    label_settings = {
+        item.label: item.use_plan_as_actual_offset
+        for item in db.scalars(select(PlanLabel).where(PlanLabel.testing_id == testing_id))
+    }
+    return sum(
+        plan.planned_total_cases
+        for plan in active_plans
+        if plan.label not in actual_data_labels
+        and label_settings.get(plan.label, True)
+    )
+
+
 # ---------- 系列計算 ----------
 
 def _compute_plan_series(
@@ -436,12 +473,13 @@ def get_pb_chart(
     # 実績
     actual_daily_map = _get_actual_daily_map(db, testing_id, label)
     available_cases, executed_cases, actual_na_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
+    actual_data_labels = _get_actual_data_labels(db, testing_id, label)
+    actual_offset = _get_plan_actual_offset(db, testing_id, active_plans, actual_data_labels)
     actual_plan_comparable_cases = max(available_cases - actual_na_cases, 0)
-    plan_case_mismatch = (
-        planned_total is not None
-        and actual_plan_comparable_cases > 0
-        and planned_total != actual_plan_comparable_cases
+    comparable_planned_total = sum(
+        plan.planned_total_cases for plan in active_plans if plan.label in actual_data_labels
     )
+    plan_case_mismatch = bool(actual_data_labels) and comparable_planned_total != actual_plan_comparable_cases
 
     # 不具合
     # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
@@ -515,17 +553,21 @@ def get_pb_chart(
         )
 
     date_list = _date_range(range_from, range_to)
-    actual_remaining_sparse = _compute_actual_series(actual_daily_map, available_cases, executed_cases)
-    if actual_daily_map and available_cases > 0:
+    actual_series_total = available_cases + actual_offset
+    actual_remaining_sparse = _compute_actual_series(actual_daily_map, actual_series_total, executed_cases)
+    if actual_daily_map and actual_series_total > 0:
         first_actual_date = min(actual_daily_map)
         dated_executed = sum(actual_daily_map.values())
         undated_executed = max(executed_cases - dated_executed, 0)
-        initial_actual_remaining = available_cases - undated_executed
+        initial_actual_remaining = actual_series_total - undated_executed
         for d in date_list:
             if d < first_actual_date:
                 actual_remaining_sparse[d] = initial_actual_remaining
     elif available_cases > 0:
-        actual_remaining_sparse = {d: available_cases for d in date_list}
+        actual_remaining_sparse = {d: actual_series_total for d in date_list}
+    elif actual_offset > 0:
+        # 実績が未送信の場合は、計画開始前の 0 日目だけを既知の初期値として描画する。
+        actual_remaining_sparse = {range_from: actual_offset}
     bug_cumulative = None
     if bugs_visible:
         if bug_count_source == "test_result":

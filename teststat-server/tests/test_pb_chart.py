@@ -110,13 +110,26 @@ class TestPbChart(unittest.TestCase):
         s1 = self._point_by_date(result, date(2026, 5, 1))
         self.assertEqual(s1.planned_remaining, 80)
         self.assertEqual(s1.planned_completed_daily, 20)
-        self.assertIsNone(s0.actual_remaining)
+        self.assertEqual(s0.actual_remaining, 100)
         self.assertIsNone(s0.actual_completed_daily)
 
         # 最終日: planned remaining = 0, actual remaining is unknown because no actual data exists yet
         self.assertEqual(result.series[-1].planned_remaining, 0)
         self.assertIsNone(result.series[-1].actual_remaining)
 
+
+    def test_plan_only_offset_can_be_disabled(self):
+        self._make_plan(total=100, daily_counts=[20, 20, 20, 20, 20])
+        create_plan_label(
+            self.db,
+            1001,
+            PlanLabelCreate(label="TEST001", use_plan_as_actual_offset=False),
+        )
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_remaining)
+        self.assertFalse(result.plan_case_mismatch)
     # ---- 実績のみ（計画なし） ----
 
     def test_actuals_only(self):
@@ -253,7 +266,7 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_completed_daily, 39)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_remaining, 34)
 
-    def test_all_labels_does_not_count_plan_only_label_as_actual_remaining(self):
+    def test_all_labels_counts_plan_only_label_as_actual_offset(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
         _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
@@ -264,11 +277,12 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertEqual(result.planned_total_cases, 150)
-        self.assertEqual(result.available_cases, 100)       # actual files only; plan-only labels affect only the plan line
+        self.assertEqual(result.available_cases, 100)       # API metadata remains actual-file-only
         self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_completed_daily)
-        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 100)
+        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 150)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_completed_daily, 10)
-        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 90)
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 140)
+        self.assertFalse(result.plan_case_mismatch)
 
 
     def test_disabled_label_excluded_from_all_and_label_chart(self):

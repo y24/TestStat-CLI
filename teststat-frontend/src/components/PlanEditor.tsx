@@ -68,6 +68,7 @@ export function PlanEditor({
   const [labelInput, setLabelInput] = useState('')
   const [sourceUrlInput, setSourceUrlInput] = useState('')
   const [subtaskIdInput, setSubtaskIdInput] = useState('')
+  const [usePlanAsActualOffset, setUsePlanAsActualOffset] = useState(true)
   const [cliOptionsInput, setCliOptionsInput] = useState<LabelCliOptionsInput>(() => createEmptyCliOptionsInput())
   const [editingPlanLabel, setEditingPlanLabel] = useState<LabelEditTarget | null>(null)
   const [modalLabel, setModalLabel] = useState<string | null | undefined>(undefined)
@@ -170,9 +171,10 @@ export function PlanEditor({
           (labelInput.trim() !== editingPlanLabel.label ||
             sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
             subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
+            usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? true) ||
             !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))),
     )
-  }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput, subtaskIdInput])
+  }, [cliOptionsInput, editingPlanLabel, form, initialCreateForm, labelInput, mode, onDirtyChange, sourceUrlInput, subtaskIdInput, usePlanAsActualOffset])
 
   useEffect(() => {
     return () => onDirtyChange(false)
@@ -364,6 +366,7 @@ export function PlanEditor({
     setLabelInput(planLabel.label)
     setSourceUrlInput(planLabel.source_url ?? '')
     setSubtaskIdInput(subtaskIdInputFromLabel(planLabel))
+    setUsePlanAsActualOffset(planLabel.use_plan_as_actual_offset ?? true)
     setCliOptionsInput(cliOptionsInputFromLabel(planLabel))
     onOpenScreen('label-edit')
   }
@@ -374,6 +377,7 @@ export function PlanEditor({
       (labelInput.trim() !== editingPlanLabel.label ||
         sourceUrlInput.trim() !== (editingPlanLabel.source_url ?? '') ||
         subtaskIdInput.trim() !== subtaskIdInputFromLabel(editingPlanLabel) ||
+        usePlanAsActualOffset !== (editingPlanLabel.use_plan_as_actual_offset ?? true) ||
         !isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel)))
     ) {
       const confirmed = await confirm({
@@ -509,6 +513,7 @@ export function PlanEditor({
       old_label: originalLabel || label,
       label,
       is_disabled: Boolean(editingPlanLabel.is_disabled),
+      use_plan_as_actual_offset: usePlanAsActualOffset,
       source_url: sourceUrl,
       subtask_id: parseSubtaskId(subtaskIdInput),
       ...toCliOptionsPayload(cliOptionsInput),
@@ -546,7 +551,8 @@ export function PlanEditor({
     updateProjectLabel(project.testing_id, {
       old_label: editingPlanLabel.label,
       label: editingPlanLabel.label,
-      is_disabled: !Boolean(editingPlanLabel.is_disabled),
+      is_disabled: !editingPlanLabel.is_disabled,
+      use_plan_as_actual_offset: editingPlanLabel.use_plan_as_actual_offset ?? true,
       source_url: editingPlanLabel.source_url ?? null,
       subtask_id: editingPlanLabel.subtask_id ?? null,
       target_sheets: editingPlanLabel.target_sheets ?? null,
@@ -761,6 +767,7 @@ export function PlanEditor({
       labelInput.trim() === editingPlanLabel.label &&
       sourceUrlInput.trim() === (editingPlanLabel.source_url ?? '') &&
       subtaskIdInput.trim() === subtaskIdInputFromLabel(editingPlanLabel) &&
+      usePlanAsActualOffset === (editingPlanLabel.use_plan_as_actual_offset ?? true) &&
       isSameCliOptionsInput(cliOptionsInput, cliOptionsInputFromLabel(editingPlanLabel))
     return (
       <PlanLabelEditScreen
@@ -770,6 +777,7 @@ export function PlanEditor({
         sourceUrl={sourceUrlInput}
         subtaskId={subtaskIdInput}
         cliOptions={cliOptionsInput}
+        usePlanAsActualOffset={usePlanAsActualOffset}
         isDisabled={Boolean(editingPlanLabel.is_disabled)}
         unchanged={labelEditUnchanged}
         formError={formError}
@@ -778,6 +786,7 @@ export function PlanEditor({
         onSourceUrlChange={setSourceUrlInput}
         onSubtaskIdChange={setSubtaskIdInput}
         onCliOptionsChange={setCliOptionsInput}
+        onUsePlanAsActualOffsetChange={setUsePlanAsActualOffset}
         onToggleDisabled={handleTogglePlanLabelDisabled}
         onCancel={cancelLabelEdit}
         onSubmit={submitPlanLabelEdit}

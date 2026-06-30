@@ -792,7 +792,6 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
   const availableSum = matchingFiles.reduce((sum, file) => sum + file.available_cases, 0)
   const actualNaSum = matchingFiles.reduce((sum, file) => sum + (file.result_na ?? 0), 0)
   const actualPlanComparableSum = Math.max(availableSum - actualNaSum, 0)
-  const executedSum = matchingFiles.reduce((sum, file) => sum + file.executed, 0)
   const plannedTotals = charts.map((chart) => chart.planned_total_cases)
   const plannedTotalSum = plannedTotals.every((value) => value == null)
     ? null
@@ -826,13 +825,7 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
       : initialActualDates.length > 0
         ? initialActualDates.sort()[initialActualDates.length - 1]
         : null
-  const datedActualSum = charts.reduce(
-    (sum, chart) => sum + chart.series.reduce((chartSum, point) => chartSum + (point.actual_completed_daily ?? 0), 0),
-    0,
-  )
-  const undatedActual = Math.max(executedSum - datedActualSum, 0)
   let cumulativePlanned = 0
-  let cumulativeActual = undatedActual
   const series = dates.map((date) => {
     const points = pointMaps.map((pointMap) => pointMap.get(date))
     const withinPlannedRange =
@@ -843,13 +836,12 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
       : null
     const actualCompletedDaily = sumNullable(points.map((point) => point?.actual_completed_daily))
     cumulativePlanned += plannedCompletedDaily ?? 0
-    cumulativeActual += points.reduce((sum, point) => sum + (point?.actual_completed_daily ?? 0), 0)
     return {
       date,
       planned_remaining: plannedTotalSum != null && withinPlannedRange ? plannedTotalSum - cumulativePlanned : null,
       actual_remaining:
         globalLastActualDate != null && date <= globalLastActualDate
-          ? availableSum - cumulativeActual
+          ? sumNullable(charts.map((chart) => getActualRemainingAt(chart.series, date)))
           : null,
       planned_completed_daily: plannedCompletedDaily,
       actual_completed_daily: actualCompletedDaily,
@@ -875,14 +867,26 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
     actual_na_cases: actualNaSum,
     actual_plan_comparable_cases: actualPlanComparableSum,
     planned_total_cases: plannedTotalSum,
-    plan_case_mismatch:
-      plannedTotalSum != null && actualPlanComparableSum > 0 && plannedTotalSum !== actualPlanComparableSum,
+    plan_case_mismatch: charts.some((chart) => chart.plan_case_mismatch),
     series,
     past_plans: charts.flatMap((chart) => chart.past_plans),
     has_bugs: charts.some((chart) => chart.has_bugs),
     bugs_updated_at: bugsUpdatedAt,
     bug_axis_max: Math.max(...charts.map((chart) => chart.bug_axis_max)),
   }
+}
+
+function getActualRemainingAt(points: PbChartResponse['series'], date: string): number | null {
+  let latest: number | null = null
+  for (const point of points) {
+    if (point.date > date) {
+      break
+    }
+    if (point.actual_remaining != null) {
+      latest = point.actual_remaining
+    }
+  }
+  return latest
 }
 
 function getCumulativeFieldAt(

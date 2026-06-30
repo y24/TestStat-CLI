@@ -10,6 +10,7 @@ export function PlanLabelEditScreen({
   sourceUrl,
   subtaskId,
   cliOptions,
+  usePlanAsActualOffset,
   isDisabled,
   unchanged,
   formError,
@@ -18,6 +19,7 @@ export function PlanLabelEditScreen({
   onSourceUrlChange,
   onSubtaskIdChange,
   onCliOptionsChange,
+  onUsePlanAsActualOffsetChange,
   onToggleDisabled,
   onCancel,
   onSubmit,
@@ -29,6 +31,7 @@ export function PlanLabelEditScreen({
   sourceUrl: string
   subtaskId: string
   cliOptions: LabelCliOptionsInput
+  usePlanAsActualOffset: boolean
   isDisabled: boolean
   unchanged: boolean
   formError: string | null
@@ -37,6 +40,7 @@ export function PlanLabelEditScreen({
   onSourceUrlChange: (sourceUrl: string) => void
   onSubtaskIdChange: (subtaskId: string) => void
   onCliOptionsChange: (cliOptions: LabelCliOptionsInput) => void
+  onUsePlanAsActualOffsetChange: (enabled: boolean) => void
   onToggleDisabled: () => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
@@ -105,6 +109,17 @@ export function PlanLabelEditScreen({
             />
           </label>
           <PlanLabelCliOptionsFields value={cliOptions} disabled={submitting} onChange={onCliOptionsChange} />
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={usePlanAsActualOffset}
+              disabled={submitting}
+              onChange={(event) => onUsePlanAsActualOffsetChange(event.target.checked)}
+            />
+            <span>実績データ未送信時、計画項目数を0日目の実績未実施数に加算する</span>
+          </label>
+
+
           <div className="form-actions">
             <button className="primary-button" type="submit" disabled={submitting || unchanged}>
               {submitting ? '保存中...' : '保存'}

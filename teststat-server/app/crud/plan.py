@@ -132,6 +132,7 @@ def _project_label_exists(db: Session, testing_id: int, label: str) -> bool:
 
 def _apply_plan_label_payload(label: PlanLabel, payload: PlanLabelCreate) -> None:
     label.is_disabled = payload.is_disabled
+    label.use_plan_as_actual_offset = payload.use_plan_as_actual_offset
     label.source_url = payload.source_url
     label.subtask_id = payload.subtask_id
     label.target_sheets = payload.target_sheets
@@ -196,6 +197,7 @@ def create_plan_label(db: Session, testing_id: int, payload: PlanLabelCreate) ->
         testing_id=testing_id,
         label=payload.label,
         is_disabled=payload.is_disabled,
+        use_plan_as_actual_offset=payload.use_plan_as_actual_offset,
         source_url=payload.source_url,
         subtask_id=payload.subtask_id,
         target_sheets=payload.target_sheets,
@@ -248,6 +250,7 @@ def update_project_label(db: Session, testing_id: int, payload: ProjectLabelUpda
             testing_id=testing_id,
             label=payload.label,
             is_disabled=payload.is_disabled,
+            use_plan_as_actual_offset=payload.use_plan_as_actual_offset,
             source_url=payload.source_url,
             subtask_id=payload.subtask_id,
             target_sheets=payload.target_sheets,

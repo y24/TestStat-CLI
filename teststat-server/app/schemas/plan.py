@@ -7,6 +7,7 @@ class PlanLabelCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=255)
     is_disabled: bool = False
     source_url: str | None = Field(None, max_length=2048)
+    use_plan_as_actual_offset: bool = True
     subtask_id: int | None = Field(None, ge=0)
     target_sheets: list[str] | None = None
     ignore_sheets: list[str] | None = None
@@ -68,6 +69,7 @@ class PlanLabelItem(BaseModel):
     is_disabled: bool
     source_url: str | None
     subtask_id: int | None
+    use_plan_as_actual_offset: bool
     target_sheets: list[str] | None
     ignore_sheets: list[str] | None
     include_hidden_sheets: bool | None

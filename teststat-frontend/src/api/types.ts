@@ -300,6 +300,8 @@ export interface PbChartResponse {
   actual_plan_comparable_cases: number
   planned_total_cases: number | null
   plan_case_mismatch: boolean
+  actual_executed_to_latest: number
+  planned_completed_to_latest_actual: number
   bug_axis_max: number
   series: PbChartSeries[]
   past_plans: PbChartPastPlan[]

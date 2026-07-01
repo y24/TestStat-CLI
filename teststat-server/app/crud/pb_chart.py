@@ -482,6 +482,23 @@ def get_pb_chart(
     )
     plan_case_mismatch = bool(actual_data_labels) and comparable_planned_total != actual_plan_comparable_cases
 
+    label_offset_settings = {
+        item.label: item.use_plan_as_actual_offset
+        for item in db.scalars(select(PlanLabel).where(PlanLabel.testing_id == testing_id))
+    }
+    metric_plans = [
+        plan for plan in active_plans
+        if plan.label in actual_data_labels or label_offset_settings.get(plan.label, True)
+    ]
+    actual_executed_to_latest = sum(actual_daily_map.values())
+    planned_completed_to_latest_actual = 0
+    if actual_daily_map and metric_plans:
+        latest_actual_date = max(actual_daily_map)
+        metric_plan_daily_map = _get_plan_daily_map(db, [plan.id for plan in metric_plans])
+        planned_completed_to_latest_actual = sum(
+            count for target_date, count in metric_plan_daily_map.items()
+            if target_date <= latest_actual_date
+        )
     # 不具合
     # - test_result ソース: スナップショットは label 別に保持しているため、表示対象のテスト別に描画できる。
     #   (全て)=label=None のときは全 label を日付ごとに合算する。
@@ -548,6 +565,8 @@ def get_pb_chart(
             actual_plan_comparable_cases=actual_plan_comparable_cases,
             planned_total_cases=None,
             plan_case_mismatch=False,
+            actual_executed_to_latest=actual_executed_to_latest,
+            planned_completed_to_latest_actual=planned_completed_to_latest_actual,
             bug_axis_max=bug_axis_max,
             series=[],
             past_plans=[],
@@ -599,6 +618,8 @@ def get_pb_chart(
         actual_plan_comparable_cases=actual_plan_comparable_cases,
         planned_total_cases=planned_total,
         plan_case_mismatch=plan_case_mismatch,
+        actual_executed_to_latest=actual_executed_to_latest,
+        planned_completed_to_latest_actual=planned_completed_to_latest_actual,
         bug_axis_max=bug_axis_max,
         series=series,
         past_plans=past_plans,

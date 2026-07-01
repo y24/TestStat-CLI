@@ -372,7 +372,7 @@ class TestProjectCRUD(unittest.TestCase):
         self.assertTrue(p.actual_all_completed)
 
     def test_actual_vs_plan_rate_uses_plan_until_latest_actual_date(self):
-        from app.models.plan import Plan, PlanDaily
+        from app.models.plan import Plan, PlanDaily, PlanLabel
         from app.models.progress import DailyProgress, FileProgress, Testing
         from datetime import date, datetime
 

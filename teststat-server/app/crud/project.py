@@ -122,21 +122,33 @@ def _actual_vs_plan_rate(db: Session, testing_id: int) -> float | None:
             _enabled_label_condition(DailyProgress.label, testing_id),
         )
     ) or 0
+    disabled_labels = set(db.scalars(_disabled_labels_subquery(testing_id)))
+    actual_labels = set(db.scalars(
+        select(FileProgress.label).where(FileProgress.testing_id == testing_id).distinct()
+    )) | set(db.scalars(
+        select(DailyProgress.label).where(DailyProgress.testing_id == testing_id).distinct()
+    ))
+    label_settings = {
+        item.label: item.use_plan_as_actual_offset
+        for item in db.scalars(select(PlanLabel).where(PlanLabel.testing_id == testing_id))
+    }
+    included_plan_ids = [
+        plan.id
+        for plan in db.scalars(select(Plan).where(Plan.testing_id == testing_id, Plan.is_active.is_(True)))
+        if plan.label not in disabled_labels
+        and (plan.label in actual_labels or label_settings.get(plan.label, True))
+    ]
+    if not included_plan_ids:
+        return None
     planned_completed = db.scalar(
-        select(func.coalesce(func.sum(PlanDaily.planned_count), 0))
-        .join(Plan, PlanDaily.plan_id == Plan.id)
-        .where(
-            Plan.testing_id == testing_id,
-            Plan.is_active.is_(True),
+        select(func.coalesce(func.sum(PlanDaily.planned_count), 0)).where(
+            PlanDaily.plan_id.in_(included_plan_ids),
             PlanDaily.date <= latest_actual_date,
-            _enabled_label_condition(Plan.label, testing_id),
         )
     ) or 0
     if planned_completed <= 0:
         return None
     return round(actual_executed / planned_completed * 100, 2)
-
-
 def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSummary]:
     rows = db.execute(
         select(
@@ -166,79 +178,7 @@ def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSu
 
 
 def _actual_vs_plan_rates(db: Session, testing_ids: list[int]) -> dict[int, float | None]:
-    if not testing_ids:
-        return {}
-
-    latest_actual_dates = (
-        select(
-            DailyProgress.testing_id.label("testing_id"),
-            func.max(DailyProgress.date).label("latest_actual_date"),
-        )
-        .where(DailyProgress.testing_id.in_(testing_ids))
-        .outerjoin(
-            PlanLabel,
-            (PlanLabel.testing_id == DailyProgress.testing_id) & (PlanLabel.label == DailyProgress.label),
-        )
-        .where((PlanLabel.id.is_(None)) | (PlanLabel.is_disabled.is_(False)))
-        .group_by(DailyProgress.testing_id)
-        .subquery()
-    )
-
-    actual_rows = db.execute(
-        select(
-            DailyProgress.testing_id,
-            func.coalesce(func.sum(DailyProgress.executed), 0),
-        )
-        .join(
-            latest_actual_dates,
-            DailyProgress.testing_id == latest_actual_dates.c.testing_id,
-        )
-        .where(DailyProgress.date <= latest_actual_dates.c.latest_actual_date)
-        .outerjoin(
-            PlanLabel,
-            (PlanLabel.testing_id == DailyProgress.testing_id) & (PlanLabel.label == DailyProgress.label),
-        )
-        .where((PlanLabel.id.is_(None)) | (PlanLabel.is_disabled.is_(False)))
-        .group_by(DailyProgress.testing_id)
-    ).all()
-    actuals = {testing_id: executed for testing_id, executed in actual_rows}
-
-    planned_rows = db.execute(
-        select(
-            Plan.testing_id,
-            func.coalesce(func.sum(PlanDaily.planned_count), 0),
-        )
-        .join(PlanDaily, PlanDaily.plan_id == Plan.id)
-        .join(
-            latest_actual_dates,
-            Plan.testing_id == latest_actual_dates.c.testing_id,
-        )
-        .where(
-            Plan.testing_id.in_(testing_ids),
-            Plan.is_active.is_(True),
-            PlanDaily.date <= latest_actual_dates.c.latest_actual_date,
-        )
-        .outerjoin(
-            PlanLabel,
-            (PlanLabel.testing_id == Plan.testing_id) & (PlanLabel.label == Plan.label),
-        )
-        .where(
-            (PlanLabel.id.is_(None)) | (PlanLabel.is_disabled.is_(False)),
-        )
-        .group_by(Plan.testing_id)
-    ).all()
-    planned = {testing_id: planned_completed for testing_id, planned_completed in planned_rows}
-
-    rates: dict[int, float | None] = {}
-    for testing_id in testing_ids:
-        planned_completed = planned.get(testing_id, 0) or 0
-        if planned_completed <= 0 or testing_id not in actuals:
-            rates[testing_id] = None
-        else:
-            rates[testing_id] = round((actuals.get(testing_id, 0) or 0) / planned_completed * 100, 2)
-    return rates
-
-
+    return {testing_id: _actual_vs_plan_rate(db, testing_id) for testing_id in testing_ids}
 def _to_response(
     project: Project,
     testing: Testing | None,

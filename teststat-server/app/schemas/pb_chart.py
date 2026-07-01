@@ -51,6 +51,8 @@ class PbChartResponse(BaseModel):
     actual_plan_comparable_cases: int = 0  # available_cases。計画母数との照合用。
     planned_total_cases: int | None  # 有効計画の planned_total_cases 合計（None = 計画なし）
     plan_case_mismatch: bool = False
+    actual_executed_to_latest: int = 0
+    planned_completed_to_latest_actual: int = 0
     bug_axis_max: int
     series: list[PbChartSeriesItem]
     past_plans: list[PastPlanSeries]

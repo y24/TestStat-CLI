@@ -130,6 +130,22 @@ class TestPbChart(unittest.TestCase):
 
         self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_remaining)
         self.assertFalse(result.plan_case_mismatch)
+    def test_disabled_plan_only_offset_is_excluded_from_completion_metrics(self):
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
+        self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
+        create_plan_label(
+            self.db,
+            1001,
+            PlanLabelCreate(label="TEST002", use_plan_as_actual_offset=False),
+        )
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
+        _insert_actuals(self.db, 1001, [("TEST001", date(2026, 5, 1), 10)])
+
+        result = get_pb_chart(self.db, 1001, label=None)
+
+        self.assertEqual(result.actual_total_cases, 100)
+        self.assertEqual(result.actual_executed_to_latest, 10)
+        self.assertEqual(result.planned_completed_to_latest_actual, 20)
     # ---- 実績のみ（計画なし） ----
 
     def test_actuals_only(self):

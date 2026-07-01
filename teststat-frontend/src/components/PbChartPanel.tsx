@@ -739,24 +739,12 @@ function buildCompletionSummary(
 }
 
 function computeActualVsPlanRate(chart: PbChartResponse) {
-  const latestActualIndex = chart.series.findLastIndex((point) => point.actual_completed_daily != null)
-  if (latestActualIndex < 0) {
+  const planned = chart.planned_completed_to_latest_actual ?? 0
+  if (planned <= 0) {
     return null
   }
-
-  let actualExecuted = 0
-  let plannedCompletedUntilLatestActual = 0
-  for (const point of chart.series.slice(0, latestActualIndex + 1)) {
-    actualExecuted += point.actual_completed_daily ?? 0
-    plannedCompletedUntilLatestActual += point.planned_completed_daily ?? 0
-  }
-
-  if (plannedCompletedUntilLatestActual <= 0) {
-    return null
-  }
-  return Math.round((actualExecuted / plannedCompletedUntilLatestActual) * 10000) / 100
+  return Math.round(((chart.actual_executed_to_latest ?? 0) / planned) * 10000) / 100
 }
-
 function formatCompletionSummary(summary: CompletionSummary | null) {
   if (!summary) {
     return '-'
@@ -883,6 +871,14 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
     actual_plan_comparable_cases: actualPlanComparableSum,
     planned_total_cases: plannedTotalSum,
     plan_case_mismatch: charts.some((chart) => chart.plan_case_mismatch),
+    actual_executed_to_latest: charts.reduce(
+      (sum, chart) => sum + (chart.actual_executed_to_latest ?? 0),
+      0,
+    ),
+    planned_completed_to_latest_actual: charts.reduce(
+      (sum, chart) => sum + (chart.planned_completed_to_latest_actual ?? 0),
+      0,
+    ),
     series,
     past_plans: charts.flatMap((chart) => chart.past_plans),
     has_bugs: charts.some((chart) => chart.has_bugs),

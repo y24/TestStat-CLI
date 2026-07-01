@@ -846,7 +846,15 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
       planned_remaining: plannedTotalSum != null && withinPlannedRange ? plannedTotalSum - cumulativePlanned : null,
       actual_remaining:
         globalLastActualDate != null && date <= globalLastActualDate
-          ? sumNullable(charts.map((chart) => getActualRemainingAt(chart.series, date)))
+          ? sumNullable(
+              charts.map((chart) =>
+                getActualRemainingAt(
+                  chart.series,
+                  date,
+                  chart.actual_total_cases ?? chart.available_cases,
+                ),
+              ),
+            )
           : null,
       planned_completed_daily: plannedCompletedDaily,
       actual_completed_daily: actualCompletedDaily,
@@ -883,8 +891,12 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
   }
 }
 
-function getActualRemainingAt(points: PbChartResponse['series'], date: string): number | null {
-  let latest: number | null = null
+function getActualRemainingAt(
+  points: PbChartResponse['series'],
+  date: string,
+  initialRemaining: number,
+): number | null {
+  let latest: number | null = initialRemaining
   for (const point of points) {
     if (point.date > date) {
       break

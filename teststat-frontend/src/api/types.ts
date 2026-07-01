@@ -133,6 +133,7 @@ export interface ProjectItem {
   actual_completed: number
   actual_completed_rate: number
   actual_vs_plan_rate: number | null
+  actual_vs_plan_delay_days: number | null
   actual_all_completed: boolean
   active_plan_count: number
 }

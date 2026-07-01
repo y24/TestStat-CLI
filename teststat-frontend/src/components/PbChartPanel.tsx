@@ -90,6 +90,7 @@ interface CompletionSummary {
   completed: number
   completedRate: number
   actualVsPlanRate: number | null
+  actualVsPlanDelayDays: number | null
 }
 
 const resultKeys: ResultKey[] = ['Pass', 'Fixed', 'Fail', 'Blocked', 'Suspend', 'N/A']
@@ -316,6 +317,7 @@ export function PbChartPanel({
           label="完了率(対計画)"
           value={formatRate(completionSummary?.actualVsPlanRate)}
           statusLevel={planStatusLevel}
+          delayDays={completionSummary?.actualVsPlanDelayDays}
         />
         <StatusTile label="Blocked件数" value={loading ? '-' : String(blockedCount)} />
         <StatusTile
@@ -676,10 +678,12 @@ function StatusTile({
   label,
   value,
   statusLevel,
+  delayDays,
 }: {
   label: string
   value: string
   statusLevel?: ProgressStatusLevel
+  delayDays?: number | null
 }) {
   return (
     <div className="status-tile">
@@ -695,6 +699,7 @@ function StatusTile({
           </span>
         )}
         <span>{value}</span>
+        {delayDays != null && delayDays > 0 && <span className="status-delay">({delayDays.toFixed(1)}日遅延)</span>}
       </strong>
     </div>
   )
@@ -735,6 +740,7 @@ function buildCompletionSummary(
     completed,
     completedRate: toRate(completed, chart.actual_total_cases ?? chart.available_cases),
     actualVsPlanRate: computeActualVsPlanRate(chart),
+    actualVsPlanDelayDays: computeActualVsPlanDelayDays(chart),
   }
 }
 
@@ -744,6 +750,41 @@ function computeActualVsPlanRate(chart: PbChartResponse) {
     return null
   }
   return Math.round(((chart.actual_executed_to_latest ?? 0) / planned) * 10000) / 100
+}
+
+function computeActualVsPlanDelayDays(chart: PbChartResponse) {
+  const actual = chart.actual_executed_to_latest ?? 0
+  const planned = chart.planned_completed_to_latest_actual ?? 0
+  if (planned <= 0 || actual >= planned) {
+    return 0
+  }
+  const latestActualPoint = [...chart.series]
+    .reverse()
+    .find((point) => point.actual_remaining != null || point.actual_completed_daily != null)
+  if (!latestActualPoint) {
+    return null
+  }
+
+  let cumulative = 0
+  for (const point of chart.series) {
+    const plannedDaily = point.planned_completed_daily ?? 0
+    if (plannedDaily <= 0) {
+      continue
+    }
+    if (actual <= cumulative + plannedDaily) {
+      const fraction = Math.max(0, (actual - cumulative) / plannedDaily)
+      const plannedPosition = dateToDayNumber(point.date) + fraction
+      const actualPosition = dateToDayNumber(latestActualPoint.date) + 1
+      return Math.round(Math.max(0, actualPosition - plannedPosition) * 10) / 10
+    }
+    cumulative += plannedDaily
+  }
+  return null
+}
+
+function dateToDayNumber(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  return Date.UTC(year, month - 1, day) / 86400000
 }
 function formatCompletionSummary(summary: CompletionSummary | null) {
   if (!summary) {

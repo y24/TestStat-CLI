@@ -79,6 +79,7 @@ function withProjectActualFallback(project: ProjectItem, summary?: ProgressSumma
     actual_completed: project.actual_completed ?? summary?.summary.completed ?? 0,
     actual_completed_rate: project.actual_completed_rate ?? summary?.summary.completed_rate ?? 0,
     actual_vs_plan_rate: project.actual_vs_plan_rate ?? null,
+    actual_vs_plan_delay_days: project.actual_vs_plan_delay_days ?? null,
     actual_all_completed:
       project.actual_all_completed ??
       Boolean(summary && summary.summary.available_cases > 0 && summary.summary.completed_rate >= 100),
@@ -92,6 +93,7 @@ async function enrichProjectActuals(project: ProjectItem): Promise<ProjectItem> 
       project.actual_completed != null &&
       project.actual_completed_rate != null &&
       project.actual_vs_plan_rate !== undefined &&
+      project.actual_vs_plan_delay_days !== undefined &&
       project.actual_all_completed != null)
   ) {
     return withProjectActualFallback(project)

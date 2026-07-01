@@ -435,6 +435,51 @@ class TestProjectCRUD(unittest.TestCase):
         self.assertEqual(p.actual_completed_rate, 40)
         self.assertEqual(p.actual_vs_plan_rate, 100)
 
+        self.assertEqual(p.actual_vs_plan_delay_days, 0)
+
+    def test_actual_vs_plan_delay_days_interpolates_daily_plan(self):
+        from app.models.plan import Plan, PlanDaily
+        from app.models.progress import DailyProgress, Testing
+        from datetime import date, datetime
+
+        self.db.add(Testing(testing_id=5005, project_name="遅延P", updated_at=datetime(2026, 6, 3)))
+        self.db.commit()
+        create_project(self.db, ProjectCreate(testing_id=5005, name="遅延P"))
+
+        plan = Plan(
+            testing_id=5005,
+            label=None,
+            version=1,
+            is_active=True,
+            planned_total_cases=20,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 4),
+        )
+        self.db.add(plan)
+        self.db.flush()
+        self.db.add_all(
+            [
+                PlanDaily(plan_id=plan.id, date=date(2026, 6, 1), planned_count=5),
+                PlanDaily(plan_id=plan.id, date=date(2026, 6, 2), planned_count=5),
+                PlanDaily(plan_id=plan.id, date=date(2026, 6, 3), planned_count=5),
+            ]
+        )
+        self.db.add(
+            DailyProgress(
+                testing_id=5005,
+                file_name="a.xlsx",
+                date=date(2026, 6, 3),
+                completed=2,
+                executed=7,
+            )
+        )
+        self.db.commit()
+
+        p = get_project(self.db, 5005)
+
+        self.assertAlmostEqual(p.actual_vs_plan_rate, 46.67, places=2)
+        self.assertEqual(p.actual_vs_plan_delay_days, 1.6)
+
 class TestProjectRouter(unittest.TestCase):
     def setUp(self):
         from app.database import get_db

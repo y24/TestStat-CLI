@@ -55,11 +55,13 @@ function RateCell({
   done,
   showBar = true,
   statusLevel,
+  delayDays,
 }: {
   value: number | null | undefined
   done: boolean
   showBar?: boolean
   statusLevel?: ProgressStatusLevel
+  delayDays?: number | null
 }) {
   const hasValue = value != null
   const width = hasValue ? Math.max(0, Math.min(100, value)) : 0
@@ -78,6 +80,9 @@ function RateCell({
           </span>
         )}
         <span className={`dashboard-rate-value${hasValue ? '' : ' empty'}`}>{formatRate(value)}</span>
+        {delayDays != null && delayDays > 0 && (
+          <span className="dashboard-rate-delay">({delayDays.toFixed(1)}日遅延)</span>
+        )}
       </div>
       {showBar && (
         <div className="dashboard-rate-bar">
@@ -124,7 +129,13 @@ function ProjectRow({
         <RateCell value={project.actual_completed_rate} done={completed} />
       </td>
       <td className="num">
-        <RateCell value={project.actual_vs_plan_rate} done={completed} showBar={false} statusLevel={planStatusLevel} />
+        <RateCell
+          value={project.actual_vs_plan_rate}
+          done={completed}
+          showBar={false}
+          statusLevel={planStatusLevel}
+          delayDays={project.actual_vs_plan_delay_days}
+        />
       </td>
     </tr>
   )

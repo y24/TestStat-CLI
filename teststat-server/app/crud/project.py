@@ -105,7 +105,7 @@ def _actual_summary(db: Session, testing_id: int) -> ActualSummary:
     return int(available_cases), int(completed), completed_rate, actual_all_completed
 
 
-def _actual_vs_plan_rate(db: Session, testing_id: int) -> float | None:
+def _actual_vs_plan_metrics(db: Session, testing_id: int) -> tuple[float | None, float | None]:
     latest_actual_date = db.scalar(
         select(func.max(DailyProgress.date)).where(
             DailyProgress.testing_id == testing_id,
@@ -113,7 +113,7 @@ def _actual_vs_plan_rate(db: Session, testing_id: int) -> float | None:
         )
     )
     if latest_actual_date is None:
-        return None
+        return None, None
 
     actual_executed = db.scalar(
         select(func.coalesce(func.sum(DailyProgress.executed), 0)).where(
@@ -139,7 +139,7 @@ def _actual_vs_plan_rate(db: Session, testing_id: int) -> float | None:
         and (plan.label in actual_labels or label_settings.get(plan.label, True))
     ]
     if not included_plan_ids:
-        return None
+        return None, None
     planned_completed = db.scalar(
         select(func.coalesce(func.sum(PlanDaily.planned_count), 0)).where(
             PlanDaily.plan_id.in_(included_plan_ids),
@@ -147,8 +147,32 @@ def _actual_vs_plan_rate(db: Session, testing_id: int) -> float | None:
         )
     ) or 0
     if planned_completed <= 0:
-        return None
-    return round(actual_executed / planned_completed * 100, 2)
+        return None, None
+
+    rate = round(actual_executed / planned_completed * 100, 2)
+    delay_days = 0.0
+    if actual_executed < planned_completed:
+        cumulative = 0
+        daily_plan = db.execute(
+            select(PlanDaily.date, func.sum(PlanDaily.planned_count))
+            .where(PlanDaily.plan_id.in_(included_plan_ids))
+            .group_by(PlanDaily.date)
+            .order_by(PlanDaily.date)
+        ).all()
+        for plan_date, planned_count in daily_plan:
+            count = int(planned_count or 0)
+            if count <= 0:
+                continue
+            if actual_executed <= cumulative + count:
+                fraction = max(0.0, (actual_executed - cumulative) / count)
+                planned_position = plan_date.toordinal() + fraction
+                actual_position = latest_actual_date.toordinal() + 1
+                delay_days = round(max(0.0, actual_position - planned_position), 1)
+                break
+            cumulative += count
+    return rate, delay_days
+
+
 def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSummary]:
     rows = db.execute(
         select(
@@ -177,14 +201,19 @@ def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSu
     return summaries
 
 
-def _actual_vs_plan_rates(db: Session, testing_ids: list[int]) -> dict[int, float | None]:
-    return {testing_id: _actual_vs_plan_rate(db, testing_id) for testing_id in testing_ids}
+def _actual_vs_plan_metrics_by_project(
+    db: Session, testing_ids: list[int]
+) -> dict[int, tuple[float | None, float | None]]:
+    return {testing_id: _actual_vs_plan_metrics(db, testing_id) for testing_id in testing_ids}
+
+
 def _to_response(
     project: Project,
     testing: Testing | None,
     active_plan_count: int = 0,
     actual_summary: ActualSummary = (0, 0, 0, False),
     actual_vs_plan_rate: float | None = None,
+    actual_vs_plan_delay_days: float | None = None,
 ) -> ProjectResponse:
     actual_available_cases, actual_completed, actual_completed_rate, actual_all_completed = actual_summary
     return ProjectResponse(
@@ -209,6 +238,7 @@ def _to_response(
         actual_completed=actual_completed,
         actual_completed_rate=actual_completed_rate,
         actual_vs_plan_rate=actual_vs_plan_rate,
+        actual_vs_plan_delay_days=actual_vs_plan_delay_days,
         actual_all_completed=actual_all_completed,
         active_plan_count=active_plan_count,
     )
@@ -246,14 +276,14 @@ def list_projects(db: Session) -> list[ProjectResponse]:
         ).all()
     )
     actual_summaries = _actual_summaries(db, tids)
-    actual_vs_plan_rates = _actual_vs_plan_rates(db, tids)
+    actual_vs_plan_metrics = _actual_vs_plan_metrics_by_project(db, tids)
     return [
         _to_response(
             p,
             testings.get(p.testing_id),
             plan_counts.get(p.testing_id, 0),
             actual_summaries.get(p.testing_id, (0, 0, 0, False)),
-            actual_vs_plan_rates.get(p.testing_id),
+            *actual_vs_plan_metrics.get(p.testing_id, (None, None)),
         )
         for p in projects
     ]
@@ -268,7 +298,7 @@ def get_project(db: Session, testing_id: int) -> ProjectResponse:
         _get_testing(db, testing_id),
         _active_plan_count(db, testing_id),
         _actual_summary(db, testing_id),
-        _actual_vs_plan_rate(db, testing_id),
+        *_actual_vs_plan_metrics(db, testing_id),
     )
 
 
@@ -301,7 +331,7 @@ def create_project(db: Session, payload: ProjectCreate) -> ProjectResponse:
         _get_testing(db, payload.testing_id),
         0,
         _actual_summary(db, payload.testing_id),
-        _actual_vs_plan_rate(db, payload.testing_id),
+        *_actual_vs_plan_metrics(db, payload.testing_id),
     )
 
 
@@ -340,7 +370,7 @@ def update_project(db: Session, testing_id: int, payload: ProjectUpdate) -> Proj
         _get_testing(db, testing_id),
         _active_plan_count(db, testing_id),
         _actual_summary(db, testing_id),
-        _actual_vs_plan_rate(db, testing_id),
+        *_actual_vs_plan_metrics(db, testing_id),
     )
 
 

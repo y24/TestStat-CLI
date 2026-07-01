@@ -287,6 +287,52 @@ class TestProjectCRUD(unittest.TestCase):
         self.assertEqual(p.actual_completed_rate, 86.67)
         self.assertFalse(p.actual_all_completed)
 
+    def test_actual_completed_rate_includes_plan_only_offset(self):
+        from datetime import date, datetime
+        from app.models.plan import Plan
+        from app.models.progress import FileProgress, Testing
+
+        self.db.add(Testing(testing_id=5010, project_name="CLI Project", updated_at=datetime(2026, 5, 20, 18, 0)))
+        self.db.add(FileProgress(
+            testing_id=5010,
+            label="actual",
+            file_name="a.xlsx",
+            total_cases=100,
+            available_cases=100,
+            completed=50,
+            executed=50,
+            completed_rate=50,
+            sent_at=datetime(2026, 5, 20, 18, 0),
+        ))
+        self.db.add_all([
+            Plan(
+                testing_id=5010,
+                label="actual",
+                version=1,
+                is_active=True,
+                planned_total_cases=100,
+                start_date=date(2026, 5, 1),
+                end_date=date(2026, 5, 31),
+            ),
+            Plan(
+                testing_id=5010,
+                label="plan-only",
+                version=1,
+                is_active=True,
+                planned_total_cases=50,
+                start_date=date(2026, 5, 1),
+                end_date=date(2026, 5, 31),
+            ),
+        ])
+        self.db.commit()
+        create_project(self.db, ProjectCreate(testing_id=5010, name="計画のみ込みP"))
+
+        project = get_project(self.db, 5010)
+
+        self.assertEqual(project.actual_available_cases, 100)
+        self.assertEqual(project.actual_completed, 50)
+        self.assertEqual(project.actual_completed_rate, 33.33)
+        self.assertFalse(project.actual_all_completed)
     def test_actual_all_completed_when_every_file_is_100_percent(self):
         from app.models.progress import FileProgress, Testing
         from datetime import datetime

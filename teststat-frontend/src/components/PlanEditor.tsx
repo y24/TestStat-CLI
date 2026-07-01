@@ -210,17 +210,40 @@ export function PlanEditor({
     .map((item) => item.label)
   const availableCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
     if (file.label) {
-      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + planComparableCases(file)
+      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + file.available_cases
     }
     return casesByLabel
   }, {})
+  const executedCasesByLabel = files.reduce<Record<string, number>>((casesByLabel, file) => {
+    if (file.label) {
+      casesByLabel[file.label] = (casesByLabel[file.label] ?? 0) + file.executed
+    }
+    return casesByLabel
+  }, {})
+  const datedExecutedCasesByLabel = daily.reduce<Record<string, number>>((casesByLabel, item) => {
+    if (item.label) {
+      casesByLabel[item.label] = (casesByLabel[item.label] ?? 0) + item.executed
+    }
+    return casesByLabel
+  }, {})
+  const undatedCasesByLabel = Object.fromEntries(
+    Object.entries(executedCasesByLabel).map(([label, executed]) => [
+      label,
+      Math.max(executed - (datedExecutedCasesByLabel[label] ?? 0), 0),
+    ]),
+  )
   // 未設定（label なし）バケット: label を持たないファイルの集計。識別子別の行と共存させる。
   const unlabeledFiles = files.filter((file) => !file.label)
   const hasUnlabeledData = unlabeledFiles.length > 0
   const unlabeledAvailableCases = unlabeledFiles.reduce(
-    (total, file) => total + planComparableCases(file),
+    (total, file) => total + file.available_cases,
     0,
   )
+  const unlabeledExecutedCases = unlabeledFiles.reduce((total, file) => total + file.executed, 0)
+  const unlabeledDatedExecutedCases = daily
+    .filter((item) => !item.label)
+    .reduce((total, item) => total + item.executed, 0)
+  const unlabeledUndatedCases = Math.max(unlabeledExecutedCases - unlabeledDatedExecutedCases, 0)
   const selectedModalPlans =
     modalLabel === undefined
       ? []
@@ -845,7 +868,9 @@ export function PlanEditor({
       labels={labels}
       actualLabels={actualLabels}
       availableCasesByLabel={availableCasesByLabel}
+      undatedCasesByLabel={undatedCasesByLabel}
       unlabeledAvailableCases={unlabeledAvailableCases}
+      unlabeledUndatedCases={unlabeledUndatedCases}
       hasUnlabeledData={hasUnlabeledData}
       plans={plans}
       planLabels={planLabels}
@@ -877,9 +902,6 @@ export function PlanEditor({
   )
 }
 
-function planComparableCases(file: FileProgressItem) {
-  return Math.max(file.available_cases - (file.result_na ?? 0), 0)
-}
 
 function createEmptyCliOptionsInput(): LabelCliOptionsInput {
   return {

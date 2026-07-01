@@ -43,9 +43,7 @@
             "対象外",
             "準備"
         ],
-        "date_invalid_results": [
-            "N/A"
-        ]
+        "date_invalid_results": []
     },
     "test_status": {
         "results": [

@@ -22,7 +22,9 @@ export function PlanVersionTable({
   labels,
   actualLabels,
   availableCasesByLabel,
+  undatedCasesByLabel,
   unlabeledAvailableCases,
+  unlabeledUndatedCases,
   hasUnlabeledData,
   plans,
   planLabels,
@@ -43,7 +45,9 @@ export function PlanVersionTable({
   labels: string[]
   actualLabels: string[]
   availableCasesByLabel: Record<string, number>
+  undatedCasesByLabel: Record<string, number>
   unlabeledAvailableCases: number
+  unlabeledUndatedCases: number
   hasUnlabeledData: boolean
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
@@ -136,6 +140,8 @@ export function PlanVersionTable({
                     const isDisabled = Boolean(labelTarget?.is_disabled)
                     const actualAvailableCases =
                       label === null ? unlabeledAvailableCases : availableCasesByLabel[label]
+                    const undatedResultCases =
+                      label === null ? unlabeledUndatedCases : (undatedCasesByLabel[label] ?? 0)
                     const displayedTotalCases =
                       activePlan?.planned_total_cases ?? actualAvailableCases ?? null
                     const isPlanOnly = label !== null && !actualLabelSet.has(label)
@@ -163,6 +169,7 @@ export function PlanVersionTable({
                         displayedTotalCases={displayedTotalCases}
                         actualAvailableCases={actualAvailableCases ?? null}
                         casesMismatch={casesMismatch}
+                        undatedResultCases={undatedResultCases}
                         businessDays={businessDays}
                         dailyCases={dailyCases}
                         isPlanOnly={isPlanOnly}
@@ -258,6 +265,7 @@ function PlanVersionRowContent({
   displayedTotalCases,
   actualAvailableCases,
   casesMismatch,
+  undatedResultCases,
   businessDays,
   dailyCases,
   isPlanOnly,
@@ -281,6 +289,7 @@ function PlanVersionRowContent({
   displayedTotalCases: number | null
   actualAvailableCases: number | null
   casesMismatch: boolean
+  undatedResultCases: number
   businessDays: number
   dailyCases: string
   isPlanOnly: boolean
@@ -364,7 +373,15 @@ function PlanVersionRowContent({
             <span>データがありません</span>
           </span>
         )}
-        {casesMismatch && activePlan && (
+        {undatedResultCases > 0 && (
+          <span
+            className="row-note plan-only-note"
+            title={`${undatedResultCases}件の日付なしデータが含まれています`}
+          >
+            <TriangleAlert className="plan-only-note-icon" aria-hidden="true" />
+            <span>日付なしデータあり（{undatedResultCases}件）</span>
+          </span>
+        )}        {casesMismatch && activePlan && (
           <span
             className="row-note plan-only-note"
             title={`計画とデータが一致していません（計画 ${activePlan.planned_total_cases} / データ ${actualAvailableCases}）`}

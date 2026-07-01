@@ -25,8 +25,7 @@ def aggregate_daily_results(data, results: list[str], completed_label:str, compl
         else:
             result, name, date = row[0], row[1], row[2]
         
-        # 無効な結果（対象外・準備・N/A 等）は日付を無視し no_date に倒す。
-        # カウント自体は通常どおり行うため、N/A の完了数は no_date 経由で保持される。
+        # 日付無効に指定された結果は、カウントを維持したまま no_date に倒す。
         if not date or result in invalid_results: date = "no_date"
         initialize_result_counts(results, date, result_count, completed_label, executed_label, plan_label)
 

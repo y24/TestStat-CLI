@@ -13,7 +13,9 @@ export function PlanListScreen({
   labels,
   actualLabels,
   availableCasesByLabel,
+  undatedCasesByLabel,
   unlabeledAvailableCases,
+  unlabeledUndatedCases,
   hasUnlabeledData,
   plans,
   planLabels,
@@ -47,7 +49,9 @@ export function PlanListScreen({
   labels: string[]
   actualLabels: string[]
   availableCasesByLabel: Record<string, number>
+  undatedCasesByLabel: Record<string, number>
   unlabeledAvailableCases: number
+  unlabeledUndatedCases: number
   hasUnlabeledData: boolean
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
@@ -135,7 +139,9 @@ export function PlanListScreen({
             labels={labels}
             actualLabels={actualLabels}
             availableCasesByLabel={availableCasesByLabel}
+            undatedCasesByLabel={undatedCasesByLabel}
             unlabeledAvailableCases={unlabeledAvailableCases}
+            unlabeledUndatedCases={unlabeledUndatedCases}
             hasUnlabeledData={hasUnlabeledData}
             plans={plans}
             planLabels={planLabels}

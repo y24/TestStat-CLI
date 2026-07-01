@@ -343,11 +343,16 @@ export function PbChartPanel({
           <TriangleAlert className="plan-mismatch-alert-icon" aria-hidden="true" />
           <span>
             計画と実績の項目数が一致していません。計画 {chart.planned_total_cases} / 実績 {chart.actual_plan_comparable_cases}
-            {chart.actual_na_cases > 0 ? `（N/A ${chart.actual_na_cases} 件を除外）` : ''}
           </span>
         </div>
       )}
 
+      {chart && chart.undated_result_cases > 0 && (
+        <div className="plan-mismatch-alert" role="status">
+          <TriangleAlert className="plan-mismatch-alert-icon" aria-hidden="true" />
+          <span>{chart.undated_result_cases}件の日付なしデータが含まれています。</span>
+        </div>
+      )}
       <div className="bug-bar">
         {!usesTestResultBugs && (
           <button
@@ -726,9 +731,9 @@ function buildCompletionSummary(
   )
   const completed = matchingFiles.reduce((sum, file) => sum + file.completed, 0)
   return {
-    availableCases: chart.available_cases,
+    availableCases: chart.actual_total_cases ?? chart.available_cases,
     completed,
-    completedRate: toRate(completed, chart.available_cases),
+    completedRate: toRate(completed, chart.actual_total_cases ?? chart.available_cases),
     actualVsPlanRate: computeActualVsPlanRate(chart),
   }
 }
@@ -791,7 +796,7 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
   const matchingFiles = files.filter((file) => file.label != null && selectedLabelSet.has(file.label))
   const availableSum = matchingFiles.reduce((sum, file) => sum + file.available_cases, 0)
   const actualNaSum = matchingFiles.reduce((sum, file) => sum + (file.result_na ?? 0), 0)
-  const actualPlanComparableSum = Math.max(availableSum - actualNaSum, 0)
+  const actualPlanComparableSum = availableSum
   const plannedTotals = charts.map((chart) => chart.planned_total_cases)
   const plannedTotalSum = plannedTotals.every((value) => value == null)
     ? null
@@ -864,7 +869,9 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
     range: rangeFrom != null && rangeTo != null ? { from: rangeFrom, to: rangeTo } : null,
     actuals_updated_at: actualsUpdatedAt,
     available_cases: availableSum,
+    actual_total_cases: charts.reduce((sum, chart) => sum + (chart.actual_total_cases ?? chart.available_cases), 0),
     actual_na_cases: actualNaSum,
+    undated_result_cases: charts.reduce((sum, chart) => sum + (chart.undated_result_cases ?? 0), 0),
     actual_plan_comparable_cases: actualPlanComparableSum,
     planned_total_cases: plannedTotalSum,
     plan_case_mismatch: charts.some((chart) => chart.plan_case_mismatch),

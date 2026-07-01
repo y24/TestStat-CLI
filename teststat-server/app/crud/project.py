@@ -65,6 +65,26 @@ def _active_plan_count(db: Session, testing_id: int) -> int:
     ) or 0
 
 
+def _plan_actual_offset(db: Session, testing_id: int) -> int:
+    """実績未送信で、実績オフセット対象になっている有効計画の件数。"""
+    disabled_labels = set(db.scalars(_disabled_labels_subquery(testing_id)))
+    actual_labels = set(db.scalars(
+        select(FileProgress.label).where(FileProgress.testing_id == testing_id).distinct()
+    )) | set(db.scalars(
+        select(DailyProgress.label).where(DailyProgress.testing_id == testing_id).distinct()
+    ))
+    label_settings = {
+        item.label: item.use_plan_as_actual_offset
+        for item in db.scalars(select(PlanLabel).where(PlanLabel.testing_id == testing_id))
+    }
+    return sum(
+        plan.planned_total_cases
+        for plan in db.scalars(select(Plan).where(Plan.testing_id == testing_id, Plan.is_active.is_(True)))
+        if plan.label not in disabled_labels
+        and plan.label not in actual_labels
+        and label_settings.get(plan.label, True)
+    )
+
 def _actual_summary(db: Session, testing_id: int) -> ActualSummary:
     available_cases, completed, file_count, min_completed_rate = db.execute(
         select(
@@ -77,8 +97,11 @@ def _actual_summary(db: Session, testing_id: int) -> ActualSummary:
             _enabled_label_condition(FileProgress.label, testing_id),
         )
     ).one()
-    completed_rate = round((completed / available_cases * 100), 2) if available_cases else 0
-    actual_all_completed = bool(file_count and min_completed_rate is not None and min_completed_rate >= 100)
+    total_cases = available_cases + _plan_actual_offset(db, testing_id)
+    completed_rate = round((completed / total_cases * 100), 2) if total_cases else 0
+    actual_all_completed = bool(
+        total_cases == available_cases and file_count and min_completed_rate is not None and min_completed_rate >= 100
+    )
     return int(available_cases), int(completed), completed_rate, actual_all_completed
 
 
@@ -133,8 +156,11 @@ def _actual_summaries(db: Session, testing_ids: list[int]) -> dict[int, ActualSu
     ).all()
     summaries: dict[int, ActualSummary] = {}
     for testing_id, available_cases, completed, file_count, min_completed_rate in rows:
-        completed_rate = round((completed / available_cases * 100), 2) if available_cases else 0
-        actual_all_completed = bool(file_count and min_completed_rate is not None and min_completed_rate >= 100)
+        total_cases = available_cases + _plan_actual_offset(db, testing_id)
+        completed_rate = round((completed / total_cases * 100), 2) if total_cases else 0
+        actual_all_completed = bool(
+            total_cases == available_cases and file_count and min_completed_rate is not None and min_completed_rate >= 100
+        )
         summaries[testing_id] = (int(available_cases), int(completed), completed_rate, actual_all_completed)
     return summaries
 

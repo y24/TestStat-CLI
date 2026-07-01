@@ -225,7 +225,7 @@ class TestPbChart(unittest.TestCase):
         self.assertEqual(s1.actual_remaining, 135)          # 150 - 15
 
 
-    def test_plan_case_mismatch_uses_available_cases_excluding_na(self):
+    def test_plan_case_mismatch_uses_available_cases_including_na(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         _insert_file_progress(self.db, 1001, "TEST001", available=110, executed=10)
 
@@ -240,14 +240,14 @@ class TestPbChart(unittest.TestCase):
 
         self.assertEqual(result.available_cases, 110)
         self.assertEqual(result.actual_na_cases, 10)
-        self.assertEqual(result.actual_plan_comparable_cases, 100)
-        self.assertFalse(result.plan_case_mismatch)
+        self.assertEqual(result.actual_plan_comparable_cases, 110)
+        self.assertTrue(result.plan_case_mismatch)
 
         file_progress.result_na = 9
         self.db.commit()
 
         result = get_pb_chart(self.db, 1001, label="TEST001")
-        self.assertEqual(result.actual_plan_comparable_cases, 101)
+        self.assertEqual(result.actual_plan_comparable_cases, 110)
         self.assertTrue(result.plan_case_mismatch)
 
     def test_actual_remaining_uses_file_executed_total_when_daily_is_short(self):
@@ -261,11 +261,19 @@ class TestPbChart(unittest.TestCase):
         result = get_pb_chart(self.db, 1001, label=None)
 
         self.assertEqual(result.available_cases, 112)
-        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 103)
+        self.assertEqual(result.undated_result_cases, 9)
+        self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 112)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 73)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_completed_daily, 39)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 2)).actual_remaining, 34)
 
+    def test_undated_result_cases_are_reported_without_daily_rows(self):
+        self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=12)
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertEqual(result.undated_result_cases, 12)
     def test_all_labels_counts_plan_only_label_as_actual_offset(self):
         self._make_plan(label="TEST001", total=100, daily_counts=[20] * 5)
         self._make_plan(label="TEST002", total=50, daily_counts=[10] * 5)
@@ -278,6 +286,7 @@ class TestPbChart(unittest.TestCase):
 
         self.assertEqual(result.planned_total_cases, 150)
         self.assertEqual(result.available_cases, 100)       # API metadata remains actual-file-only
+        self.assertEqual(result.actual_total_cases, 150)
         self.assertIsNone(self._point_by_date(result, date(2026, 4, 30)).actual_completed_daily)
         self.assertEqual(self._point_by_date(result, date(2026, 4, 30)).actual_remaining, 150)
         self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_completed_daily, 10)

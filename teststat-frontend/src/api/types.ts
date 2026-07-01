@@ -294,7 +294,9 @@ export interface PbChartResponse {
   range: { from: string; to: string } | null
   actuals_updated_at: string | null
   available_cases: number
+  actual_total_cases: number
   actual_na_cases: number
+  undated_result_cases: number
   actual_plan_comparable_cases: number
   planned_total_cases: number | null
   plan_case_mismatch: boolean

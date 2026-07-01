@@ -45,8 +45,10 @@ class PbChartResponse(BaseModel):
     range: dict | None          # {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}
     actuals_updated_at: datetime | None
     available_cases: int        # 実績の available_cases 合計（0 = 実績なし）
+    actual_total_cases: int = 0  # available_cases + 実績なし計画のオフセット
     actual_na_cases: int = 0
-    actual_plan_comparable_cases: int = 0  # available_cases - N/A。計画母数との照合用。
+    undated_result_cases: int = 0  # 日付別実績に含まれない消化済み結果件数
+    actual_plan_comparable_cases: int = 0  # available_cases。計画母数との照合用。
     planned_total_cases: int | None  # 有効計画の planned_total_cases 合計（None = 計画なし）
     plan_case_mismatch: bool = False
     bug_axis_max: int

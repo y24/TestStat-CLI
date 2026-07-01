@@ -475,7 +475,8 @@ def get_pb_chart(
     available_cases, executed_cases, actual_na_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
     actual_data_labels = _get_actual_data_labels(db, testing_id, label)
     actual_offset = _get_plan_actual_offset(db, testing_id, active_plans, actual_data_labels)
-    actual_plan_comparable_cases = max(available_cases - actual_na_cases, 0)
+    undated_result_cases = max(executed_cases - sum(actual_daily_map.values()), 0)
+    actual_plan_comparable_cases = available_cases
     comparable_planned_total = sum(
         plan.planned_total_cases for plan in active_plans if plan.label in actual_data_labels
     )
@@ -540,9 +541,11 @@ def get_pb_chart(
             bug_count_source=bug_count_source,
             range=None,
             actuals_updated_at=actuals_updated_at,
-            available_cases=0,
-            actual_na_cases=0,
-            actual_plan_comparable_cases=0,
+            available_cases=available_cases,
+            actual_total_cases=available_cases + actual_offset,
+            actual_na_cases=actual_na_cases,
+            undated_result_cases=undated_result_cases,
+            actual_plan_comparable_cases=actual_plan_comparable_cases,
             planned_total_cases=None,
             plan_case_mismatch=False,
             bug_axis_max=bug_axis_max,
@@ -557,12 +560,9 @@ def get_pb_chart(
     actual_remaining_sparse = _compute_actual_series(actual_daily_map, actual_series_total, executed_cases)
     if actual_daily_map and actual_series_total > 0:
         first_actual_date = min(actual_daily_map)
-        dated_executed = sum(actual_daily_map.values())
-        undated_executed = max(executed_cases - dated_executed, 0)
-        initial_actual_remaining = actual_series_total - undated_executed
         for d in date_list:
             if d < first_actual_date:
-                actual_remaining_sparse[d] = initial_actual_remaining
+                actual_remaining_sparse[d] = actual_series_total
     elif available_cases > 0:
         actual_remaining_sparse = {d: actual_series_total for d in date_list}
     elif actual_offset > 0:
@@ -593,7 +593,9 @@ def get_pb_chart(
         range={"from": range_from.isoformat(), "to": range_to.isoformat()},
         actuals_updated_at=actuals_updated_at,
         available_cases=available_cases,
+        actual_total_cases=actual_series_total,
         actual_na_cases=actual_na_cases,
+        undated_result_cases=undated_result_cases,
         actual_plan_comparable_cases=actual_plan_comparable_cases,
         planned_total_cases=planned_total,
         plan_case_mismatch=plan_case_mismatch,

@@ -36,7 +36,7 @@ import type {
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { displayLabel } from '../utils/plans'
-import { Bug, ClipboardList, TriangleAlert } from 'lucide-react'
+import { Bug, ClipboardList, Filter, TriangleAlert, X } from 'lucide-react'
 import { enumerateDates, formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
@@ -338,6 +338,19 @@ export function PbChartPanel({
         <span className="chart-period">
           最終更新: {formatDateTimeWithRelative(project.actuals_updated_at)}
         </span>
+        {selectedLabels.length > 0 && (
+          <button
+            type="button"
+            className="target-clear-button"
+            onClick={() => {
+              setSelectedLabels([])
+              setTargetMenuOpen(false)
+            }}
+          >
+            <X className="target-clear-icon" aria-hidden="true" />
+            <span>解除</span>
+          </button>
+        )}
       </div>
 
       {chart?.plan_case_mismatch && chart.planned_total_cases != null && chart.actual_plan_comparable_cases > 0 && (
@@ -493,7 +506,10 @@ function TargetMultiSelect({
 
   return (
     <div className="target-select target-multi-select" ref={containerRef}>
-      <span>表示対象</span>
+      <span className="target-select-label">
+        <Filter className="target-select-icon" aria-hidden="true" />
+        表示対象
+      </span>
       <button
         type="button"
         className="target-multi-button"

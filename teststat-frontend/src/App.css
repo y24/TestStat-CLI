@@ -892,6 +892,44 @@
   font-weight: 650;
 }
 
+.target-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.target-select-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.target-clear-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  border: 1px solid #cfd6df;
+  border-radius: 5px;
+  background: #fff;
+  color: #526071;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.target-clear-button:hover {
+  border-color: #aeb8c5;
+  background: #f1f4f8;
+  color: var(--text);
+}
+
+.target-clear-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .target-select select {
   min-width: 150px;
   min-height: 32px;

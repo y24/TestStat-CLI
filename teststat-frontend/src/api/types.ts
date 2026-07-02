@@ -272,6 +272,7 @@ export interface PbChartSeries {
   date: string
   planned_remaining: number | null
   actual_remaining: number | null
+  actual_executed_remaining: number | null
   planned_completed_daily: number | null
   actual_completed_daily: number | null
   bug_open: number | null

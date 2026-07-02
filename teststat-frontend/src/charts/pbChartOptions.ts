@@ -261,13 +261,13 @@ export function buildPbChartOption(
       lineStyle: { type: 'dashed', width: 2, color: plannedLineColor },
       itemStyle: { color: plannedLineColor },
       z: 5,
-      markLine: !layers.actualLine ? todayMarkLine : undefined,
+      markLine: !(layers.actualCompletedLine || layers.actualExecutedLine) ? todayMarkLine : undefined,
     })
   }
 
-  if (layers.actualLine) {
+  if (layers.actualCompletedLine) {
     series.push({
-      name: '残項目(実績)',
+      name: '実績線（完了数）',
       type: 'line',
       data: chart.series.map((item) => item.actual_remaining),
       connectNulls: false,
@@ -280,6 +280,20 @@ export function buildPbChartOption(
     })
   }
 
+  if (layers.actualExecutedLine) {
+    series.push({
+      name: '実績線（消化数）',
+      type: 'line',
+      data: chart.series.map((item) => item.actual_executed_remaining),
+      connectNulls: false,
+      symbol: 'diamond',
+      symbolSize: 5,
+      lineStyle: { width: 2.5, color: '#e07a2f' },
+      itemStyle: { color: '#e07a2f' },
+      z: 6,
+      markLine: layers.actualCompletedLine ? undefined : todayMarkLine,
+    })
+  }
   const legendData = Array.isArray(series)
     ? series
         .map((item) => item.name)

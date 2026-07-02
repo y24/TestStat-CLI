@@ -428,6 +428,23 @@ class TestPbChart(unittest.TestCase):
         self.assertIsNone(result.planned_total_cases)
         self.assertEqual(result.available_cases, 0)
 
+    def test_returns_completed_and_executed_actual_lines(self):
+        from sqlalchemy import update
+
+        from app.models.progress import DailyProgress, FileProgress
+
+        self._make_plan()
+        _insert_actuals(self.db, 1001, [("TEST001", date(2026, 5, 1), 10)])
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
+        self.db.execute(update(DailyProgress).values(completed=6))
+        self.db.execute(update(FileProgress).values(completed=6))
+        self.db.commit()
+
+        chart = get_pb_chart(self.db, 1001, label="TEST001")
+        point = self._point_by_date(chart, date(2026, 5, 1))
+        self.assertEqual(point.actual_remaining, 94)
+        self.assertEqual(point.actual_executed_remaining, 90)
+        self.assertEqual(point.actual_completed_daily, 10)
     def test_bug_axis_max_uses_project_value_when_set(self):
         from app.crud.project import update_project
         from app.crud.setting import update_pb_chart_settings

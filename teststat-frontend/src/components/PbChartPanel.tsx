@@ -200,7 +200,8 @@ export function PbChartPanel({
   const [targetMenuOpen, setTargetMenuOpen] = useState(false)
   const [layers, setLayers] = useState<ChartLayers>({
     plannedLine: true,
-    actualLine: true,
+    actualCompletedLine: true,
+    actualExecutedLine: false,
     dailyBars: true,
     pastPlans: false,
     bugs: true,
@@ -942,6 +943,19 @@ function mergePbCharts(charts: PbChartResponse[], labels: string[], files: FileP
               ),
             )
           : null,
+      actual_executed_remaining:
+        globalLastActualDate != null && date <= globalLastActualDate
+          ? sumNullable(
+              charts.map((chart) =>
+                getActualRemainingAt(
+                  chart.series,
+                  date,
+                  chart.actual_total_cases ?? chart.available_cases,
+                  "actual_executed_remaining",
+                ),
+              ),
+            )
+          : null,
       planned_completed_daily: plannedCompletedDaily,
       actual_completed_daily: actualCompletedDaily,
       bug_open: sumNullable(bugPointSeries.map((points) => getCumulativeFieldAt(points, date, 'bug_open'))),
@@ -989,19 +1003,19 @@ function getActualRemainingAt(
   points: PbChartResponse['series'],
   date: string,
   initialRemaining: number,
+  field: 'actual_remaining' | 'actual_executed_remaining' = 'actual_remaining',
 ): number | null {
   let latest: number | null = initialRemaining
   for (const point of points) {
     if (point.date > date) {
       break
     }
-    if (point.actual_remaining != null) {
-      latest = point.actual_remaining
+    if (point[field] != null) {
+      latest = point[field]
     }
   }
   return latest
 }
-
 function getCumulativeFieldAt(
   points: PbChartResponse['series'],
   date: string,
@@ -1095,10 +1109,18 @@ function ChartLayerModal({
             <label>
               <input
                 type="checkbox"
-                checked={layers.actualLine}
-                onChange={(event) => onChange({ ...layers, actualLine: event.target.checked })}
+                checked={layers.actualCompletedLine}
+                onChange={(event) => onChange({ ...layers, actualCompletedLine: event.target.checked })}
               />
-              実績線
+              実績線（完了数）
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={layers.actualExecutedLine}
+                onChange={(event) => onChange({ ...layers, actualExecutedLine: event.target.checked })}
+              />
+              実績線（消化数）
             </label>
             <label>
               <input

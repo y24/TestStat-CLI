@@ -16,6 +16,7 @@ class PbChartSeriesItem(BaseModel):
     date: date
     planned_remaining: int | None
     actual_remaining: int | None
+    actual_executed_remaining: int | None
     planned_completed_daily: int | None
     actual_completed_daily: int | None
     bug_open: int | None = None          # 未解消（赤エリアの高さ）

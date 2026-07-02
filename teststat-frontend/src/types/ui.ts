@@ -4,7 +4,8 @@ export type ViewMode = 'dashboard' | 'overview' | 'new' | 'edit' | 'plans' | 'se
 
 export interface ChartLayers {
   plannedLine: boolean
-  actualLine: boolean
+  actualCompletedLine: boolean
+  actualExecutedLine: boolean
   dailyBars: boolean
   pastPlans: boolean
   bugs: boolean

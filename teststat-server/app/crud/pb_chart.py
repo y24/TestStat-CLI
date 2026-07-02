@@ -89,15 +89,18 @@ def _get_plan_daily_map(db: Session, plan_ids: list[int]) -> dict[date, int]:
     return {r[0]: r[1] for r in rows}
 
 
-def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> dict[date, int]:
-    """日付ごとの実績消化数合計 {date: sum(executed)}。
+def _get_actual_daily_map(
+    db: Session, testing_id: int, label: str | None, actual_metric: str
+) -> dict[date, int]:
+    """日付ごとの実績数合計。actual_metric に completed / executed を指定する。
 
     結果なしで日付だけ入力された行は DailyProgress に executed=0 として保存されるが、
     PB 図上の実績日ではないため系列から除外する。負の実績（修正差分）は保持する。
     """
     if _label_is_disabled(db, testing_id, label):
         return {}
-    q = select(DailyProgress.date, func.sum(DailyProgress.executed)).where(
+    metric_column = getattr(DailyProgress, actual_metric)
+    q = select(DailyProgress.date, func.sum(metric_column)).where(
         DailyProgress.testing_id == testing_id
     )
     if label is not None:
@@ -149,13 +152,16 @@ def _get_test_result_bug_metadata(db: Session, testing_id: int) -> tuple[bool, d
     return (count or 0) > 0, updated_at
 
 
-def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tuple[int, int, int, datetime | None]:
-    """実績の対象件数・消化数合計と更新日時。実績なし=0。"""
+def _get_actual_metadata(
+    db: Session, testing_id: int, label: str | None
+) -> tuple[int, int, int, int, datetime | None]:
+    """実績の対象件数・完了数・消化数と更新日時。実績なし=0。"""
     if _label_is_disabled(db, testing_id, label):
         updated_at = db.scalar(select(Testing.updated_at).where(Testing.testing_id == testing_id))
-        return 0, 0, 0, updated_at
+        return 0, 0, 0, 0, updated_at
     file_query = select(
         func.coalesce(func.sum(FileProgress.available_cases), 0).label("available_cases"),
+        func.coalesce(func.sum(FileProgress.completed), 0).label("completed_cases"),
         func.coalesce(func.sum(FileProgress.executed), 0).label("executed_cases"),
         func.coalesce(func.sum(FileProgress.result_na), 0).label("na_cases"),
     ).where(FileProgress.testing_id == testing_id)
@@ -167,9 +173,10 @@ def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tup
             file_query = file_query.where((FileProgress.label.is_(None)) | (FileProgress.label.not_in(disabled_labels)))
 
     file_totals = file_query.subquery()
-    available_cases, executed_cases, na_cases, updated_at = db.execute(
+    available_cases, completed_cases, executed_cases, na_cases, updated_at = db.execute(
         select(
             file_totals.c.available_cases,
+            file_totals.c.completed_cases,
             file_totals.c.executed_cases,
             file_totals.c.na_cases,
             select(Testing.updated_at)
@@ -177,8 +184,7 @@ def _get_actual_metadata(db: Session, testing_id: int, label: str | None) -> tup
             .scalar_subquery(),
         )
     ).one()
-    return available_cases or 0, executed_cases or 0, na_cases or 0, updated_at
-
+    return available_cases or 0, completed_cases or 0, executed_cases or 0, na_cases or 0, updated_at
 
 def _get_actual_data_labels(db: Session, testing_id: int, label: str | None) -> set[str | None]:
     """実績が一度でも送信された label を返す。件数 0 のファイルも送信済みとして扱う。"""
@@ -295,33 +301,29 @@ def _build_series(
     date_range: list[date],
     plan_remaining: dict[date, int],
     plan_daily: dict[date, int],
-    actual_remaining_sparse: dict[date, int],
-    actual_daily: dict[date, int],
+    completed_remaining_sparse: dict[date, int],
+    executed_remaining_sparse: dict[date, int],
+    executed_daily: dict[date, int],
     bug_cumulative: dict[date, tuple[int, int, int]] | None = None,
 ) -> list[PbChartSeriesItem]:
-    """
-    全日付に対して系列エントリを生成。
-    actual_remaining は実績データ日のみ持つ sparse dict → 前の値を引き継いで補完。
-    bug_cumulative は {date: (open, suspended, resolved)}。None のときは不具合系列を None で埋める。
-    """
-    last_actual_remaining: int | None = None
-    last_actual_date: date | None = max(actual_remaining_sparse) if actual_remaining_sparse else None
+    """全日付に対して計画、完了実績、消化実績の系列を生成する。"""
+    last_completed: int | None = None
+    last_executed: int | None = None
+    last_completed_date = max(completed_remaining_sparse) if completed_remaining_sparse else None
+    last_executed_date = max(executed_remaining_sparse) if executed_remaining_sparse else None
     items: list[PbChartSeriesItem] = []
 
     for d in date_range:
-        # 計画
-        pr = plan_remaining.get(d)
-        pd = plan_daily.get(d)
-
-        # 実績（実績データがある日は更新、ない日は前の値を引き継ぐ）
-        if d in actual_remaining_sparse:
-            last_actual_remaining = actual_remaining_sparse[d]
-        ar: int | None = last_actual_remaining
-        # 実績の最終データ日より後は None（将来は不明）
-        if last_actual_date is not None and d > last_actual_date:
-            ar = None
-
-        ad: int | None = actual_daily.get(d)
+        if d in completed_remaining_sparse:
+            last_completed = completed_remaining_sparse[d]
+        if d in executed_remaining_sparse:
+            last_executed = executed_remaining_sparse[d]
+        completed_remaining = last_completed
+        executed_remaining = last_executed
+        if last_completed_date is not None and d > last_completed_date:
+            completed_remaining = None
+        if last_executed_date is not None and d > last_executed_date:
+            executed_remaining = None
 
         bug_open = bug_suspended = bug_resolved = None
         if bug_cumulative is not None:
@@ -329,16 +331,16 @@ def _build_series(
 
         items.append(PbChartSeriesItem(
             date=d,
-            planned_remaining=pr,
-            actual_remaining=ar,
-            planned_completed_daily=pd,
-            actual_completed_daily=ad,
+            planned_remaining=plan_remaining.get(d),
+            actual_remaining=completed_remaining,
+            actual_executed_remaining=executed_remaining,
+            planned_completed_daily=plan_daily.get(d),
+            actual_completed_daily=executed_daily.get(d),
             bug_open=bug_open,
             bug_suspended=bug_suspended,
             bug_resolved=bug_resolved,
         ))
     return items
-
 
 # ---------- 過去計画 ----------
 
@@ -474,12 +476,18 @@ def get_pb_chart(
             active_plans, plan_daily_map, plan_start, plan_end, planned_total  # type: ignore[arg-type]
         )
 
-    # 実績
-    actual_daily_map = _get_actual_daily_map(db, testing_id, label)
-    available_cases, executed_cases, actual_na_cases, actuals_updated_at = _get_actual_metadata(db, testing_id, label)
+    # 実績（完了数と消化数を独立した線として返す）
+    pb_chart_settings = get_pb_chart_settings(db)
+    completed_daily_map = _get_actual_daily_map(db, testing_id, label, "completed")
+    executed_daily_map = _get_actual_daily_map(db, testing_id, label, "executed")
+    for actual_date in executed_daily_map:
+        completed_daily_map.setdefault(actual_date, 0)
+    available_cases, completed_cases, executed_cases, actual_na_cases, actuals_updated_at = _get_actual_metadata(
+        db, testing_id, label
+    )
     actual_data_labels = _get_actual_data_labels(db, testing_id, label)
     actual_offset = _get_plan_actual_offset(db, testing_id, active_plans, actual_data_labels)
-    undated_result_cases = max(executed_cases - sum(actual_daily_map.values()), 0)
+    undated_result_cases = max(executed_cases - sum(executed_daily_map.values()), 0)
     actual_plan_comparable_cases = available_cases
     comparable_planned_total = sum(
         plan.planned_total_cases for plan in active_plans if plan.label in actual_data_labels
@@ -494,10 +502,10 @@ def get_pb_chart(
         plan for plan in active_plans
         if plan.label in actual_data_labels or label_offset_settings.get(plan.label, True)
     ]
-    actual_executed_to_latest = sum(actual_daily_map.values())
+    actual_executed_to_latest = sum(executed_daily_map.values())
     planned_completed_to_latest_actual = 0
-    if actual_daily_map and metric_plans:
-        latest_actual_date = max(actual_daily_map)
+    if executed_daily_map and metric_plans:
+        latest_actual_date = max(executed_daily_map)
         metric_plan_daily_map = _get_plan_daily_map(db, [plan.id for plan in metric_plans])
         planned_completed_to_latest_actual = sum(
             count for target_date, count in metric_plan_daily_map.items()
@@ -508,7 +516,7 @@ def get_pb_chart(
     #   (全て)=label=None のときは全 label を日付ごとに合算する。
     # - azure_devops ソース: チケットはテストに紐付かないため、従来どおり (全て) 表示時のみ描画する。
     bug_count_source = project.bug_count_source
-    bug_axis_max = project.bug_axis_max or get_pb_chart_settings(db).bug_axis_max
+    bug_axis_max = project.bug_axis_max or pb_chart_settings.bug_axis_max
     test_result_bug_daily_map: dict[date, tuple[int, int, int]] = {}
     bug_from = bug_to = None
     if bug_count_source == "test_result":
@@ -532,9 +540,9 @@ def get_pb_chart(
     if has_plan:
         plan_actual_from = plan_start - timedelta(days=1)
         plan_actual_to = plan_end
-    if actual_daily_map:
-        actual_min = min(actual_daily_map)
-        actual_max = max(actual_daily_map)
+    if executed_daily_map:
+        actual_min = min(executed_daily_map)
+        actual_max = max(executed_daily_map)
         actual_from = actual_min - timedelta(days=1)
         plan_actual_from = min(plan_actual_from, actual_from) if plan_actual_from else actual_from
         plan_actual_to = max(plan_actual_to, actual_max) if plan_actual_to else actual_max
@@ -580,15 +588,23 @@ def get_pb_chart(
 
     date_list = _date_range(range_from, range_to)
     actual_series_total = available_cases + actual_offset
-    actual_remaining_sparse = _compute_actual_series(actual_daily_map, actual_series_total, executed_cases)
-    if actual_daily_map and actual_series_total > 0:
-        first_actual_date = min(actual_daily_map)
-        for d in date_list:
-            if d < first_actual_date:
-                actual_remaining_sparse[d] = actual_series_total
-    elif actual_offset > 0:
-        # 実績が未送信の場合は、計画開始前の 0 日目だけを既知の初期値として描画する。
-        actual_remaining_sparse = {range_from: actual_offset}
+    completed_remaining_sparse = _compute_actual_series(
+        completed_daily_map, actual_series_total, completed_cases
+    )
+    executed_remaining_sparse = _compute_actual_series(
+        executed_daily_map, actual_series_total, executed_cases
+    )
+    for daily_map, remaining_sparse in (
+        (completed_daily_map, completed_remaining_sparse),
+        (executed_daily_map, executed_remaining_sparse),
+    ):
+        if daily_map and actual_series_total > 0:
+            first_actual_date = min(daily_map)
+            for d in date_list:
+                if d < first_actual_date:
+                    remaining_sparse[d] = actual_series_total
+        elif actual_offset > 0:
+            remaining_sparse[range_from] = actual_offset
     bug_cumulative = None
     if bugs_visible:
         if bug_count_source == "test_result":
@@ -601,8 +617,8 @@ def get_pb_chart(
             suspend_states = get_settings().azure_devops_bug_suspend_status_set
             bug_cumulative = get_bug_cumulative(db, testing_id, date_list, suspend_states)
     series = _build_series(
-        date_list, plan_remaining_map, plan_d_map, actual_remaining_sparse, actual_daily_map,
-        bug_cumulative,
+        date_list, plan_remaining_map, plan_d_map, completed_remaining_sparse,
+        executed_remaining_sparse, executed_daily_map, bug_cumulative,
     )
 
     past_plans = _compute_past_plans(db, testing_id, label) if include_past_plans else []

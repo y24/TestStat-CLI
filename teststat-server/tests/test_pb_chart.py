@@ -178,6 +178,31 @@ class TestPbChart(unittest.TestCase):
         s2 = self._point_by_date(result, date(2026, 5, 3))
         self.assertEqual(s2.actual_remaining, 45)
 
+    def test_dated_rows_without_results_do_not_draw_actual_series(self):
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=0)
+        _insert_actuals(self.db, 1001, [("TEST001", date(2026, 5, 2), 0)])
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertTrue(result.series)
+        self.assertTrue(all(point.actual_remaining is None for point in result.series))
+        self.assertTrue(all(point.actual_completed_daily is None for point in result.series))
+
+    def test_zero_result_dates_do_not_extend_actual_series(self):
+        self._make_plan(total=100, daily_counts=[20] * 5)
+        _insert_file_progress(self.db, 1001, "TEST001", available=100, executed=10)
+        _insert_actuals(self.db, 1001, [
+            ("TEST001", date(2026, 5, 1), 10),
+            ("TEST001", date(2026, 5, 4), 0),
+        ])
+
+        result = get_pb_chart(self.db, 1001, label="TEST001")
+
+        self.assertEqual(self._point_by_date(result, date(2026, 5, 1)).actual_remaining, 90)
+        self.assertIsNone(self._point_by_date(result, date(2026, 5, 2)).actual_remaining)
+        self.assertIsNone(self._point_by_date(result, date(2026, 5, 4)).actual_completed_daily)
+
     # ---- 計画＋実績 ----
 
     def test_plan_and_actuals(self):

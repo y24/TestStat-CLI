@@ -90,11 +90,7 @@ def _get_plan_daily_map(db: Session, plan_ids: list[int]) -> dict[date, int]:
 
 
 def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> dict[date, int]:
-    """日付ごとの実績消化数合計 {date: sum(executed)}。
-
-    結果なしで日付だけ入力された行は DailyProgress に executed=0 として保存されるが、
-    PB 図上の実績日ではないため系列から除外する。負の実績（修正差分）は保持する。
-    """
+    """日付ごとの実績消化数合計 {date: sum(executed)}"""
     if _label_is_disabled(db, testing_id, label):
         return {}
     q = select(DailyProgress.date, func.sum(DailyProgress.executed)).where(
@@ -107,7 +103,7 @@ def _get_actual_daily_map(db: Session, testing_id: int, label: str | None) -> di
         if disabled_labels:
             q = q.where((DailyProgress.label.is_(None)) | (DailyProgress.label.not_in(disabled_labels)))
     rows = db.execute(q.group_by(DailyProgress.date)).all()
-    return {r[0]: r[1] for r in rows if r[1] != 0}
+    return {r[0]: r[1] for r in rows}
 
 
 def _get_test_result_bug_daily_map(

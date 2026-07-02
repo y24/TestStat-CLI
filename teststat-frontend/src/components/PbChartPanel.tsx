@@ -1460,7 +1460,7 @@ function ProgressDetails({ daily, people, selectedLabels }: { daily: DailyProgre
           </div>
           <div className="breakdown-table-wrap">
             <table className="breakdown-table">
-              <thead><tr><th>日付</th>{resultKeys.map((key) => <th key={key}>{key}</th>)}<th>完了数</th><th>消化数</th></tr></thead>
+              <thead><tr><th>日付</th>{resultKeys.map((key) => <th key={key}><ResultHeader result={key} /></th>)}<th>完了数</th><th>消化数</th></tr></thead>
               <tbody>{dailyRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
             </table>
           </div>

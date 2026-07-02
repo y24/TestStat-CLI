@@ -70,6 +70,60 @@ interface ChartResult {
   error: string | null
 }
 
+interface ChartData {
+  charts: PbChartResponse[]
+  files: FileProgressItem[]
+  daily: DailyProgressItem[]
+  plans: PlanItem[]
+  planLabels: PlanLabelItem[]
+  openBugs: OpenBugItem[]
+}
+
+// React Strict Mode re-runs effects in development. Share only requests that are
+// currently in flight so the verification pass does not send the same API set twice.
+const inFlightChartData = new Map<string, Promise<ChartData>>()
+
+function fetchChartData(
+  testingId: number,
+  labels: string[],
+  includePastPlans: boolean,
+  reloadKey: number,
+): Promise<ChartData> {
+  const requestKey = JSON.stringify([testingId, labels, includePastPlans, reloadKey])
+  const current = inFlightChartData.get(requestKey)
+  if (current) {
+    return current
+  }
+
+  const chartRequests =
+    labels.length === 0
+      ? [fetchPbChart(testingId, { label: null, includePastPlans })]
+      : labels.map((label) => fetchPbChart(testingId, { label, includePastPlans }))
+  const request = Promise.all([
+    Promise.all(chartRequests),
+    fetchProgressFiles(testingId).catch(() => [] as FileProgressItem[]),
+    fetchProgressDaily(testingId).catch(() => [] as DailyProgressItem[]),
+    fetchPlans(testingId).catch(() => [] as PlanItem[]),
+    fetchPlanLabels(testingId).catch(() => [] as PlanLabelItem[]),
+    fetchOpenBugs(testingId).catch(() => [] as OpenBugItem[]),
+  ]).then(([charts, files, daily, plans, planLabels, openBugs]) => ({
+    charts,
+    files,
+    daily,
+    plans,
+    planLabels,
+    openBugs,
+  }))
+
+  inFlightChartData.set(requestKey, request)
+  const clearRequest = () => {
+    if (inFlightChartData.get(requestKey) === request) {
+      inFlightChartData.delete(requestKey)
+    }
+  }
+  void request.then(clearRequest, clearRequest)
+  return request
+}
 type ResultKey = 'Pass' | 'Fixed' | 'Fail' | 'Blocked' | 'Suspend' | 'N/A'
 
 interface BreakdownRow {
@@ -142,10 +196,7 @@ export function PbChartPanel({
     setTargetSelection({ testingId: project.testing_id, labels })
   }
 
-  // 画面遷移で再マウントされても、また別計画へ切り替えても、保存済みの表示対象を復元する。
-  useEffect(() => {
-    setTargetSelection({ testingId: project.testing_id, labels: getStoredSelectedLabels(project.testing_id) })
-  }, [project.testing_id])
+
   const [targetMenuOpen, setTargetMenuOpen] = useState(false)
   const [layers, setLayers] = useState<ChartLayers>({
     plannedLine: true,
@@ -209,19 +260,8 @@ export function PbChartPanel({
   useEffect(() => {
     let ignore = false
     const labels = [...selectedLabels].sort()
-    const chartRequests =
-      labels.length === 0
-        ? [fetchPbChart(project.testing_id, { label: null, includePastPlans: layers.pastPlans })]
-        : labels.map((label) => fetchPbChart(project.testing_id, { label, includePastPlans: layers.pastPlans }))
-    Promise.all([
-      Promise.all(chartRequests),
-      fetchProgressFiles(project.testing_id).catch(() => [] as FileProgressItem[]),
-      fetchProgressDaily(project.testing_id).catch(() => [] as DailyProgressItem[]),
-      fetchPlans(project.testing_id).catch(() => [] as PlanItem[]),
-      fetchPlanLabels(project.testing_id).catch(() => [] as PlanLabelItem[]),
-      fetchOpenBugs(project.testing_id).catch(() => [] as OpenBugItem[]),
-    ])
-      .then(([charts, files, daily, plans, planLabels, openBugs]) => {
+    fetchChartData(project.testing_id, labels, layers.pastPlans, reloadKey)
+      .then(({ charts, files, daily, plans, planLabels, openBugs }) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.crud.progress import get_daily_progress, get_file_progress, get_progress_summary, list_testings, replace_progress
+from app.crud.progress import get_daily_progress, get_file_progress, get_person_progress, get_progress_summary, list_testings, replace_progress
 from app.database import get_db
-from app.schemas.progress import DailyProgressItem, FileProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, TestingItem
+from app.schemas.progress import DailyProgressItem, FileProgressItem, PersonProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, TestingItem
 
 router = APIRouter(prefix="/api/v1", tags=["progress"])
 
@@ -35,6 +35,11 @@ def read_progress_files(testing_id: int, db: Session = Depends(get_db)) -> list[
 def read_progress_daily(testing_id: int, db: Session = Depends(get_db)) -> list[DailyProgressItem]:
     # コレクション系は未開始（Testing 行なし）でも 200 + 空配列を返す。空集合は Not Found ではない。
     return get_daily_progress(db, testing_id)
+
+
+@router.get("/progress/{testing_id}/people", response_model=list[PersonProgressItem])
+def read_progress_people(testing_id: int, db: Session = Depends(get_db)) -> list[PersonProgressItem]:
+    return get_person_progress(db, testing_id)
 
 
 @router.get("/testings", response_model=list[TestingItem])

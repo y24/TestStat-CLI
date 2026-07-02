@@ -80,6 +80,8 @@ class DailyPersonProgress(Base):
     date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     person: Mapped[str] = mapped_column(String(255), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    executed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class TestResultBugSnapshot(Base):

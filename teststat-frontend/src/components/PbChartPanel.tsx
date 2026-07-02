@@ -16,6 +16,7 @@ import {
   fetchPlanLabels,
   fetchPlans,
   fetchProgressDaily,
+  fetchProgressPeople,
   fetchProgressFiles,
   syncAzureDevOpsBugs,
   updateProject,
@@ -24,6 +25,7 @@ import type {
   DailyProgressItem,
   FileProgressItem,
   OpenBugItem,
+  PersonProgressItem,
   BugStateColorSettings,
   BugStateColorSetting,
   PbChartSettings,
@@ -36,7 +38,7 @@ import type {
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { displayLabel } from '../utils/plans'
-import { Bug, ClipboardList, FileSpreadsheet, Filter, TriangleAlert, X } from 'lucide-react'
+import { Bug, ChevronDown, ChevronUp, ClipboardList, Copy, FileSpreadsheet, Filter, TriangleAlert, X } from 'lucide-react'
 import { enumerateDates, formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
@@ -67,6 +69,7 @@ interface ChartResult {
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
   openBugs: OpenBugItem[]
+  people: PersonProgressItem[]
   error: string | null
 }
 
@@ -77,6 +80,7 @@ interface ChartData {
   plans: PlanItem[]
   planLabels: PlanLabelItem[]
   openBugs: OpenBugItem[]
+  people: PersonProgressItem[]
 }
 
 // React Strict Mode re-runs effects in development. Share only requests that are
@@ -106,13 +110,15 @@ function fetchChartData(
     fetchPlans(testingId).catch(() => [] as PlanItem[]),
     fetchPlanLabels(testingId).catch(() => [] as PlanLabelItem[]),
     fetchOpenBugs(testingId).catch(() => [] as OpenBugItem[]),
-  ]).then(([charts, files, daily, plans, planLabels, openBugs]) => ({
+    fetchProgressPeople(testingId).catch(() => [] as PersonProgressItem[]),
+  ]).then(([charts, files, daily, plans, planLabels, openBugs, people]) => ({
     charts,
     files,
     daily,
     plans,
     planLabels,
     openBugs,
+    people,
   }))
 
   inFlightChartData.set(requestKey, request)
@@ -262,7 +268,7 @@ export function PbChartPanel({
     let ignore = false
     const labels = [...selectedLabels].sort()
     fetchChartData(project.testing_id, labels, layers.pastPlans, reloadKey)
-      .then(({ charts, files, daily, plans, planLabels, openBugs }) => {
+      .then(({ charts, files, daily, plans, planLabels, openBugs, people }) => {
         if (!ignore) {
           setResult({
             testingId: project.testing_id,
@@ -274,6 +280,7 @@ export function PbChartPanel({
             plans,
             planLabels,
             openBugs,
+            people,
             error: null,
           })
         }
@@ -290,6 +297,7 @@ export function PbChartPanel({
             plans: [],
             planLabels: [],
             openBugs: [],
+            people: [],
             error: getErrorMessage(err),
           })
         }
@@ -319,6 +327,7 @@ export function PbChartPanel({
   const visibleDaily = daily.filter((item) => !item.label || !disabledLabels.has(item.label))
   const visiblePlans = plans.filter((plan) => !plan.label || !disabledLabels.has(plan.label))
   const openBugs = isCurrentResult ? result.openBugs : []
+  const people = isCurrentResult ? result.people : []
   const labelOrder = new Map(planLabels.map((item, index) => [item.label, index]))
   const compareLabels = (left: string, right: string) => {
     const leftOrder = labelOrder.get(left)
@@ -469,6 +478,7 @@ export function PbChartPanel({
         <ProgressBreakdown
           files={visibleFiles}
           daily={visibleDaily}
+          people={people}
           selectedLabels={selectedLabels}
           openBugs={bugsAllowed ? openBugs : []}
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
@@ -1256,6 +1266,7 @@ function PbChart({
 function ProgressBreakdown({
   files,
   daily,
+  people,
   selectedLabels,
   openBugs,
   bugDataFetched,
@@ -1265,6 +1276,7 @@ function ProgressBreakdown({
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
+  people: PersonProgressItem[]
   selectedLabels: string[]
   openBugs: OpenBugItem[]
   bugDataFetched: boolean
@@ -1396,7 +1408,84 @@ function ProgressBreakdown({
       {selectedLabels.length === 0 && (
         <OpenBugList bugs={openBugs} bugDataFetched={bugDataFetched} bugStateColors={bugStateColors} />
       )}
+      <ProgressDetails daily={daily} people={people} selectedLabels={selectedLabels} />
     </div>
+  )
+}
+
+function ProgressDetails({ daily, people, selectedLabels }: { daily: DailyProgressItem[]; people: PersonProgressItem[]; selectedLabels: string[] }) {
+  const [open, setOpen] = useState(false)
+  const [personMetric, setPersonMetric] = useState<'executed' | 'completed'>('executed')
+  const selected = new Set(selectedLabels)
+  const visibleDaily = daily.filter((row) => selected.size === 0 || Boolean(row.label && selected.has(row.label)))
+  const visiblePeople = people.filter((row) => selected.size === 0 || Boolean(row.label && selected.has(row.label)))
+  const dates = [...new Set(visibleDaily.map((row) => row.date))].sort()
+  const names = [...new Set(visiblePeople.map((row) => row.person))].sort((a, b) => a.localeCompare(b, 'ja'))
+
+  const dailyRows = dates.map((date) => {
+    const rows = visibleDaily.filter((row) => row.date === date)
+    return [
+      date,
+      ...resultKeys.map((key) => rows.reduce((sum, row) => sum + row[key], 0)),
+      rows.reduce((sum, row) => sum + row.completed, 0),
+      rows.reduce((sum, row) => sum + row.executed, 0),
+    ]
+  })
+  const personRows = dates.map((date) => [
+    date,
+    ...names.map((name) => visiblePeople
+      .filter((row) => row.date === date && row.person === name)
+      .reduce((sum, row) => {
+        const value = row[personMetric] ?? row.count ?? 0
+        return sum + (Number.isFinite(value) ? value : 0)
+      }, 0)),
+  ])
+  const copyTsv = (headers: Array<string>, rows: Array<Array<string | number>>) => {
+    const sanitize = (value: string | number) => String(value).replace(/[\t\r\n]+/g, ' ')
+    const tsv = [headers, ...rows].map((row) => row.map(sanitize).join('\t')).join('\r\n')
+    void navigator.clipboard.writeText(tsv)
+  }
+
+  return (
+    <section className="breakdown-block progress-details">
+      <button type="button" className="progress-details-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {open ? '閉じる' : '詳細'}
+        {open ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+      </button>
+      {open && (
+        <div className="progress-details-content">
+          <div className="progress-details-heading">
+            <h3>日付別</h3>
+            <button type="button" className="tsv-copy-button" onClick={() => copyTsv(['日付', ...resultKeys, '完了数', '消化数'], dailyRows)}><Copy aria-hidden="true" />コピー</button>
+          </div>
+          <div className="breakdown-table-wrap">
+            <table className="breakdown-table">
+              <thead><tr><th>日付</th>{resultKeys.map((key) => <th key={key}>{key}</th>)}<th>完了数</th><th>消化数</th></tr></thead>
+              <tbody>{dailyRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+
+          <div className="progress-details-heading">
+            <h3>担当者別</h3>
+            <div className="progress-details-actions">
+              <div className="metric-switch" role="group" aria-label="名前別集計の切り替え">
+                <button type="button" className={personMetric === 'executed' ? 'active' : ''} onClick={() => setPersonMetric('executed')}>消化数</button>
+                <button type="button" className={personMetric === 'completed' ? 'active' : ''} onClick={() => setPersonMetric('completed')}>完了数</button>
+              </div>
+              <button type="button" className="tsv-copy-button" onClick={() => copyTsv(['日付', ...names], personRows)}><Copy aria-hidden="true" />コピー</button>
+            </div>
+          </div>
+          {names.length > 0 ? (
+            <div className="breakdown-table-wrap">
+              <table className="breakdown-table person-breakdown-table">
+                <thead><tr><th>日付</th>{names.map((name) => <th key={name}>{name}</th>)}</tr></thead>
+                <tbody>{personRows.map((row) => <tr key={row[0]}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          ) : <div className="breakdown-empty">名前別データがありません。</div>}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -1610,4 +1699,3 @@ function toRate(count: number, total: number) {
 function formatCountRate(count: number, rate: number) {
   return `${count} (${rate.toFixed(1)}%)`
 }
-

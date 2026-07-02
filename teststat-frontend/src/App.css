@@ -3179,3 +3179,43 @@
 .dashboard-rate-bar > span.done {
   background: #0f6b4d;
 }
+
+.progress-details-toggle { display: inline-flex; align-items: center; gap: 6px; align-self: center; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--accent); cursor: pointer; font-weight: 700; padding: 7px 22px; }
+.progress-details-content { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.progress-details-content h3:not(:first-child) { margin-top: 8px; }
+
+.progress-details-heading,
+.progress-details-actions,
+.metric-switch {
+  display: flex;
+  align-items: center;
+}
+
+.progress-details-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-details-heading h3 { margin: 0; }
+.progress-details-actions { gap: 8px; }
+
+.tsv-copy-button,
+.metric-switch button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.tsv-copy-button { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; }
+.tsv-copy-button svg { width: 14px; height: 14px; }
+.metric-switch button:first-child { border-radius: 5px 0 0 5px; }
+.metric-switch button:last-child { border-left: 0; border-radius: 0 5px 5px 0; }
+.metric-switch button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.person-breakdown-table th:first-child,
+.person-breakdown-table td:first-child { position: sticky; left: 0; text-align: left; }
+.person-breakdown-table th:first-child { z-index: 2; }
+.person-breakdown-table td:first-child { background: #fff; }
+.progress-details-toggle svg { width: 16px; height: 16px; stroke-width: 2.5; }

@@ -63,16 +63,18 @@ def _build_daily_rows(daily_data):
     return rows
 
 
-def _build_person_rows(by_name):
+def _build_person_rows(by_name, metrics=None):
+    metrics = metrics or {}
     rows = []
     for date, people in sorted((by_name or {}).items()):
         for person, count in sorted((people or {}).items()):
             if person:
-                rows.append({
-                    "date": date,
-                    "person": person,
-                    "count": int(count or 0),
-                })
+                row = {"date": date, "person": person, "count": int(count or 0)}
+                person_metrics = metrics.get(date, {}).get(person)
+                if person_metrics is not None:
+                    row["completed"] = int(person_metrics.get("completed", count) or 0)
+                    row["executed"] = int(person_metrics.get("executed", count) or 0)
+                rows.append(row)
     return rows
 
 
@@ -133,7 +135,7 @@ def build_progress_payload(project_info, results):
             "latest_update": run.get("last_update"),
             "results": _build_results(total),
             "daily": _build_daily_rows(result.get("daily", {})),
-            "by_person": _build_person_rows(result.get("by_name", {})),
+            "by_person": _build_person_rows(result.get("by_name", {}), result.get("by_name_metrics", {})),
         }
         if result.get("source_url"):
             file_payload["source_url"] = result["source_url"]

@@ -62,6 +62,19 @@ def aggregate_daily_by_person(data, invalid_results: list[str] = None):
         out_data[date] = {name: count for name, count in sorted(name_counts.items())}
     return out_data
 
+def aggregate_daily_by_person_metrics(data, completed_results: list[str], executed_results: list[str], invalid_results: list[str] = None):
+    """日付・名前別の完了数と消化数を集計"""
+    invalid_results = invalid_results or []
+    metrics = defaultdict(lambda: defaultdict(lambda: {"completed": 0, "executed": 0}))
+    for row in data:
+        if len(row) <= 2 or not row[1] or not row[2] or row[0] in invalid_results:
+            continue
+        result, name, date = row[0], row[1], row[2]
+        if result in completed_results:
+            metrics[date][name]["completed"] += 1
+        if result in executed_results:
+            metrics[date][name]["executed"] += 1
+    return {date: dict(people) for date, people in sorted(metrics.items())}
 def get_excluded_count(data, targets:list[str]) -> int:
     """対象外の数を取得"""
     return sum(1 for row in data if row and row[0] in targets)

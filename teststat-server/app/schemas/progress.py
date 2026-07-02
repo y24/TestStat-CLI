@@ -25,6 +25,8 @@ class PersonProgressIn(BaseModel):
     date: date
     person: str = Field(..., min_length=1, max_length=255)
     count: int = Field(..., ge=0)
+    completed: int | None = Field(None, ge=0)
+    executed: int | None = Field(None, ge=0)
 
 
 class FileProgressIn(BaseModel):
@@ -141,6 +143,17 @@ class DailyProgressItem(ResultCounts):
     planned: int | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class PersonProgressItem(BaseModel):
+    date: date
+    label: str | None
+    person: str
+    count: int
+    completed: int
+    executed: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TestingItem(BaseModel):

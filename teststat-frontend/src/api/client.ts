@@ -4,6 +4,7 @@ import type {
   ProgressSummaryResponse,
   FileProgressItem,
   DailyProgressItem,
+  PersonProgressItem,
   ProjectCreatePayload,
   ProjectItem,
   ProjectOrderUpdatePayload,
@@ -71,6 +72,8 @@ export const fetchProgressFiles = (testing_id: number) =>
   get<FileProgressItem[]>(`/api/v1/progress/${testing_id}/files`)
 export const fetchProgressDaily = (testing_id: number) =>
   get<DailyProgressItem[]>(`/api/v1/progress/${testing_id}/daily`)
+export const fetchProgressPeople = (testing_id: number) =>
+  get<PersonProgressItem[]>(`/api/v1/progress/${testing_id}/people`)
 
 function withProjectActualFallback(project: ProjectItem, summary?: ProgressSummaryResponse): ProjectItem {
   return {

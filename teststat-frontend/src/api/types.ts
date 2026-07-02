@@ -10,8 +10,8 @@ export interface TestingItem {
 export interface SummaryCounts {
   total_cases: number
   available_cases: number
-  completed: number
-  executed: number
+  completed?: number
+  executed?: number
   completed_rate: number
   executed_rate: number
 }
@@ -57,6 +57,15 @@ export interface DailyProgressItem extends ResultCounts {
   completed: number
   executed: number
   planned: number | null
+}
+
+export interface PersonProgressItem {
+  date: string
+  label: string | null
+  person: string
+  count: number
+  completed?: number
+  executed?: number
 }
 
 export interface HealthResponse {
@@ -344,4 +353,3 @@ export interface CollectResult {
   started_at: string
   finished_at: string | null
 }
-

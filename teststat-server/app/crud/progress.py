@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.plan import PlanLabel
 from app.models.project import Project
 from app.models.progress import DailyPersonProgress, DailyProgress, FileProgress, TestResultBugSnapshot, Testing
-from app.schemas.progress import DailyProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
+from app.schemas.progress import DailyProgressItem, PersonProgressItem, ProgressPostResponse, ProgressRequest, ProgressSummaryResponse, ResultCounts, SummaryCounts
 
 
 PLAN_LABEL_OPTION_FIELDS = (
@@ -168,6 +168,8 @@ def replace_progress(db: Session, payload: ProgressRequest) -> ProgressPostRespo
                         date=person.date,
                         person=person.person,
                         count=person.count,
+                        completed=person.completed if person.completed is not None else person.count,
+                        executed=person.executed if person.executed is not None else person.count,
                     )
                 )
 
@@ -324,6 +326,11 @@ def get_daily_progress(db: Session, testing_id: int) -> list[DailyProgressItem]:
         )
         for row in rows
     ]
+
+
+def get_person_progress(db: Session, testing_id: int) -> list[PersonProgressItem]:
+    rows = db.scalars(select(DailyPersonProgress).where(DailyPersonProgress.testing_id == testing_id).order_by(DailyPersonProgress.date, DailyPersonProgress.person)).all()
+    return [PersonProgressItem(date=row.date, label=row.label, person=row.person, count=row.count, completed=row.completed, executed=row.executed) for row in rows]
 
 
 def list_testings(db: Session) -> list[Testing]:

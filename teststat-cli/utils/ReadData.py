@@ -65,6 +65,9 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
     )
 
     data_by_name = DataAggregator.aggregate_daily_by_person(all_data, invalid_results=invalid_results)
+    data_by_name_metrics = DataAggregator.aggregate_daily_by_person_metrics(
+        all_data, settings["test_status"]["completed_results"], settings["test_status"]["executed_results"], invalid_results
+    )
     data_total = DataAggregator.calculate_total_results(
         data_daily_total, no_date_data,
         [settings["test_status"]["labels"][k] for k in ["completed", "executed", "planned"]]
@@ -109,7 +112,7 @@ def _aggregate_final_results(all_data, all_plan_data, data_by_env, counts_by_she
     out_data = {
         "stats": count_stats, "run": {"status": run_status, "start_date": start_date, "last_update": last_update},
         "count_by_sheet": counts_by_sheet, "daily": data_daily_total, "total": total_results,
-        "by_name": data_by_name, "by_env": data_by_env, "sheet_name_mapping": sheet_name_mapping or {}
+        "by_name": data_by_name, "by_name_metrics": data_by_name_metrics, "by_env": data_by_env, "sheet_name_mapping": sheet_name_mapping or {}
     }
 
     if case_count_all == 0:

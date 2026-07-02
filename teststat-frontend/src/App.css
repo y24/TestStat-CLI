@@ -741,9 +741,26 @@
 
 .breakdown-file-cell {
   max-width: 320px;
-  overflow: hidden;
   text-align: left !important;
+}
+
+.breakdown-file-cell,
+.breakdown-file-label {
+  min-width: 0;
+}
+
+.breakdown-file-cell {
+  align-items: center;
+  gap: 5px;
+}
+
+.breakdown-file-label {
+  display: inline-block;
+  max-width: calc(100% - 20px);
+  overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .breakdown-empty {

@@ -36,7 +36,7 @@ import type {
 import { buildPbChartOption } from '../charts/pbChartOptions'
 import type { ChartLayers } from '../types/ui'
 import { displayLabel } from '../utils/plans'
-import { Bug, ClipboardList, Filter, TriangleAlert, X } from 'lucide-react'
+import { Bug, ClipboardList, FileSpreadsheet, Filter, TriangleAlert, X } from 'lucide-react'
 import { enumerateDates, formatDateTime, formatDateTimeWithRelative } from '../utils/date'
 import {
   getProgressStatusLevel,
@@ -473,6 +473,7 @@ export function PbChartPanel({
           bugDataFetched={Boolean(bugsAllowed && (usesTestResultBugs || chart?.has_bugs))}
           bugStateColors={bugStateColorSettings.items}
           labelOrder={labelOrder}
+          planLabels={planLabels}
         />
       )}
       {layerModalOpen && (
@@ -1238,6 +1239,7 @@ function ProgressBreakdown({
   bugDataFetched,
   bugStateColors,
   labelOrder,
+  planLabels,
 }: {
   files: FileProgressItem[]
   daily: DailyProgressItem[]
@@ -1246,8 +1248,14 @@ function ProgressBreakdown({
   bugDataFetched: boolean
   bugStateColors: BugStateColorSetting[]
   labelOrder: Map<string, number>
+  planLabels: PlanLabelItem[]
 }) {
   const rows = buildBreakdownRows(files, daily, selectedLabels, labelOrder)
+  const sourceUrlByLabel = new Map(
+    planLabels
+      .filter((item): item is PlanLabelItem & { source_url: string } => Boolean(item.source_url))
+      .map((item) => [item.label, item.source_url]),
+  )
   if (rows.length === 0 && !bugDataFetched && openBugs.length === 0) {
     return null
   }
@@ -1334,7 +1342,19 @@ function ProgressBreakdown({
                 {rows.map((row) => (
                   <tr key={row.key}>
                     <td className="breakdown-file-cell" title={row.file}>
-                      {row.file}
+                      <span className="breakdown-file-label">{row.file}</span>
+                      {sourceUrlByLabel.get(row.file) && (
+                        <a
+                          href={sourceUrlByLabel.get(row.file)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="plan-excel-link"
+                          title="SharePointのExcelを開く"
+                          aria-label={`${row.file} のExcelファイルを開く`}
+                        >
+                          <FileSpreadsheet aria-hidden="true" />
+                        </a>
+                      )}
                     </td>
                     <td>{row.total}</td>
                     {resultKeys.map((key) => (
